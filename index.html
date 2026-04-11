@@ -29,9 +29,395 @@
 	<script type="text/javascript" src="./js/casino.js"></script>
 	<script type="text/javascript" src="./js/channelfunction.js"></script>
 	<script type="text/javascript" src="./js/items.js"></script>
+
+	<style>
+	/* =========================================================================
+	 * THUNDER CASINO v0.2.0 — INLINE ANIMATION & GAME STYLES
+	 * ========================================================================= */
+
+	/* ---- Screen flash overlay ---- */
+	.screen-flash {
+		position: fixed;
+		top: 0; left: 0; right: 0; bottom: 0;
+		pointer-events: none;
+		z-index: 9999;
+		opacity: 0;
+	}
+	.screen-flash.flash-win {
+		background: #00e676;
+		animation: screenFlash 0.4s ease-out forwards;
+	}
+	.screen-flash.flash-lose {
+		background: #ff2d78;
+		animation: screenFlash 0.3s ease-out forwards;
+	}
+	.screen-flash.flash-lock {
+		background: #ffd700;
+		animation: screenFlash 0.3s ease-out forwards;
+	}
+	@keyframes screenFlash {
+		0%   { opacity: 0; }
+		30%  { opacity: 0.25; }
+		100% { opacity: 0; }
+	}
+
+	/* ---- Shake animation ---- */
+	.shake {
+		animation: shakeAnim 0.15s ease-in-out 2;
+	}
+	@keyframes shakeAnim {
+		0%, 100% { transform: translateX(0); }
+		25%      { transform: translateX(-3px); }
+		75%      { transform: translateX(3px); }
+	}
+
+	/* ---- Balance flash ---- */
+	.balance-flash-green {
+		animation: balFlashGreen 0.6s ease-out;
+	}
+	.balance-flash-red {
+		animation: balFlashRed 0.6s ease-out;
+	}
+	.balance-flash-gold {
+		animation: balFlashGold 0.5s ease-out;
+	}
+	@keyframes balFlashGreen {
+		0%   { color: #00e676; text-shadow: 0 0 20px #00e676; }
+		100% { color: #ffd700; text-shadow: none; }
+	}
+	@keyframes balFlashRed {
+		0%   { color: #ff2d78; text-shadow: 0 0 20px #ff2d78; }
+		100% { color: #ffd700; text-shadow: none; }
+	}
+	@keyframes balFlashGold {
+		0%   { color: #fff; text-shadow: 0 0 30px #ffd700; }
+		100% { color: #ffd700; text-shadow: 0 0 10px rgba(255,215,0,0.3); }
+	}
+
+	/* ---- Game area border pulse during spin ---- */
+	.game-area.spinning-border {
+		border-color: #f5a623;
+		animation: borderGlow 1s ease-in-out infinite;
+	}
+	@keyframes borderGlow {
+		0%, 100% { box-shadow: 0 0 15px rgba(245,166,35,0.2); }
+		50%      { box-shadow: 0 0 35px rgba(245,166,35,0.5); }
+	}
+	.game-area.win-border {
+		border-color: #00e676;
+		animation: winBorderPulse 0.4s ease-in-out 3;
+	}
+	@keyframes winBorderPulse {
+		0%, 100% { box-shadow: 0 0 15px rgba(0,230,118,0.2); }
+		50%      { box-shadow: 0 0 40px rgba(0,230,118,0.6); }
+	}
+
+	/* ---- Coin flip 3D ---- */
+	.coin-stage {
+		width: 140px;
+		height: 140px;
+		margin: 20px auto;
+		perspective: 800px;
+		display: none;
+	}
+	.coin-stage.visible { display: block; }
+	.coin-body {
+		width: 100%;
+		height: 100%;
+		position: relative;
+		transform-style: preserve-3d;
+		border-radius: 50%;
+	}
+	.coin-body.spinning {
+		animation: coinSpin3D 2s cubic-bezier(0.17,0.67,0.21,0.99) forwards;
+	}
+	.coin-body.spinning-heads {
+		animation: coinSpinHeads 2s cubic-bezier(0.17,0.67,0.21,0.99) forwards;
+	}
+	.coin-body.spinning-tails {
+		animation: coinSpinTails 2s cubic-bezier(0.17,0.67,0.21,0.99) forwards;
+	}
+	@keyframes coinSpinHeads {
+		0%   { transform: rotateY(0deg); }
+		80%  { transform: rotateY(2880deg); }
+		100% { transform: rotateY(3240deg); } /* divisible by 360 = heads face front */
+	}
+	@keyframes coinSpinTails {
+		0%   { transform: rotateY(0deg); }
+		80%  { transform: rotateY(2880deg); }
+		100% { transform: rotateY(3060deg); } /* 3060 = 8.5 * 360 = tails face front */
+	}
+	.coin-side {
+		position: absolute;
+		width: 100%;
+		height: 100%;
+		border-radius: 50%;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-family: 'Orbitron', sans-serif;
+		font-size: 16px;
+		font-weight: 800;
+		backface-visibility: hidden;
+		border: 3px solid rgba(255,255,255,0.15);
+	}
+	.coin-side-heads {
+		background: linear-gradient(135deg, #f5a623 0%, #ffd700 50%, #e8961f 100%);
+		color: #080c18;
+		box-shadow: inset 0 0 30px rgba(0,0,0,0.15), 0 0 25px rgba(245,166,35,0.4);
+	}
+	.coin-side-tails {
+		background: linear-gradient(135deg, #7a8aaa 0%, #c0c8e0 50%, #7a8aaa 100%);
+		color: #080c18;
+		transform: rotateY(180deg);
+		box-shadow: inset 0 0 30px rgba(0,0,0,0.15);
+	}
+
+	/* ---- Dice display ---- */
+	.dice-stage {
+		display: none;
+		justify-content: center;
+		margin: 20px auto;
+	}
+	.dice-stage.visible { display: flex; }
+	.die-face {
+		width: 100px;
+		height: 100px;
+		border-radius: 18px;
+		background: linear-gradient(145deg, #f0f0f0, #d8d8d8);
+		display: grid;
+		padding: 14px;
+		box-shadow: 0 8px 24px rgba(0,0,0,0.4), inset 0 2px 4px rgba(255,255,255,0.5);
+		transition: transform 0.1s ease;
+	}
+	.die-face.rolling {
+		animation: dieShake 0.1s linear infinite;
+	}
+	@keyframes dieShake {
+		0%   { transform: rotate(-5deg) scale(1.05); }
+		50%  { transform: rotate(5deg) scale(0.95); }
+		100% { transform: rotate(-5deg) scale(1.05); }
+	}
+	.die-face.settled {
+		animation: dieSettle 0.3s ease-out forwards;
+	}
+	@keyframes dieSettle {
+		0%   { transform: scale(1.15) rotate(3deg); }
+		60%  { transform: scale(0.95) rotate(-1deg); }
+		100% { transform: scale(1) rotate(0deg); }
+	}
+	/* Dot grids for each face */
+	.die-face[data-val="1"] { grid-template: 1fr 1fr 1fr / 1fr 1fr 1fr; }
+	.die-face[data-val="2"] { grid-template: 1fr 1fr 1fr / 1fr 1fr 1fr; }
+	.die-face[data-val="3"] { grid-template: 1fr 1fr 1fr / 1fr 1fr 1fr; }
+	.die-face[data-val="4"] { grid-template: 1fr 1fr / 1fr 1fr; }
+	.die-face[data-val="5"] { grid-template: 1fr 1fr 1fr / 1fr 1fr 1fr; }
+	.die-face[data-val="6"] { grid-template: 1fr 1fr 1fr / 1fr 1fr; }
+	.die-dot {
+		width: 14px;
+		height: 14px;
+		border-radius: 50%;
+		background: #1a1a2e;
+		box-shadow: inset 0 2px 3px rgba(0,0,0,0.4);
+		justify-self: center;
+		align-self: center;
+	}
+
+	/* ---- Roulette scroll strip ---- */
+	.roulette-stage {
+		display: none;
+		justify-content: center;
+		margin: 20px auto;
+	}
+	.roulette-stage.visible { display: flex; }
+	.roulette-window {
+		width: 100px;
+		height: 200px;
+		overflow: hidden;
+		border: 3px solid #f5a623;
+		border-radius: 14px;
+		position: relative;
+		background: rgba(10,16,32,0.9);
+		box-shadow: 0 0 20px rgba(245,166,35,0.2);
+	}
+	.roulette-window::before,
+	.roulette-window::after {
+		content: '';
+		position: absolute;
+		left: 0; right: 0;
+		height: 60px;
+		z-index: 2;
+		pointer-events: none;
+	}
+	.roulette-window::before {
+		top: 0;
+		background: linear-gradient(to bottom, rgba(10,16,32,0.95), transparent);
+	}
+	.roulette-window::after {
+		bottom: 0;
+		background: linear-gradient(to top, rgba(10,16,32,0.95), transparent);
+	}
+	.roulette-pointer {
+		position: absolute;
+		top: 50%;
+		left: -6px;
+		right: -6px;
+		height: 2px;
+		background: #ffd700;
+		z-index: 3;
+		box-shadow: 0 0 8px #ffd700;
+	}
+	.roulette-strip {
+		position: absolute;
+		left: 0; right: 0;
+		transition: none;
+	}
+	.roulette-num {
+		height: 50px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-family: 'Orbitron', sans-serif;
+		font-size: 28px;
+		font-weight: 700;
+		color: #8892b0;
+	}
+	.roulette-num:nth-child(odd) { color: #ffd700; }
+	.roulette-num:nth-child(even) { color: #e6f1ff; }
+	.roulette-num.highlight {
+		color: #00e676;
+		text-shadow: 0 0 15px #00e676;
+		font-size: 34px;
+	}
+
+	/* ---- Particle confetti ---- */
+	.confetti-particle {
+		position: fixed;
+		width: 8px;
+		height: 8px;
+		border-radius: 50%;
+		pointer-events: none;
+		z-index: 9998;
+		animation: confettiFall 1.5s ease-out forwards;
+	}
+	@keyframes confettiFall {
+		0%   { opacity: 1; transform: translate(0, 0) scale(1); }
+		100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(0.3); }
+	}
+
+	/* ---- Floating amount ---- */
+	.float-amount {
+		position: absolute;
+		font-family: 'Orbitron', sans-serif;
+		font-weight: 700;
+		font-size: 22px;
+		pointer-events: none;
+		z-index: 100;
+		animation: floatUp 1.2s ease-out forwards;
+	}
+	.float-amount.win { color: #00e676; text-shadow: 0 0 10px rgba(0,230,118,0.5); }
+	.float-amount.lose { color: #ff2d78; text-shadow: 0 0 10px rgba(255,45,120,0.5); }
+	@keyframes floatUp {
+		0%   { opacity: 1; transform: translateY(0) scale(0.8); }
+		50%  { opacity: 1; transform: translateY(-30px) scale(1.1); }
+		100% { opacity: 0; transform: translateY(-70px) scale(0.9); }
+	}
+
+	/* ---- Phase text styling ---- */
+	.phase-text {
+		font-family: 'Orbitron', sans-serif;
+		font-size: 14px;
+		letter-spacing: 3px;
+		text-transform: uppercase;
+	}
+	.phase-text.finding {
+		color: #8892b0;
+		animation: phasePulse 1s ease-in-out infinite;
+	}
+	.phase-text.locked {
+		color: #ffd700;
+		animation: phasePop 0.3s ease-out;
+	}
+	.phase-text.spinning {
+		color: #00e5ff;
+		animation: phasePulse 0.6s ease-in-out infinite;
+	}
+	@keyframes phasePulse {
+		0%, 100% { opacity: 0.5; }
+		50%      { opacity: 1; }
+	}
+	@keyframes phasePop {
+		0%   { transform: scale(0.8); opacity: 0; }
+		60%  { transform: scale(1.15); }
+		100% { transform: scale(1); opacity: 1; }
+	}
+
+	/* ---- SND toggle button ---- */
+	.btn-snd {
+		font-family: 'Chakra Petch', sans-serif;
+		font-size: 11px;
+		font-weight: 600;
+		padding: 6px 12px;
+		border: 1px solid #1a2140;
+		border-radius: 8px;
+		background: transparent;
+		color: #8892b0;
+		cursor: pointer;
+		transition: all 0.2s ease;
+		text-transform: uppercase;
+		letter-spacing: 1px;
+	}
+	.btn-snd:hover { border-color: #f5a623; color: #f5a623; }
+	.btn-snd.active { border-color: #00e676; color: #00e676; }
+
+	/* ---- Disabled pick buttons during play ---- */
+	.pick-btn.dimmed {
+		opacity: 0.3;
+		pointer-events: none;
+	}
+
+	/* ---- Button press animation ---- */
+	.btn-pressed {
+		animation: btnPress 0.15s ease-out;
+	}
+	@keyframes btnPress {
+		0%   { transform: translateY(0); }
+		50%  { transform: translateY(3px); box-shadow: 0 1px 5px rgba(245,166,35,0.2); }
+		100% { transform: translateY(0); }
+	}
+
+	/* ---- Win result bounce ---- */
+	.result-bounce {
+		animation: resultBounce 0.6s cubic-bezier(0.34,1.56,0.64,1) forwards;
+	}
+	@keyframes resultBounce {
+		0%   { transform: scale(0.5); opacity: 0; }
+		60%  { transform: scale(1.2); }
+		80%  { transform: scale(0.95); }
+		100% { transform: scale(1); opacity: 1; }
+	}
+
+	/* ---- Lose shake ---- */
+	.result-shake {
+		animation: resultShake 0.4s ease-in-out;
+	}
+	@keyframes resultShake {
+		0%, 100% { transform: translateX(0); }
+		20%      { transform: translateX(-8px); }
+		40%      { transform: translateX(8px); }
+		60%      { transform: translateX(-5px); }
+		80%      { transform: translateX(5px); }
+	}
+
+	/* Hide default result display when animation stage is active */
+	.result-display.anim-active .result-number { display: none; }
+	</style>
 </head>
 
 <body>
+<!-- Screen flash overlay -->
+<div id="screen-flash" class="screen-flash"></div>
+
 <div class="app-container">
 
 	<!-- ============================================================ -->
@@ -46,6 +432,7 @@
 			</div>
 		</div>
 		<div class="header-nav">
+			<button id="btn-snd" class="btn-snd" onclick="SFX.toggle()" title="Toggle sound">SND OFF</button>
 			<button class="btn btn-secondary btn-sm" onclick="showView('channels')">CHANNELS</button>
 			<button class="btn btn-primary btn-sm" onclick="showView('newchannel')">+ NEW</button>
 		</div>
@@ -154,6 +541,29 @@
 				<div class="result-label waiting" id="result-label">PICK YOUR NUMBER</div>
 			</div>
 
+			<!-- Animation stages (hidden until needed) -->
+			<div class="coin-stage" id="coin-stage">
+				<div class="coin-body" id="coin-body">
+					<div class="coin-side coin-side-heads">HEADS</div>
+					<div class="coin-side coin-side-tails">TAILS</div>
+				</div>
+			</div>
+
+			<div class="dice-stage" id="dice-stage">
+				<div class="die-face" id="die-face" data-val="1">
+					<!-- dots injected by JS -->
+				</div>
+			</div>
+
+			<div class="roulette-stage" id="roulette-stage">
+				<div class="roulette-window" id="roulette-window">
+					<div class="roulette-pointer"></div>
+					<div class="roulette-strip" id="roulette-strip">
+						<!-- numbers injected by JS -->
+					</div>
+				</div>
+			</div>
+
 			<!-- Pick selector -->
 			<div id="pick-container">
 				<!-- Populated by selectGameType() -->
@@ -205,7 +615,752 @@
 <!-- ============================================================ -->
 <script type="text/javascript">
 
-/* ---- State ---- */
+/* =========================================================================
+ * WEB AUDIO API — SOUND ENGINE (SFX)
+ * =========================================================================
+ * All sounds are synthesized. No audio files needed.
+ * Muted by default. Toggle with the SND button.
+ * ========================================================================= */
+
+var SFX = (function(){
+	var ctx = null;
+	var muted = true;
+	var initialized = false;
+
+	function init(){
+		if(initialized) return;
+		try {
+			ctx = new (window.AudioContext || window.webkitAudioContext)();
+			initialized = true;
+		} catch(e){
+			console.log("Web Audio not available");
+		}
+	}
+
+	function ensureCtx(){
+		if(!initialized) init();
+		if(ctx && ctx.state === 'suspended') ctx.resume();
+		return ctx;
+	}
+
+	function toggle(){
+		if(!initialized) init();
+		muted = !muted;
+		var btn = document.getElementById('btn-snd');
+		if(btn){
+			btn.textContent = muted ? 'SND OFF' : 'SND ON';
+			btn.classList.toggle('active', !muted);
+		}
+	}
+
+	function isMuted(){ return muted; }
+
+	// -- Oscillator helper --
+	function osc(type, freq, startTime, duration, gainVal, detune){
+		var c = ensureCtx();
+		if(!c || muted) return;
+		var o = c.createOscillator();
+		var g = c.createGain();
+		o.type = type;
+		o.frequency.value = freq;
+		if(detune) o.detune.value = detune;
+		g.gain.setValueAtTime(gainVal || 0.15, startTime);
+		g.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+		o.connect(g);
+		g.connect(c.destination);
+		o.start(startTime);
+		o.stop(startTime + duration);
+	}
+
+	// -- Noise helper --
+	function noise(startTime, duration, gainVal, filterFreq){
+		var c = ensureCtx();
+		if(!c || muted) return;
+		var bufSize = c.sampleRate * duration;
+		var buf = c.createBuffer(1, bufSize, c.sampleRate);
+		var data = buf.getChannelData(0);
+		for(var i=0; i<bufSize; i++) data[i] = Math.random()*2 -1;
+		var src = c.createBufferSource();
+		src.buffer = buf;
+		var g = c.createGain();
+		g.gain.setValueAtTime(gainVal || 0.1, startTime);
+		g.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+		if(filterFreq){
+			var f = c.createBiquadFilter();
+			f.type = 'bandpass';
+			f.frequency.value = filterFreq;
+			f.Q.value = 2;
+			src.connect(f);
+			f.connect(g);
+		} else {
+			src.connect(g);
+		}
+		g.connect(c.destination);
+		src.start(startTime);
+		src.stop(startTime + duration);
+	}
+
+	// ---- Individual sounds ----
+
+	function chip_click(){
+		var c = ensureCtx();
+		if(!c || muted) return;
+		var t = c.currentTime;
+		osc('square', 800, t, 0.05, 0.12);
+		osc('square', 1200, t + 0.01, 0.03, 0.06);
+	}
+
+	function lever_pull(){
+		var c = ensureCtx();
+		if(!c || muted) return;
+		var t = c.currentTime;
+		osc('sawtooth', 200, t, 0.12, 0.15);
+		osc('square', 120, t + 0.02, 0.15, 0.1);
+		noise(t, 0.2, 0.08, 400);
+	}
+
+	function lock_cash(){
+		var c = ensureCtx();
+		if(!c || muted) return;
+		var t = c.currentTime;
+		osc('square', 1200, t, 0.06, 0.12);
+		osc('square', 1500, t + 0.06, 0.06, 0.12);
+		osc('sine', 2000, t + 0.12, 0.1, 0.08);
+	}
+
+	function spin_whoosh(){
+		var c = ensureCtx();
+		if(!c || muted) return;
+		var t = c.currentTime;
+		noise(t, 1.5, 0.06, 600);
+	}
+
+	function spin_tick(){
+		var c = ensureCtx();
+		if(!c || muted) return;
+		var t = c.currentTime;
+		osc('square', 2000, t, 0.015, 0.1);
+	}
+
+	function dice_rattle(){
+		var c = ensureCtx();
+		if(!c || muted) return;
+		var t = c.currentTime;
+		for(var i=0; i<5; i++){
+			noise(t + i*0.06, 0.04, 0.1, 1000 + Math.random()*2000);
+		}
+	}
+
+	function coin_flip(){
+		var c = ensureCtx();
+		if(!c || muted) return;
+		var t = c.currentTime;
+		noise(t, 1.8, 0.04, 800);
+		// Amplitude modulation effect via short bursts
+		for(var i=0; i<18; i++){
+			osc('sine', 600 + Math.random()*200, t + i*0.1, 0.05, 0.03);
+		}
+	}
+
+	function result_thud(){
+		var c = ensureCtx();
+		if(!c || muted) return;
+		var t = c.currentTime;
+		osc('sine', 80, t, 0.15, 0.25);
+		osc('sine', 60, t, 0.1, 0.15);
+		noise(t, 0.06, 0.12, 200);
+	}
+
+	function win_fanfare(){
+		var c = ensureCtx();
+		if(!c || muted) return;
+		var t = c.currentTime;
+		var notes = [523, 659, 784, 1047]; // C5 E5 G5 C6
+		for(var i=0; i<notes.length; i++){
+			osc('square', notes[i], t + i*0.12, 0.25, 0.1);
+			osc('sine', notes[i], t + i*0.12, 0.3, 0.06);
+		}
+	}
+
+	function lose_wah(){
+		var c = ensureCtx();
+		if(!c || muted) return;
+		var t = c.currentTime;
+		var o = c.createOscillator();
+		var g = c.createGain();
+		o.type = 'sawtooth';
+		o.frequency.setValueAtTime(400, t);
+		o.frequency.exponentialRampToValueAtTime(120, t + 0.5);
+		g.gain.setValueAtTime(0.12, t);
+		g.gain.exponentialRampToValueAtTime(0.001, t + 0.6);
+		o.connect(g);
+		g.connect(c.destination);
+		o.start(t);
+		o.stop(t + 0.6);
+	}
+
+	function ready_chime(){
+		var c = ensureCtx();
+		if(!c || muted) return;
+		var t = c.currentTime;
+		osc('triangle', 880, t, 0.2, 0.08);
+		osc('triangle', 1100, t + 0.08, 0.15, 0.05);
+	}
+
+	return {
+		init: init,
+		toggle: toggle,
+		isMuted: isMuted,
+		chip_click: chip_click,
+		lever_pull: lever_pull,
+		lock_cash: lock_cash,
+		spin_whoosh: spin_whoosh,
+		spin_tick: spin_tick,
+		dice_rattle: dice_rattle,
+		coin_flip: coin_flip,
+		result_thud: result_thud,
+		win_fanfare: win_fanfare,
+		lose_wah: lose_wah,
+		ready_chime: ready_chime
+	};
+})();
+
+
+/* =========================================================================
+ * ANIMATION ENGINE
+ * =========================================================================
+ * Coin flip, dice roll, roulette scroll, particles, screen flash.
+ * ========================================================================= */
+
+var ANIM = (function(){
+
+	// -- Screen flash --
+	function screenFlash(type){
+		var el = document.getElementById('screen-flash');
+		el.className = 'screen-flash';
+		// Force reflow
+		void el.offsetWidth;
+		el.classList.add('flash-' + type);
+		setTimeout(function(){ el.className = 'screen-flash'; }, 500);
+	}
+
+	// -- Shake game area --
+	function shakeGameArea(){
+		var el = document.getElementById('game-area');
+		el.classList.remove('shake');
+		void el.offsetWidth;
+		el.classList.add('shake');
+		setTimeout(function(){ el.classList.remove('shake'); }, 400);
+	}
+
+	// -- Confetti particles --
+	function confetti(count){
+		count = count || 25;
+		var colors = ['#ffd700','#00e676','#fff','#f5a623','#00e5ff'];
+		var cx = window.innerWidth / 2;
+		var cy = window.innerHeight / 2;
+		for(var i=0; i<count; i++){
+			var p = document.createElement('div');
+			p.className = 'confetti-particle';
+			var angle = (Math.PI * 2 * i) / count + (Math.random() - 0.5);
+			var dist = 80 + Math.random() * 200;
+			var dx = Math.cos(angle) * dist;
+			var dy = Math.sin(angle) * dist - 60; // bias upward
+			p.style.cssText = 'left:'+cx+'px;top:'+cy+'px;'
+				+'background:'+colors[i % colors.length]+';'
+				+'width:'+(6+Math.random()*6)+'px;height:'+(6+Math.random()*6)+'px;'
+				+'--dx:'+dx+'px;--dy:'+dy+'px;';
+			document.body.appendChild(p);
+			(function(el){
+				setTimeout(function(){ if(el.parentNode) el.parentNode.removeChild(el); }, 1600);
+			})(p);
+		}
+	}
+
+	// -- Float amount text --
+	function floatAmount(text, isWin){
+		var area = document.getElementById('result-display');
+		var el = document.createElement('div');
+		el.className = 'float-amount ' + (isWin ? 'win' : 'lose');
+		el.textContent = text;
+		el.style.left = '50%';
+		el.style.top = '20%';
+		el.style.transform = 'translateX(-50%)';
+		area.style.position = 'relative';
+		area.appendChild(el);
+		setTimeout(function(){ if(el.parentNode) el.parentNode.removeChild(el); }, 1300);
+	}
+
+	// -- Balance flash --
+	function flashBalance(isWin){
+		var el = document.getElementById('game-my-balance');
+		el.classList.remove('balance-flash-green','balance-flash-red','balance-flash-gold');
+		void el.offsetWidth;
+		el.classList.add(isWin ? 'balance-flash-green' : 'balance-flash-red');
+		setTimeout(function(){
+			el.classList.remove('balance-flash-green','balance-flash-red');
+		}, 700);
+	}
+
+	function flashBalanceLock(){
+		var el = document.getElementById('game-my-balance');
+		el.classList.remove('balance-flash-green','balance-flash-red','balance-flash-gold');
+		void el.offsetWidth;
+		el.classList.add('balance-flash-gold');
+		setTimeout(function(){ el.classList.remove('balance-flash-gold'); }, 600);
+	}
+
+	// -- Game area border state --
+	function setBorderState(state){
+		var el = document.getElementById('game-area');
+		el.classList.remove('spinning-border','win-border');
+		if(state) {
+			void el.offsetWidth;
+			el.classList.add(state);
+		}
+	}
+
+	// -- Dim pick buttons except selected --
+	function dimPicks(){
+		document.querySelectorAll('.pick-btn').forEach(function(btn){
+			if(!btn.classList.contains('selected')) btn.classList.add('dimmed');
+		});
+	}
+	function undimPicks(){
+		document.querySelectorAll('.pick-btn').forEach(function(btn){
+			btn.classList.remove('dimmed');
+		});
+	}
+
+	// -- Hide all animation stages --
+	function hideAllStages(){
+		document.getElementById('coin-stage').classList.remove('visible');
+		document.getElementById('dice-stage').classList.remove('visible');
+		document.getElementById('roulette-stage').classList.remove('visible');
+		document.getElementById('result-display').classList.remove('anim-active');
+	}
+
+	// ===== COIN FLIP =====
+	var coinSpinTimer = null;
+
+	function startCoinSpin(){
+		hideAllStages();
+		document.getElementById('result-display').classList.add('anim-active');
+		var stage = document.getElementById('coin-stage');
+		var body = document.getElementById('coin-body');
+		stage.classList.add('visible');
+		body.className = 'coin-body spinning';
+		SFX.coin_flip();
+	}
+
+	function stopCoinSpin(result){
+		// result: 0 = heads, 1 = tails
+		var body = document.getElementById('coin-body');
+		body.className = 'coin-body';
+		void body.offsetWidth;
+		if(result === 0){
+			body.classList.add('spinning-heads');
+		} else {
+			body.classList.add('spinning-tails');
+		}
+		SFX.result_thud();
+	}
+
+	function hideCoin(){
+		document.getElementById('coin-stage').classList.remove('visible');
+		document.getElementById('coin-body').className = 'coin-body';
+		document.getElementById('result-display').classList.remove('anim-active');
+	}
+
+	// ===== DICE =====
+	var diceTimer = null;
+
+	function renderDieFace(val){
+		// val is 1-6
+		var face = document.getElementById('die-face');
+		face.setAttribute('data-val', val);
+		face.innerHTML = '';
+		// Dot patterns
+		var patterns = {
+			1: [5],
+			2: [1,9],
+			3: [1,5,9],
+			4: [1,3,7,9],
+			5: [1,3,5,7,9],
+			6: [1,2,3,7,8,9]
+		};
+		// 3x3 grid positions
+		var dots = patterns[val] || [5];
+		for(var i=1; i<=9; i++){
+			if(dots.indexOf(i) !== -1){
+				var d = document.createElement('div');
+				d.className = 'die-dot';
+				face.appendChild(d);
+			} else {
+				var s = document.createElement('div');
+				face.appendChild(s);
+			}
+		}
+	}
+
+	function startDiceSpin(){
+		hideAllStages();
+		document.getElementById('result-display').classList.add('anim-active');
+		var stage = document.getElementById('dice-stage');
+		var face = document.getElementById('die-face');
+		stage.classList.add('visible');
+		face.classList.add('rolling');
+		SFX.dice_rattle();
+
+		// Rapidly cycle faces
+		var interval = 60;
+		var count = 0;
+		diceTimer = setInterval(function(){
+			var v = (count % 6) + 1;
+			renderDieFace(v);
+			count++;
+			// Decelerate
+			if(count > 15) {
+				clearInterval(diceTimer);
+				diceTimer = setInterval(function(){
+					var v2 = (count % 6) + 1;
+					renderDieFace(v2);
+					count++;
+				}, 200);
+			}
+		}, interval);
+	}
+
+	function stopDiceSpin(result){
+		// result: 0-5 (internal), display as 1-6
+		if(diceTimer){ clearInterval(diceTimer); diceTimer = null; }
+		var displayVal = result + 1;
+		renderDieFace(displayVal);
+		var face = document.getElementById('die-face');
+		face.classList.remove('rolling');
+		face.classList.add('settled');
+		SFX.result_thud();
+		setTimeout(function(){ face.classList.remove('settled'); }, 400);
+	}
+
+	function hideDice(){
+		if(diceTimer){ clearInterval(diceTimer); diceTimer = null; }
+		document.getElementById('dice-stage').classList.remove('visible');
+		document.getElementById('die-face').className = 'die-face';
+		document.getElementById('result-display').classList.remove('anim-active');
+	}
+
+	// ===== ROULETTE =====
+	var rouletteAnimId = null;
+
+	function buildRouletteStrip(){
+		var strip = document.getElementById('roulette-strip');
+		strip.innerHTML = '';
+		// Build 4 full sets of 1-36 for seamless scrolling
+		for(var s=0; s<4; s++){
+			for(var i=1; i<=36; i++){
+				var num = document.createElement('div');
+				num.className = 'roulette-num';
+				num.textContent = i;
+				num.setAttribute('data-num', i);
+				strip.appendChild(num);
+			}
+		}
+	}
+
+	function startRouletteSpin(){
+		hideAllStages();
+		document.getElementById('result-display').classList.add('anim-active');
+		var stage = document.getElementById('roulette-stage');
+		stage.classList.add('visible');
+		buildRouletteStrip();
+		SFX.spin_whoosh();
+
+		var strip = document.getElementById('roulette-strip');
+		var pos = 0;
+		var speed = 30; // pixels per frame
+		var tickCounter = 0;
+
+		function frame(){
+			pos -= speed;
+			strip.style.top = pos + 'px';
+			tickCounter++;
+			if(tickCounter % 3 === 0) SFX.spin_tick();
+			// Loop: each number is 50px tall, 36 numbers per set = 1800px
+			if(pos < -1800) pos += 1800;
+			rouletteAnimId = requestAnimationFrame(frame);
+		}
+		rouletteAnimId = requestAnimationFrame(frame);
+	}
+
+	function stopRouletteSpin(result, callback){
+		// result: 0-35 internal, display as 1-36
+		if(rouletteAnimId){ cancelAnimationFrame(rouletteAnimId); rouletteAnimId = null; }
+
+		var displayVal = result + 1;
+		var strip = document.getElementById('roulette-strip');
+		var windowEl = document.getElementById('roulette-window');
+		var windowH = windowEl.clientHeight;
+		var numH = 50;
+
+		// Target: center the winning number in the window
+		// 2nd set starts at index 36, so winning num is at index 36 + result
+		var targetIdx = 36 + result;
+		var targetTop = -(targetIdx * numH) + (windowH/2) - (numH/2);
+
+		strip.style.transition = 'top 2s cubic-bezier(0.17, 0.67, 0.21, 0.99)';
+		strip.style.top = targetTop + 'px';
+
+		// Tick sounds during deceleration
+		var ticks = 0;
+		var tickInterval = setInterval(function(){
+			SFX.spin_tick();
+			ticks++;
+			if(ticks > 12){
+				clearInterval(tickInterval);
+			}
+		}, 150);
+
+		setTimeout(function(){
+			SFX.result_thud();
+			strip.style.transition = 'none';
+			// Highlight the winning number
+			var nums = strip.querySelectorAll('.roulette-num');
+			if(nums[targetIdx]) nums[targetIdx].classList.add('highlight');
+			if(callback) callback();
+		}, 2200);
+	}
+
+	function hideRoulette(){
+		if(rouletteAnimId){ cancelAnimationFrame(rouletteAnimId); rouletteAnimId = null; }
+		document.getElementById('roulette-stage').classList.remove('visible');
+		document.getElementById('result-display').classList.remove('anim-active');
+	}
+
+	// ===== GENERIC start/stop by game type =====
+	function startSpin(gametype){
+		setBorderState('spinning-border');
+		if(gametype === 'flip') startCoinSpin();
+		else if(gametype === 'dice') startDiceSpin();
+		else if(gametype === 'roulette') startRouletteSpin();
+	}
+
+	function stopSpin(gametype, result, callback){
+		if(gametype === 'flip'){
+			stopCoinSpin(result);
+			setTimeout(function(){ if(callback) callback(); }, 2200);
+		} else if(gametype === 'dice'){
+			stopDiceSpin(result);
+			setTimeout(function(){ if(callback) callback(); }, 500);
+		} else if(gametype === 'roulette'){
+			stopRouletteSpin(result, callback);
+		} else {
+			if(callback) callback();
+		}
+	}
+
+	function hideStage(gametype){
+		setBorderState(null);
+		if(gametype === 'flip') hideCoin();
+		else if(gametype === 'dice') hideDice();
+		else if(gametype === 'roulette') hideRoulette();
+		else hideAllStages();
+	}
+
+	return {
+		screenFlash: screenFlash,
+		shakeGameArea: shakeGameArea,
+		confetti: confetti,
+		floatAmount: floatAmount,
+		flashBalance: flashBalance,
+		flashBalanceLock: flashBalanceLock,
+		setBorderState: setBorderState,
+		dimPicks: dimPicks,
+		undimPicks: undimPicks,
+		startSpin: startSpin,
+		stopSpin: stopSpin,
+		hideStage: hideStage,
+		hideAllStages: hideAllStages,
+		renderDieFace: renderDieFace
+	};
+})();
+
+
+/* =========================================================================
+ * GAME STATE MACHINE
+ * =========================================================================
+ * IDLE -> PLACING -> LOCKED -> SPINNING -> RESULT -> WIN/LOSE -> IDLE
+ * ========================================================================= */
+
+var GAME_PHASE = 'IDLE';
+var PHASE_GAMETYPE = null;  // game type during current round
+var PHASE_PICK = null;      // pick during current round
+var PHASE_BETAMT = null;    // bet during current round
+
+function setGamePhase(phase, data){
+	GAME_PHASE = phase;
+	data = data || {};
+
+	MDS.log("GAME_PHASE: " + phase + " data:" + JSON.stringify(data));
+
+	var numEl = document.getElementById('result-number');
+	var labelEl = document.getElementById('result-label');
+	var gameArea = document.getElementById('game-area');
+
+	switch(phase){
+
+		case 'IDLE':
+			ANIM.hideStage(PHASE_GAMETYPE || CURRENT_GAME);
+			ANIM.undimPicks();
+			ANIM.setBorderState(null);
+			numEl.textContent = '?';
+			numEl.className = 'result-number waiting';
+			labelEl.textContent = 'PICK YOUR NUMBER';
+			labelEl.className = 'result-label waiting';
+			enableGameControls(true);
+			break;
+
+		case 'PLACING':
+			PHASE_GAMETYPE = CURRENT_GAME;
+			PHASE_PICK = CURRENT_PICK;
+			PHASE_BETAMT = document.getElementById('bet-amount').value;
+			enableGameControls(false);
+			ANIM.dimPicks();
+			numEl.textContent = '?';
+			numEl.className = 'result-number waiting';
+			labelEl.innerHTML = '<span class="phase-text finding">FINDING HOUSE...</span>';
+			labelEl.className = 'result-label';
+			ANIM.setBorderState('spinning-border');
+			break;
+
+		case 'LOCKED':
+			SFX.lock_cash();
+			ANIM.screenFlash('lock');
+			ANIM.flashBalanceLock();
+			labelEl.innerHTML = '<span class="phase-text locked">BET LOCKED</span>';
+			labelEl.className = 'result-label';
+			break;
+
+		case 'SPINNING':
+			labelEl.innerHTML = '<span class="phase-text spinning">REVEALING...</span>';
+			labelEl.className = 'result-label';
+			ANIM.startSpin(PHASE_GAMETYPE);
+			if(PHASE_GAMETYPE === 'flip') SFX.coin_flip();
+			else if(PHASE_GAMETYPE === 'dice') SFX.dice_rattle();
+			else SFX.spin_whoosh();
+			break;
+
+		case 'RESULT':
+			// data.result = the outcome number (0-indexed)
+			// data.winner = 'player' or 'house'
+			var result = data.result;
+			var winner = data.winner;
+			var isWin = (winner === 'player');
+			var gametype = PHASE_GAMETYPE || CURRENT_GAME;
+
+			ANIM.stopSpin(gametype, result, function(){
+				// 500ms dramatic pause
+				setTimeout(function(){
+					if(isWin){
+						setGamePhase('WIN', data);
+					} else {
+						setGamePhase('LOSE', data);
+					}
+				}, 500);
+			});
+			break;
+
+		case 'WIN':
+			ANIM.hideStage(PHASE_GAMETYPE || CURRENT_GAME);
+			ANIM.setBorderState('win-border');
+			SFX.win_fanfare();
+			ANIM.screenFlash('win');
+			ANIM.confetti(30);
+
+			var gametype = PHASE_GAMETYPE || CURRENT_GAME;
+			var resultLabel = data.resultLabel || getPickLabel(gametype, data.result);
+			numEl.textContent = resultLabel;
+			numEl.className = 'result-number win result-bounce';
+
+			var betval = parseFloat(PHASE_BETAMT || document.getElementById('bet-amount').value);
+			var game = GAME_TYPES[gametype];
+			var payout = betval * (game.payout - 1);
+			labelEl.textContent = 'YOU WIN!';
+			labelEl.className = 'result-label win';
+			ANIM.floatAmount('+' + payout.toFixed(2), true);
+			ANIM.flashBalance(true);
+
+			// Update stats
+			GAME_WINS++;
+			GAME_PROFIT = GAME_PROFIT.plus(new Decimal(betval).mul(game.payout - 1));
+			GAME_ROUNDS++;
+			updateStats();
+			addRoundPip(true, resultLabel);
+			addGameLog('win', game.name+': Result='+resultLabel+' Pick='+getPickLabel(gametype, PHASE_PICK)+' -- WIN +'+payout.toFixed(2));
+
+			// Auto-reset after delay
+			setTimeout(function(){
+				SFX.ready_chime();
+				setGamePhase('IDLE');
+			}, 3000);
+			break;
+
+		case 'LOSE':
+			ANIM.hideStage(PHASE_GAMETYPE || CURRENT_GAME);
+			ANIM.setBorderState(null);
+			SFX.lose_wah();
+			ANIM.screenFlash('lose');
+			ANIM.shakeGameArea();
+
+			var gametype = PHASE_GAMETYPE || CURRENT_GAME;
+			var resultLabel = data.resultLabel || getPickLabel(gametype, data.result);
+			numEl.textContent = resultLabel;
+			numEl.className = 'result-number lose result-shake';
+
+			labelEl.textContent = 'YOU LOSE';
+			labelEl.className = 'result-label lose';
+			var betval = parseFloat(PHASE_BETAMT || document.getElementById('bet-amount').value);
+			var game = GAME_TYPES[gametype];
+			ANIM.floatAmount('-' + parseFloat(betval).toFixed(2), false);
+			ANIM.flashBalance(false);
+
+			// Update stats
+			GAME_LOSSES++;
+			GAME_PROFIT = GAME_PROFIT.sub(new Decimal(betval));
+			GAME_ROUNDS++;
+			updateStats();
+			addRoundPip(false, resultLabel);
+			addGameLog('loss', game.name+': Result='+resultLabel+' Pick='+getPickLabel(gametype, PHASE_PICK)+' -- LOSS');
+
+			// Auto-reset after shorter delay
+			setTimeout(function(){
+				SFX.ready_chime();
+				setGamePhase('IDLE');
+			}, 2000);
+			break;
+	}
+}
+
+function enableGameControls(enabled){
+	var btn = document.getElementById('btn-play');
+	if(enabled){
+		btn.textContent = 'PLACE BET';
+		btn.disabled = (CURRENT_PICK < 0);
+		document.querySelectorAll('.game-type-btn').forEach(function(b){ b.disabled = false; });
+		document.getElementById('bet-amount').disabled = false;
+	} else {
+		btn.textContent = 'PLAYING...';
+		btn.disabled = true;
+		document.querySelectorAll('.game-type-btn').forEach(function(b){ b.disabled = true; });
+		document.getElementById('bet-amount').disabled = true;
+	}
+}
+
+
+/* =========================================================================
+ * APPLICATION STATE
+ * ========================================================================= */
+
 var CURRENT_VIEW     = 'channels';
 var CURRENT_CHANNEL  = null;    // hashid of the active game channel
 var CURRENT_GAME     = 'flip';  // flip, dice, roulette
@@ -430,6 +1585,10 @@ function enterGame(hashid){
 	GAME_LOSSES = 0;
 	GAME_PROFIT = new Decimal(0);
 	GAME_ROUNDS = 0;
+	GAME_PHASE = 'IDLE';
+
+	// Clear round pips
+	document.getElementById('round-pips').innerHTML = '';
 
 	// Load channel data and populate the game view
 	sqlSelectChannel(hashid, function(sql){
@@ -453,6 +1612,8 @@ function enterGame(hashid){
 
 /* ---- Game type selection ---- */
 function selectGameType(gametype){
+	if(GAME_PHASE !== 'IDLE') return; // Don't allow switching during a round
+
 	CURRENT_GAME = gametype;
 	CURRENT_PICK = -1;
 
@@ -477,7 +1638,8 @@ function selectGameType(gametype){
 	var odds = (game.payout - 1) + ':1';
 	document.getElementById('odds-display').textContent = game.name+' — '+game.range+' outcomes — '+odds+' payout';
 
-	// Reset result
+	// Reset result display
+	ANIM.hideAllStages();
 	document.getElementById('result-number').textContent = '?';
 	document.getElementById('result-number').className = 'result-number waiting';
 	document.getElementById('result-label').textContent = 'PICK YOUR NUMBER';
@@ -488,7 +1650,10 @@ function selectGameType(gametype){
 
 /* ---- Pick selection ---- */
 function selectPick(pick){
+	if(GAME_PHASE !== 'IDLE') return;
+
 	CURRENT_PICK = pick;
+	SFX.chip_click();
 
 	// Update visual selection
 	document.querySelectorAll('.pick-btn').forEach(function(btn){
@@ -500,13 +1665,17 @@ function selectPick(pick){
 
 function updatePlayButton(){
 	var btn = document.getElementById('btn-play');
+	if(GAME_PHASE !== 'IDLE'){
+		btn.disabled = true;
+		return;
+	}
 	var bet = parseFloat(document.getElementById('bet-amount').value);
 	btn.disabled = (CURRENT_PICK < 0 || isNaN(bet) || bet <= 0);
 }
 
 /* ---- Play a round ---- */
 function playRound(){
-	if(!CURRENT_CHANNEL || CURRENT_PICK < 0) return;
+	if(!CURRENT_CHANNEL || CURRENT_PICK < 0 || GAME_PHASE !== 'IDLE') return;
 
 	var betamt = document.getElementById('bet-amount').value;
 	var gametype = CURRENT_GAME;
@@ -520,15 +1689,15 @@ function playRound(){
 		return;
 	}
 
-	// Disable play button during round
-	document.getElementById('btn-play').disabled = true;
-	document.getElementById('btn-play').textContent = 'PLAYING...';
+	// Sound + animation for button press
+	SFX.lever_pull();
+	var btn = document.getElementById('btn-play');
+	btn.classList.add('btn-pressed');
+	setTimeout(function(){ btn.classList.remove('btn-pressed'); }, 200);
+	ANIM.shakeGameArea();
 
-	// Show waiting state
-	document.getElementById('result-number').textContent = '?';
-	document.getElementById('result-number').className = 'result-number waiting';
-	document.getElementById('result-label').textContent = 'FINDING HOUSE...';
-	document.getElementById('result-label').className = 'result-label waiting';
+	// Set game phase to PLACING
+	setGamePhase('PLACING');
 
 	addGameLog('info', 'Placing '+game.name+' bet: '+betamt+' on '+getPickLabel(gametype, pick));
 
@@ -554,74 +1723,26 @@ function playRound(){
 
 			if(maxresp && maxresp.response && maxresp.response.delivered){
 				addGameLog('info', 'Request sent. Waiting for house...');
-				document.getElementById('result-label').textContent = 'WAITING FOR HOUSE...';
 			}else{
 				addGameLog('warn', 'Could not contact counterparty. Check Maxima.');
 				MDS.log("GAME_REQUEST DELIVERY FAILED: "+JSON.stringify(maxresp));
 				MDS.keypair.set("casino_pending_"+CURRENT_CHANNEL, "");
-				resetPlayButton();
+				setGamePhase('IDLE');
 			}
 		});
 	});
 }
 
-/* ---- Display game result ---- */
+/* ---- Display game result (called by state machine now, kept for compatibility) ---- */
 function showResult(winner, result, gametype, pick){
-	var game = GAME_TYPES[gametype];
-	var resultLabel = getPickLabel(gametype, result);
-	var pickLabel = getPickLabel(gametype, pick);
-	var isWin = (winner === 'player');
-
-	// Big number display
-	var numEl = document.getElementById('result-number');
-	numEl.textContent = resultLabel;
-	numEl.className = 'result-number ' + (isWin ? 'win' : 'lose');
-
-	// Label
-	var labelEl = document.getElementById('result-label');
-	if(isWin){
-		var betamt = parseFloat(document.getElementById('bet-amount').value);
-		var payout = betamt * (game.payout - 1);
-		labelEl.textContent = 'YOU WIN +' + payout.toFixed(2);
-		labelEl.className = 'result-label win';
-	}else{
-		labelEl.textContent = 'YOU LOSE';
-		labelEl.className = 'result-label lose';
-	}
-
-	// Highlight the correct pick in the grid
-	document.querySelectorAll('.pick-btn').forEach(function(btn){
-		var p = parseInt(btn.dataset.pick);
-		if(p === result && p === pick){
-			btn.classList.add('result-match');
-		}else if(p === result){
-			btn.classList.add('result-match');
-		}else if(p === pick){
-			btn.classList.add('result-miss');
-		}
+	// This is now handled by the state machine via setGamePhase('RESULT')
+	// But keep for any direct calls
+	setGamePhase('RESULT', {
+		result: result,
+		winner: winner,
+		gametype: gametype,
+		pick: pick
 	});
-
-	// Update stats
-	if(isWin){
-		GAME_WINS++;
-		var betval = new Decimal(document.getElementById('bet-amount').value);
-		GAME_PROFIT = GAME_PROFIT.plus(betval.mul(game.payout - 1));
-	}else{
-		GAME_LOSSES++;
-		var betval = new Decimal(document.getElementById('bet-amount').value);
-		GAME_PROFIT = GAME_PROFIT.sub(betval);
-	}
-	GAME_ROUNDS++;
-	updateStats();
-
-	// Add round pip
-	addRoundPip(isWin, resultLabel);
-
-	// Log
-	addGameLog(isWin ? 'win' : 'loss',
-		game.name+': Result='+resultLabel+' Pick='+pickLabel+' — '+(isWin ? 'WIN' : 'LOSS'));
-
-	resetPlayButton();
 }
 
 /* ---- Stats ---- */
@@ -749,7 +1870,12 @@ MDS.init(function(msg){
 
 				}else if(comms.event === 'BET_LOCKED'){
 					addGameLog('info', 'Bet locked! Waiting for reveal...');
-					document.getElementById('result-label').textContent = 'BET LOCKED...';
+					// Trigger LOCKED phase
+					if(GAME_PHASE === 'PLACING'){
+						setGamePhase('LOCKED');
+					} else {
+						document.getElementById('result-label').textContent = 'BET LOCKED...';
+					}
 
 				}else if(comms.event === 'GAME_RESOLVED'){
 					addGameLog('info', 'Game resolved! Winner: '+comms.data.winner);
@@ -775,25 +1901,44 @@ MDS.init(function(msg){
 					var amIBettor = true; // In current flow, we initiated the bet
 					var isWin = (amIBettor && winner === 'player') || (!amIBettor && winner === 'house');
 
-					// TODO: get the actual result number from the game round data
-					// For now, show the winner
-					var numEl = document.getElementById('result-number');
-					numEl.textContent = isWin ? 'WIN' : 'LOSE';
-					numEl.className = 'result-number ' + (isWin ? 'win' : 'lose');
+					// If we have result data, use the full animation
+					if(comms.data.result !== undefined && GAME_PHASE !== 'IDLE'){
+						setGamePhase('RESULT', {
+							result: parseInt(comms.data.result),
+							winner: isWin ? 'player' : 'house'
+						});
+					} else {
+						// Fallback: basic display
+						var numEl = document.getElementById('result-number');
+						numEl.textContent = isWin ? 'WIN' : 'LOSE';
+						numEl.className = 'result-number ' + (isWin ? 'win' : 'lose');
 
-					var labelEl = document.getElementById('result-label');
-					labelEl.textContent = isWin ? 'YOU WIN!' : 'YOU LOSE';
-					labelEl.className = 'result-label ' + (isWin ? 'win' : 'lose');
+						var labelEl = document.getElementById('result-label');
+						labelEl.textContent = isWin ? 'YOU WIN!' : 'YOU LOSE';
+						labelEl.className = 'result-label ' + (isWin ? 'win' : 'lose');
 
-					if(isWin){ GAME_WINS++; }else{ GAME_LOSSES++; }
-					GAME_ROUNDS++;
-					updateStats();
-					addRoundPip(isWin, isWin ? 'W' : 'L');
-					resetPlayButton();
+						if(isWin){
+							SFX.win_fanfare();
+							ANIM.screenFlash('win');
+							ANIM.confetti(20);
+							ANIM.flashBalance(true);
+							GAME_WINS++;
+						} else {
+							SFX.lose_wah();
+							ANIM.screenFlash('lose');
+							ANIM.flashBalance(false);
+							GAME_LOSSES++;
+						}
+						GAME_ROUNDS++;
+						updateStats();
+						addRoundPip(isWin, isWin ? 'W' : 'L');
+						resetPlayButton();
+						GAME_PHASE = 'IDLE';
+					}
 
 				}else if(comms.event === 'GAME_ABANDONED'){
 					addGameLog('warn', 'Game abandoned: '+comms.data.reason);
-					resetPlayButton();
+					setGamePhase('IDLE');
 				}
 			}
 		}
@@ -858,6 +2003,11 @@ MDS.init(function(msg){
 					// ---- We requested a game, house sent us their commit ----
 					MDS.log("GOT GAME_OFFER: house commit:"+maxmsg.housecommit.substring(0,16)+"..");
 
+					// Trigger LOCKED phase via state machine
+					if(GAME_PHASE === 'PLACING' && CURRENT_VIEW === 'game'){
+						setGamePhase('LOCKED');
+					}
+
 					// Retrieve pending game request
 					MDS.keypair.get("casino_pending_"+maxmsg.hashid, function(pendingres){
 						if(!pendingres.status || !pendingres.value){
@@ -873,7 +2023,9 @@ MDS.init(function(msg){
 							function(delivered){
 								MDS.log("AUTO-COMMIT result: delivered="+delivered);
 								if(delivered){
-									document.getElementById('result-label').textContent = 'BET COMMITTED...';
+									if(CURRENT_VIEW === 'game'){
+										addGameLog('info', 'Bet committed. Waiting for house reveal...');
+									}
 								}
 								MDS.keypair.set("casino_pending_"+maxmsg.hashid, "");
 							});
@@ -882,15 +2034,101 @@ MDS.init(function(msg){
 				}else if(maxmsg.type === 'GAME_REVEAL'){
 					// ---- House revealed secret, auto-resolve ----
 					MDS.log("GOT GAME_REVEAL: resolving...");
+
+					// Trigger SPINNING phase
+					if((GAME_PHASE === 'LOCKED' || GAME_PHASE === 'PLACING') && CURRENT_VIEW === 'game'){
+						setGamePhase('SPINNING');
+					}
+
 					updateGameHouseRevealed(maxmsg.hashid, maxmsg.housesecret, function(){
 						resolveGameRound(maxmsg.hashid, maxmsg.housesecret, function(winner, delivered){
 							MDS.log("RESOLVED: winner="+winner+" delivered="+delivered);
 							if(winner){
-								document.getElementById('result-label').textContent = winner === 'player' ? 'YOU WIN!' : 'YOU LOSE';
-								document.getElementById('result-number').textContent = winner === 'player' ? 'WIN' : 'LOSE';
-								document.getElementById('result-number').className = 'result-number ' + (winner === 'player' ? 'win' : 'lose');
-								document.getElementById('result-label').className = 'result-label ' + (winner === 'player' ? 'win' : 'lose');
-								resetPlayButton();
+								// Get result number from the game round
+								sqlSelectChannel(maxmsg.hashid, function(sql){
+									var resultNum = -1;
+									var gametype = PHASE_GAMETYPE || CURRENT_GAME;
+									if(sql.count > 0){
+										var ch = sql.rows[0];
+										// Try to get the actual result from the channel
+										if(ch.GAMERESULTNUM !== undefined && ch.GAMERESULTNUM !== null){
+											resultNum = parseInt(ch.GAMERESULTNUM);
+										}
+									}
+
+									// If we have the result number and we're in an active game phase
+									if(resultNum >= 0 && GAME_PHASE === 'SPINNING'){
+										setGamePhase('RESULT', {
+											result: resultNum,
+											winner: winner
+										});
+									} else if(GAME_PHASE === 'SPINNING' || GAME_PHASE === 'LOCKED' || GAME_PHASE === 'PLACING'){
+										// Compute outcome from secrets if we have them
+										// Fall back to showing WIN/LOSE
+										ANIM.hideStage(gametype);
+										ANIM.setBorderState(null);
+										var isWin = (winner === 'player');
+										var numEl = document.getElementById('result-number');
+										var labelEl = document.getElementById('result-label');
+
+										if(isWin){
+											SFX.win_fanfare();
+											ANIM.screenFlash('win');
+											ANIM.confetti(25);
+											numEl.textContent = 'WIN';
+											numEl.className = 'result-number win result-bounce';
+											labelEl.textContent = 'YOU WIN!';
+											labelEl.className = 'result-label win';
+											ANIM.flashBalance(true);
+											GAME_WINS++;
+											var bv = new Decimal(PHASE_BETAMT || document.getElementById('bet-amount').value);
+											var gm = GAME_TYPES[gametype];
+											GAME_PROFIT = GAME_PROFIT.plus(bv.mul(gm.payout - 1));
+											ANIM.floatAmount('+' + bv.mul(gm.payout - 1).toFixed(2), true);
+										} else {
+											SFX.lose_wah();
+											ANIM.screenFlash('lose');
+											ANIM.shakeGameArea();
+											numEl.textContent = 'LOSE';
+											numEl.className = 'result-number lose result-shake';
+											labelEl.textContent = 'YOU LOSE';
+											labelEl.className = 'result-label lose';
+											ANIM.flashBalance(false);
+											GAME_LOSSES++;
+											var bv = new Decimal(PHASE_BETAMT || document.getElementById('bet-amount').value);
+											GAME_PROFIT = GAME_PROFIT.sub(bv);
+											ANIM.floatAmount('-' + bv.toFixed(2), false);
+										}
+										GAME_ROUNDS++;
+										updateStats();
+										addRoundPip(isWin, isWin ? 'W' : 'L');
+										addGameLog(isWin ? 'win' : 'loss', 'Round result: ' + (isWin ? 'WIN' : 'LOSS'));
+
+										// Refresh balances
+										sqlSelectChannel(maxmsg.hashid, function(s3){
+											if(s3.count>0){
+												var ch2=s3.rows[0];
+												var my2=(ch2.USERNUM==='1')?ch2.USER1AMOUNT:ch2.USER2AMOUNT;
+												var th2=(ch2.USERNUM==='1')?ch2.USER2AMOUNT:ch2.USER1AMOUNT;
+												document.getElementById('game-my-balance').textContent=my2;
+												document.getElementById('game-their-balance').textContent=th2;
+											}
+										});
+
+										setTimeout(function(){
+											SFX.ready_chime();
+											setGamePhase('IDLE');
+										}, isWin ? 3000 : 2000);
+									} else {
+										// Not in game view or not in active phase
+										document.getElementById('result-label').textContent = winner === 'player' ? 'YOU WIN!' : 'YOU LOSE';
+										document.getElementById('result-number').textContent = winner === 'player' ? 'WIN' : 'LOSE';
+										document.getElementById('result-number').className = 'result-number ' + (winner === 'player' ? 'win' : 'lose');
+										document.getElementById('result-label').className = 'result-label ' + (winner === 'player' ? 'win' : 'lose');
+										resetPlayButton();
+										GAME_PHASE = 'IDLE';
+									}
+								});
 							}
 						});
 					});
@@ -923,6 +2161,12 @@ MDS.init(function(msg){
 				}else if(maxmsg.type === 'GAME_BET_SIGNED'){
 					// ---- House sent signed pessimistic balance (we're the player) ----
 					MDS.log("GOT GAME_BET_SIGNED: co-signing...");
+
+					// Trigger LOCKED phase if not already
+					if(GAME_PHASE === 'PLACING' && CURRENT_VIEW === 'game'){
+						setGamePhase('LOCKED');
+					}
+
 					sqlSelectChannel(maxmsg.hashid, function(sql){
 						if(sql.count == 0){ return; }
 						var sqlrow = sql.rows[0];
@@ -936,7 +2180,7 @@ MDS.init(function(msg){
 								var n2 = (bt==1) ? u2.plus(ba).toString() : u2.sub(ba).toString();
 								updateNewSequenceTxn(maxmsg.hashid, maxmsg.sequence, n1, n2, cs, cu, function(){
 									MDS.log("BET LOCKED! Waiting for reveal...");
-									if(CURRENT_VIEW==='game') document.getElementById('result-label').textContent='BET LOCKED...';
+									addGameLog('info', 'Bet locked and co-signed. Awaiting reveal...');
 								});
 							});
 						});
@@ -989,11 +2233,57 @@ MDS.init(function(msg){
 							w, nb.user1amount, nb.user2amount, function(){
 								MDS.log("ROUND COMPLETE! "+w);
 								var isWin = (amI && w==='player') || (!amI && w==='house');
-								if(CURRENT_VIEW==='game'){
-									document.getElementById('result-number').textContent = isWin?'WIN':'LOSE';
-									document.getElementById('result-number').className = 'result-number '+(isWin?'win':'lose');
-									document.getElementById('result-label').textContent = isWin?'YOU WIN!':'YOU LOSE';
-									document.getElementById('result-label').className = 'result-label '+(isWin?'win':'lose');
+
+								if(CURRENT_VIEW==='game' && maxmsg.hashid === CURRENT_CHANNEL){
+									// If game phase is already showing result from GAME_REVEAL, skip
+									if(GAME_PHASE === 'WIN' || GAME_PHASE === 'LOSE') {
+										// Already showing result, just update balances
+										sqlSelectChannel(maxmsg.hashid, function(s3){
+											if(s3.count>0){
+												var ch=s3.rows[0];
+												var my=(ch.USERNUM==='1')?ch.USER1AMOUNT:ch.USER2AMOUNT;
+												var th=(ch.USERNUM==='1')?ch.USER2AMOUNT:ch.USER1AMOUNT;
+												document.getElementById('game-my-balance').textContent=my;
+												document.getElementById('game-their-balance').textContent=th;
+											}
+										});
+										return;
+									}
+
+									// Show result with animations
+									ANIM.hideStage(PHASE_GAMETYPE || CURRENT_GAME);
+									ANIM.setBorderState(null);
+
+									var numEl = document.getElementById('result-number');
+									var labelEl = document.getElementById('result-label');
+
+									if(isWin){
+										SFX.win_fanfare();
+										ANIM.screenFlash('win');
+										ANIM.confetti(25);
+										numEl.textContent = 'WIN';
+										numEl.className = 'result-number win result-bounce';
+										labelEl.textContent = 'YOU WIN!';
+										labelEl.className = 'result-label win';
+										ANIM.flashBalance(true);
+										ANIM.floatAmount('+WIN', true);
+									} else {
+										SFX.lose_wah();
+										ANIM.screenFlash('lose');
+										ANIM.shakeGameArea();
+										numEl.textContent = 'LOSE';
+										numEl.className = 'result-number lose result-shake';
+										labelEl.textContent = 'YOU LOSE';
+										labelEl.className = 'result-label lose';
+										ANIM.flashBalance(false);
+										ANIM.floatAmount('-LOSE', false);
+									}
+
+									if(isWin){ GAME_WINS++; }else{ GAME_LOSSES++; }
+									GAME_ROUNDS++;
+									updateStats();
+									addRoundPip(isWin, isWin ? 'W' : 'L');
+
 									sqlSelectChannel(maxmsg.hashid, function(s3){
 										if(s3.count>0){
 											var ch=s3.rows[0];
@@ -1003,14 +2293,19 @@ MDS.init(function(msg){
 											document.getElementById('game-their-balance').textContent=th;
 										}
 									});
+
+									setTimeout(function(){
+										SFX.ready_chime();
+										setGamePhase('IDLE');
+									}, isWin ? 3000 : 2000);
 								}
-								resetPlayButton();
 							});
 					});
 
 				}else if(maxmsg.type === 'GAME_ABANDONED'){
 					MDS.log("GAME_ABANDONED: "+maxmsg.reason);
-					resetPlayButton();
+					addGameLog('warn', 'Game abandoned: '+(maxmsg.reason || 'Unknown'));
+					setGamePhase('IDLE');
 				}
 			});
 		}
