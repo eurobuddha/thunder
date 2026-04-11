@@ -32,7 +32,7 @@
 
 	<style>
 	/* =========================================================================
-	 * THUNDER CASINO v0.2.0 — INLINE ANIMATION & GAME STYLES
+	 * THUNDER CASINO v0.2.1 — INLINE ANIMATION & GAME STYLES
 	 * ========================================================================= */
 
 	/* ---- Screen flash overlay ---- */
@@ -105,19 +105,19 @@
 	}
 	.game-area.win-border {
 		border-color: #00e676;
-		animation: winBorderPulse 0.4s ease-in-out 3;
+		animation: winBorderPulse 0.4s ease-in-out 5;
 	}
 	@keyframes winBorderPulse {
 		0%, 100% { box-shadow: 0 0 15px rgba(0,230,118,0.2); }
 		50%      { box-shadow: 0 0 40px rgba(0,230,118,0.6); }
 	}
 
-	/* ---- Coin flip 3D ---- */
+	/* ---- Coin flip 3D — BIGGER 200px+ with rotateY 8 rotations ---- */
 	.coin-stage {
-		width: 140px;
-		height: 140px;
+		width: 220px;
+		height: 220px;
 		margin: 20px auto;
-		perspective: 800px;
+		perspective: 1000px;
 		display: none;
 	}
 	.coin-stage.visible { display: block; }
@@ -129,23 +129,31 @@
 		border-radius: 50%;
 	}
 	.coin-body.spinning {
-		animation: coinSpin3D 2s cubic-bezier(0.17,0.67,0.21,0.99) forwards;
+		animation: coinSpin3D 4s cubic-bezier(0.17,0.67,0.21,0.99) forwards;
 	}
 	.coin-body.spinning-heads {
-		animation: coinSpinHeads 2s cubic-bezier(0.17,0.67,0.21,0.99) forwards;
+		animation: coinSpinHeads 2.5s cubic-bezier(0.17,0.67,0.21,0.99) forwards;
 	}
 	.coin-body.spinning-tails {
-		animation: coinSpinTails 2s cubic-bezier(0.17,0.67,0.21,0.99) forwards;
+		animation: coinSpinTails 2.5s cubic-bezier(0.17,0.67,0.21,0.99) forwards;
+	}
+	@keyframes coinSpin3D {
+		0%   { transform: rotateY(0deg); }
+		100% { transform: rotateY(2880deg); }  /* 8 full rotations */
 	}
 	@keyframes coinSpinHeads {
-		0%   { transform: rotateY(0deg); }
-		80%  { transform: rotateY(2880deg); }
-		100% { transform: rotateY(3240deg); } /* divisible by 360 = heads face front */
+		0%   { transform: rotateY(0deg) translateY(0); }
+		70%  { transform: rotateY(2520deg) translateY(-30px); }
+		85%  { transform: rotateY(2800deg) translateY(0px); }
+		92%  { transform: rotateY(2860deg) translateY(-8px); }
+		100% { transform: rotateY(2880deg) translateY(0px); } /* 8 * 360 = heads */
 	}
 	@keyframes coinSpinTails {
-		0%   { transform: rotateY(0deg); }
-		80%  { transform: rotateY(2880deg); }
-		100% { transform: rotateY(3060deg); } /* 3060 = 8.5 * 360 = tails face front */
+		0%   { transform: rotateY(0deg) translateY(0); }
+		70%  { transform: rotateY(2520deg) translateY(-30px); }
+		85%  { transform: rotateY(2800deg) translateY(0px); }
+		92%  { transform: rotateY(2860deg) translateY(-8px); }
+		100% { transform: rotateY(2700deg) translateY(0px); } /* 7.5 * 360 = tails */
 	}
 	.coin-side {
 		position: absolute;
@@ -156,55 +164,60 @@
 		align-items: center;
 		justify-content: center;
 		font-family: 'Orbitron', sans-serif;
-		font-size: 16px;
+		font-size: 22px;
 		font-weight: 800;
 		backface-visibility: hidden;
-		border: 3px solid rgba(255,255,255,0.15);
+		border: 4px solid rgba(255,255,255,0.2);
 	}
 	.coin-side-heads {
 		background: linear-gradient(135deg, #f5a623 0%, #ffd700 50%, #e8961f 100%);
 		color: #080c18;
-		box-shadow: inset 0 0 30px rgba(0,0,0,0.15), 0 0 25px rgba(245,166,35,0.4);
+		box-shadow: inset 0 0 40px rgba(0,0,0,0.15), 0 0 30px rgba(245,166,35,0.5);
 	}
 	.coin-side-tails {
 		background: linear-gradient(135deg, #7a8aaa 0%, #c0c8e0 50%, #7a8aaa 100%);
 		color: #080c18;
 		transform: rotateY(180deg);
-		box-shadow: inset 0 0 30px rgba(0,0,0,0.15);
+		box-shadow: inset 0 0 40px rgba(0,0,0,0.15);
 	}
 
-	/* ---- Dice display ---- */
+	/* ---- Dice display — BIGGER 150px+ with tumbling ---- */
 	.dice-stage {
 		display: none;
 		justify-content: center;
 		margin: 20px auto;
+		perspective: 800px;
 	}
 	.dice-stage.visible { display: flex; }
 	.die-face {
-		width: 100px;
-		height: 100px;
-		border-radius: 18px;
+		width: 160px;
+		height: 160px;
+		border-radius: 22px;
 		background: linear-gradient(145deg, #f0f0f0, #d8d8d8);
 		display: grid;
-		padding: 14px;
-		box-shadow: 0 8px 24px rgba(0,0,0,0.4), inset 0 2px 4px rgba(255,255,255,0.5);
+		padding: 20px;
+		box-shadow: 0 10px 30px rgba(0,0,0,0.5), inset 0 2px 4px rgba(255,255,255,0.5);
 		transition: transform 0.1s ease;
 	}
 	.die-face.rolling {
-		animation: dieShake 0.1s linear infinite;
+		animation: dieTumble 0.3s linear infinite;
 	}
-	@keyframes dieShake {
-		0%   { transform: rotate(-5deg) scale(1.05); }
-		50%  { transform: rotate(5deg) scale(0.95); }
-		100% { transform: rotate(-5deg) scale(1.05); }
+	@keyframes dieTumble {
+		0%   { transform: rotateX(-15deg) rotateZ(-8deg) scale(1.05); }
+		25%  { transform: rotateX(10deg) rotateZ(5deg) scale(0.95); }
+		50%  { transform: rotateX(-8deg) rotateZ(10deg) scale(1.08); }
+		75%  { transform: rotateX(12deg) rotateZ(-6deg) scale(0.93); }
+		100% { transform: rotateX(-15deg) rotateZ(-8deg) scale(1.05); }
 	}
 	.die-face.settled {
-		animation: dieSettle 0.3s ease-out forwards;
+		animation: dieThud 0.4s cubic-bezier(0.34,1.56,0.64,1) forwards;
 	}
-	@keyframes dieSettle {
-		0%   { transform: scale(1.15) rotate(3deg); }
-		60%  { transform: scale(0.95) rotate(-1deg); }
-		100% { transform: scale(1) rotate(0deg); }
+	@keyframes dieThud {
+		0%   { transform: scale(1.2) rotateZ(5deg) translateY(-20px); }
+		40%  { transform: scale(0.9) rotateZ(-2deg) translateY(5px); }
+		60%  { transform: scale(1.05) rotateZ(1deg) translateY(-3px); }
+		80%  { transform: scale(0.98) rotateZ(0deg) translateY(1px); }
+		100% { transform: scale(1) rotateZ(0deg) translateY(0); }
 	}
 	/* Dot grids for each face */
 	.die-face[data-val="1"] { grid-template: 1fr 1fr 1fr / 1fr 1fr 1fr; }
@@ -214,8 +227,8 @@
 	.die-face[data-val="5"] { grid-template: 1fr 1fr 1fr / 1fr 1fr 1fr; }
 	.die-face[data-val="6"] { grid-template: 1fr 1fr 1fr / 1fr 1fr; }
 	.die-dot {
-		width: 14px;
-		height: 14px;
+		width: 20px;
+		height: 20px;
 		border-radius: 50%;
 		background: #1a1a2e;
 		box-shadow: inset 0 2px 3px rgba(0,0,0,0.4);
@@ -223,7 +236,7 @@
 		align-self: center;
 	}
 
-	/* ---- Roulette scroll strip ---- */
+	/* ---- Roulette scroll strip — taller window, decelerating ticks ---- */
 	.roulette-stage {
 		display: none;
 		justify-content: center;
@@ -231,21 +244,21 @@
 	}
 	.roulette-stage.visible { display: flex; }
 	.roulette-window {
-		width: 100px;
-		height: 200px;
+		width: 120px;
+		height: 260px;
 		overflow: hidden;
 		border: 3px solid #f5a623;
-		border-radius: 14px;
+		border-radius: 16px;
 		position: relative;
 		background: rgba(10,16,32,0.9);
-		box-shadow: 0 0 20px rgba(245,166,35,0.2);
+		box-shadow: 0 0 25px rgba(245,166,35,0.3);
 	}
 	.roulette-window::before,
 	.roulette-window::after {
 		content: '';
 		position: absolute;
 		left: 0; right: 0;
-		height: 60px;
+		height: 80px;
 		z-index: 2;
 		pointer-events: none;
 	}
@@ -260,12 +273,12 @@
 	.roulette-pointer {
 		position: absolute;
 		top: 50%;
-		left: -6px;
-		right: -6px;
-		height: 2px;
+		left: -8px;
+		right: -8px;
+		height: 3px;
 		background: #ffd700;
 		z-index: 3;
-		box-shadow: 0 0 8px #ffd700;
+		box-shadow: 0 0 12px #ffd700;
 	}
 	.roulette-strip {
 		position: absolute;
@@ -273,12 +286,12 @@
 		transition: none;
 	}
 	.roulette-num {
-		height: 50px;
+		height: 60px;
 		display: flex;
 		align-items: center;
 		justify-content: center;
 		font-family: 'Orbitron', sans-serif;
-		font-size: 28px;
+		font-size: 32px;
 		font-weight: 700;
 		color: #8892b0;
 	}
@@ -286,41 +299,50 @@
 	.roulette-num:nth-child(even) { color: #e6f1ff; }
 	.roulette-num.highlight {
 		color: #00e676;
-		text-shadow: 0 0 15px #00e676;
-		font-size: 34px;
+		text-shadow: 0 0 20px #00e676;
+		font-size: 40px;
 	}
 
-	/* ---- Particle confetti ---- */
+	/* ---- Particle confetti — bigger, more variety ---- */
 	.confetti-particle {
 		position: fixed;
-		width: 8px;
-		height: 8px;
-		border-radius: 50%;
 		pointer-events: none;
 		z-index: 9998;
-		animation: confettiFall 1.5s ease-out forwards;
+		animation: confettiFall 2s ease-out forwards;
+	}
+	.confetti-particle.square {
+		border-radius: 2px;
+	}
+	.confetti-particle.circle {
+		border-radius: 50%;
+	}
+	.confetti-particle.star {
+		border-radius: 1px;
+		transform: rotate(45deg);
 	}
 	@keyframes confettiFall {
-		0%   { opacity: 1; transform: translate(0, 0) scale(1); }
-		100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(0.3); }
+		0%   { opacity: 1; transform: translate(0, 0) scale(1) rotate(0deg); }
+		50%  { opacity: 1; }
+		100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(0.2) rotate(var(--rot)); }
 	}
 
-	/* ---- Floating amount ---- */
+	/* ---- Floating amount — larger, longer float ---- */
 	.float-amount {
 		position: absolute;
 		font-family: 'Orbitron', sans-serif;
 		font-weight: 700;
-		font-size: 22px;
+		font-size: 28px;
 		pointer-events: none;
 		z-index: 100;
-		animation: floatUp 1.2s ease-out forwards;
+		animation: floatUp 2s ease-out forwards;
 	}
-	.float-amount.win { color: #00e676; text-shadow: 0 0 10px rgba(0,230,118,0.5); }
-	.float-amount.lose { color: #ff2d78; text-shadow: 0 0 10px rgba(255,45,120,0.5); }
+	.float-amount.win { color: #00e676; text-shadow: 0 0 15px rgba(0,230,118,0.6); }
+	.float-amount.lose { color: #ff2d78; text-shadow: 0 0 15px rgba(255,45,120,0.6); }
 	@keyframes floatUp {
-		0%   { opacity: 1; transform: translateY(0) scale(0.8); }
-		50%  { opacity: 1; transform: translateY(-30px) scale(1.1); }
-		100% { opacity: 0; transform: translateY(-70px) scale(0.9); }
+		0%   { opacity: 1; transform: translateY(0) scale(0.7); }
+		30%  { opacity: 1; transform: translateY(-30px) scale(1.2); }
+		60%  { opacity: 1; transform: translateY(-60px) scale(1.0); }
+		100% { opacity: 0; transform: translateY(-110px) scale(0.8); }
 	}
 
 	/* ---- Phase text styling ---- */
@@ -411,6 +433,108 @@
 
 	/* Hide default result display when animation stage is active */
 	.result-display.anim-active .result-number { display: none; }
+
+	/* ---- Custom Modal (thunderAlert) ---- */
+	.thunder-modal-overlay {
+		position: fixed;
+		top: 0; left: 0; right: 0; bottom: 0;
+		background: rgba(8, 12, 24, 0.8);
+		backdrop-filter: blur(6px);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		z-index: 10000;
+		animation: modalFadeIn 0.2s ease-out;
+	}
+	@keyframes modalFadeIn {
+		0% { opacity: 0; }
+		100% { opacity: 1; }
+	}
+	.thunder-modal-box {
+		background: linear-gradient(135deg, #0e1428, #0a1020);
+		border: 2px solid #f5a623;
+		border-radius: 16px;
+		padding: 28px 32px;
+		max-width: 420px;
+		width: 88%;
+		text-align: center;
+		box-shadow: 0 0 40px rgba(245,166,35,0.2), 0 20px 60px rgba(0,0,0,0.5);
+		animation: modalPopIn 0.25s cubic-bezier(0.34,1.56,0.64,1);
+	}
+	@keyframes modalPopIn {
+		0% { transform: scale(0.85); opacity: 0; }
+		100% { transform: scale(1); opacity: 1; }
+	}
+	.thunder-modal-box .modal-msg {
+		font-family: 'Chakra Petch', sans-serif;
+		font-size: 15px;
+		color: #e6f1ff;
+		line-height: 1.6;
+		margin-bottom: 20px;
+	}
+	.thunder-modal-box .modal-btn {
+		font-family: 'Orbitron', sans-serif;
+		font-size: 12px;
+		font-weight: 600;
+		padding: 10px 28px;
+		border: none;
+		border-radius: 8px;
+		background: linear-gradient(135deg, #f5a623, #d4911e);
+		color: #080c18;
+		cursor: pointer;
+		text-transform: uppercase;
+		letter-spacing: 1px;
+	}
+	.thunder-modal-box .modal-btn:hover {
+		box-shadow: 0 4px 15px rgba(245,166,35,0.4);
+	}
+
+	/* ---- Noticeboard ---- */
+	.noticeboard {
+		background: rgba(6, 8, 16, 0.85);
+		border: 1px solid #1a2140;
+		border-radius: 10px;
+		padding: 10px 14px;
+		max-height: 100px;
+		overflow-y: auto;
+		font-family: 'JetBrains Mono', monospace;
+		font-size: 11px;
+		line-height: 1.6;
+		margin-top: 16px;
+	}
+	.noticeboard-title {
+		font-family: 'Orbitron', sans-serif;
+		font-size: 10px;
+		color: #8892b0;
+		letter-spacing: 2px;
+		text-transform: uppercase;
+		margin-bottom: 6px;
+	}
+	.notice-entry {
+		padding: 2px 0;
+		border-bottom: 1px solid rgba(26,33,64,0.3);
+	}
+	.notice-time {
+		color: #3a4060;
+		margin-right: 6px;
+		font-size: 10px;
+	}
+	.notice-msg { color: #8892b0; }
+	.notice-msg.notice-info { color: #00e5ff; }
+	.notice-msg.notice-warn { color: #f5a623; }
+	.notice-msg.notice-win { color: #00e676; }
+	.notice-msg.notice-loss { color: #ff2d78; }
+	.notice-msg.notice-system { color: #8892b0; }
+
+	/* ---- Win celebration pulsing border ---- */
+	.game-area.win-celebrate {
+		border-color: #00e676;
+		animation: winCelebratePulse 0.3s ease-in-out 6;
+	}
+	@keyframes winCelebratePulse {
+		0%, 100% { box-shadow: 0 0 20px rgba(0,230,118,0.2); border-color: #00e676; }
+		50%      { box-shadow: 0 0 50px rgba(0,230,118,0.7); border-color: #fff; }
+	}
 	</style>
 </head>
 
@@ -432,7 +556,7 @@
 			</div>
 		</div>
 		<div class="header-nav">
-			<button id="btn-snd" class="btn-snd" onclick="SFX.toggle()" title="Toggle sound">SND OFF</button>
+			<button id="btn-snd" class="btn-snd active" onclick="SFX.toggle()" title="Toggle sound">SND ON</button>
 			<button class="btn btn-secondary btn-sm" onclick="showView('channels')">CHANNELS</button>
 			<button class="btn btn-primary btn-sm" onclick="showView('newchannel')">+ NEW</button>
 		</div>
@@ -588,6 +712,17 @@
 			<div class="text-center mt-16">
 				<span class="text-ghost" id="odds-display">Select a game to see odds</span>
 			</div>
+
+			<!-- Noticeboard — always visible at bottom of game area -->
+			<div class="noticeboard" id="noticeboard">
+				<div class="noticeboard-title">NOTICEBOARD</div>
+				<div id="noticeboard-entries">
+					<div class="notice-entry">
+						<span class="notice-time">--:--:--</span>
+						<span class="notice-msg notice-system">Ready to play.</span>
+					</div>
+				</div>
+			</div>
 		</div>
 
 		<!-- Game log -->
@@ -616,15 +751,102 @@
 <script type="text/javascript">
 
 /* =========================================================================
+ * THUNDER CASINO v0.2.1
+ * =========================================================================
+ * Changes from v0.2.0:
+ *   - PENDING_RESULT pattern (store result, show after animation)
+ *   - GAME_BUSY flag (one game at a time)
+ *   - 15-second timeout per protocol step
+ *   - Bigger animations (coin 200px+, dice 150px+, roulette taller)
+ *   - Win: 2s celebration, 30+ confetti, green flash, arpeggio, pulsing border
+ *   - Lose: quick red flash, shake, wah-wah, 1s reset
+ *   - Sounds ON by default
+ *   - Noticeboard always visible, timestamped color-coded messages
+ *   - Custom modal (thunderAlert) replaces browser alert()
+ *   - House-side feedback (animations + result on house screen)
+ *   - Stale channel cleanup on init
+ * ========================================================================= */
+
+
+/* =========================================================================
+ * CUSTOM MODAL — thunderAlert replaces browser alert()
+ * ========================================================================= */
+
+function thunderAlert(message, autoDismissMs) {
+	autoDismissMs = autoDismissMs || 5000;
+
+	// Remove any existing modal
+	var existing = document.getElementById('thunder-modal-overlay');
+	if (existing) existing.parentNode.removeChild(existing);
+
+	var overlay = document.createElement('div');
+	overlay.id = 'thunder-modal-overlay';
+	overlay.className = 'thunder-modal-overlay';
+
+	var box = document.createElement('div');
+	box.className = 'thunder-modal-box';
+
+	var msg = document.createElement('div');
+	msg.className = 'modal-msg';
+	msg.textContent = message;
+
+	var btn = document.createElement('button');
+	btn.className = 'modal-btn';
+	btn.textContent = 'OK';
+
+	function dismiss() {
+		if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+	}
+
+	btn.onclick = dismiss;
+	overlay.onclick = function(e) { if (e.target === overlay) dismiss(); };
+
+	box.appendChild(msg);
+	box.appendChild(btn);
+	overlay.appendChild(box);
+	document.body.appendChild(overlay);
+
+	// Auto-dismiss
+	setTimeout(dismiss, autoDismissMs);
+}
+
+
+/* =========================================================================
+ * NOTICEBOARD — always visible, timestamped, color-coded
+ * ========================================================================= */
+
+function addNotice(type, message) {
+	var container = document.getElementById('noticeboard-entries');
+	if (!container) return;
+
+	var time = new Date().toLocaleTimeString();
+	var entry = document.createElement('div');
+	entry.className = 'notice-entry';
+	entry.innerHTML = '<span class="notice-time">' + time + '</span>'
+		+ '<span class="notice-msg notice-' + type + '">' + message + '</span>';
+	container.insertBefore(entry, container.firstChild);
+
+	// Cap at 30 entries
+	while (container.children.length > 30) {
+		container.removeChild(container.lastChild);
+	}
+
+	// Auto-scroll to top
+	var board = document.getElementById('noticeboard');
+	if (board) board.scrollTop = 0;
+}
+
+
+/* =========================================================================
  * WEB AUDIO API — SOUND ENGINE (SFX)
  * =========================================================================
  * All sounds are synthesized. No audio files needed.
- * Muted by default. Toggle with the SND button.
+ * Sounds ON by default in v0.2.1.
  * ========================================================================= */
 
 var SFX = (function(){
 	var ctx = null;
-	var muted = true;
+	var muted = false;  // v0.2.1: sounds ON by default
 	var initialized = false;
 
 	function init(){
@@ -775,10 +997,12 @@ var SFX = (function(){
 		var c = ensureCtx();
 		if(!c || muted) return;
 		var t = c.currentTime;
-		var notes = [523, 659, 784, 1047]; // C5 E5 G5 C6
+		// Ascending arpeggio: C5 E5 G5 B5 C6 — 5 notes for richer celebration
+		var notes = [523, 659, 784, 988, 1047];
 		for(var i=0; i<notes.length; i++){
-			osc('square', notes[i], t + i*0.12, 0.25, 0.1);
-			osc('sine', notes[i], t + i*0.12, 0.3, 0.06);
+			osc('square', notes[i], t + i*0.1, 0.3, 0.1);
+			osc('sine', notes[i], t + i*0.1, 0.35, 0.07);
+			osc('triangle', notes[i]*2, t + i*0.1, 0.2, 0.03); // octave shimmer
 		}
 	}
 
@@ -830,6 +1054,7 @@ var SFX = (function(){
  * ANIMATION ENGINE
  * =========================================================================
  * Coin flip, dice roll, roulette scroll, particles, screen flash.
+ * v0.2.1: bigger animations, more confetti, bounce on coin landing
  * ========================================================================= */
 
 var ANIM = (function(){
@@ -853,31 +1078,35 @@ var ANIM = (function(){
 		setTimeout(function(){ el.classList.remove('shake'); }, 400);
 	}
 
-	// -- Confetti particles --
+	// -- Confetti particles (v0.2.1: 30+ with shapes and rotation) --
 	function confetti(count){
-		count = count || 25;
-		var colors = ['#ffd700','#00e676','#fff','#f5a623','#00e5ff'];
+		count = count || 35;
+		var colors = ['#ffd700','#00e676','#fff','#f5a623','#00e5ff','#ff2d78','#7c4dff'];
+		var shapes = ['circle','square','star'];
 		var cx = window.innerWidth / 2;
 		var cy = window.innerHeight / 2;
 		for(var i=0; i<count; i++){
 			var p = document.createElement('div');
-			p.className = 'confetti-particle';
-			var angle = (Math.PI * 2 * i) / count + (Math.random() - 0.5);
-			var dist = 80 + Math.random() * 200;
+			var shape = shapes[i % shapes.length];
+			p.className = 'confetti-particle ' + shape;
+			var angle = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.5;
+			var dist = 100 + Math.random() * 280;
 			var dx = Math.cos(angle) * dist;
-			var dy = Math.sin(angle) * dist - 60; // bias upward
+			var dy = Math.sin(angle) * dist - 100; // bias upward more
+			var rot = (Math.random() * 720 - 360) + 'deg';
+			var sz = 6 + Math.random() * 10;
 			p.style.cssText = 'left:'+cx+'px;top:'+cy+'px;'
 				+'background:'+colors[i % colors.length]+';'
-				+'width:'+(6+Math.random()*6)+'px;height:'+(6+Math.random()*6)+'px;'
-				+'--dx:'+dx+'px;--dy:'+dy+'px;';
+				+'width:'+sz+'px;height:'+sz+'px;'
+				+'--dx:'+dx+'px;--dy:'+dy+'px;--rot:'+rot+';';
 			document.body.appendChild(p);
 			(function(el){
-				setTimeout(function(){ if(el.parentNode) el.parentNode.removeChild(el); }, 1600);
+				setTimeout(function(){ if(el.parentNode) el.parentNode.removeChild(el); }, 2200);
 			})(p);
 		}
 	}
 
-	// -- Float amount text --
+	// -- Float amount text (v0.2.1: larger, longer) --
 	function floatAmount(text, isWin){
 		var area = document.getElementById('result-display');
 		var el = document.createElement('div');
@@ -888,7 +1117,7 @@ var ANIM = (function(){
 		el.style.transform = 'translateX(-50%)';
 		area.style.position = 'relative';
 		area.appendChild(el);
-		setTimeout(function(){ if(el.parentNode) el.parentNode.removeChild(el); }, 1300);
+		setTimeout(function(){ if(el.parentNode) el.parentNode.removeChild(el); }, 2200);
 	}
 
 	// -- Balance flash --
@@ -913,7 +1142,7 @@ var ANIM = (function(){
 	// -- Game area border state --
 	function setBorderState(state){
 		var el = document.getElementById('game-area');
-		el.classList.remove('spinning-border','win-border');
+		el.classList.remove('spinning-border','win-border','win-celebrate');
 		if(state) {
 			void el.offsetWidth;
 			el.classList.add(state);
@@ -940,7 +1169,7 @@ var ANIM = (function(){
 		document.getElementById('result-display').classList.remove('anim-active');
 	}
 
-	// ===== COIN FLIP =====
+	// ===== COIN FLIP (v0.2.1: 220px, 8 rotateY, bounce on landing) =====
 	var coinSpinTimer = null;
 
 	function startCoinSpin(){
@@ -972,7 +1201,7 @@ var ANIM = (function(){
 		document.getElementById('result-display').classList.remove('anim-active');
 	}
 
-	// ===== DICE =====
+	// ===== DICE (v0.2.1: 160px, tumbling animation, thud on settle) =====
 	var diceTimer = null;
 
 	function renderDieFace(val){
@@ -1040,7 +1269,7 @@ var ANIM = (function(){
 		face.classList.remove('rolling');
 		face.classList.add('settled');
 		SFX.result_thud();
-		setTimeout(function(){ face.classList.remove('settled'); }, 400);
+		setTimeout(function(){ face.classList.remove('settled'); }, 500);
 	}
 
 	function hideDice(){
@@ -1050,7 +1279,7 @@ var ANIM = (function(){
 		document.getElementById('result-display').classList.remove('anim-active');
 	}
 
-	// ===== ROULETTE =====
+	// ===== ROULETTE (v0.2.1: taller window, decelerating ticks) =====
 	var rouletteAnimId = null;
 
 	function buildRouletteStrip(){
@@ -1078,7 +1307,7 @@ var ANIM = (function(){
 
 		var strip = document.getElementById('roulette-strip');
 		var pos = 0;
-		var speed = 30; // pixels per frame
+		var speed = 35; // pixels per frame — slightly faster
 		var tickCounter = 0;
 
 		function frame(){
@@ -1086,8 +1315,8 @@ var ANIM = (function(){
 			strip.style.top = pos + 'px';
 			tickCounter++;
 			if(tickCounter % 3 === 0) SFX.spin_tick();
-			// Loop: each number is 50px tall, 36 numbers per set = 1800px
-			if(pos < -1800) pos += 1800;
+			// Loop: each number is 60px tall (v0.2.1), 36 numbers per set = 2160px
+			if(pos < -2160) pos += 2160;
 			rouletteAnimId = requestAnimationFrame(frame);
 		}
 		rouletteAnimId = requestAnimationFrame(frame);
@@ -1101,25 +1330,28 @@ var ANIM = (function(){
 		var strip = document.getElementById('roulette-strip');
 		var windowEl = document.getElementById('roulette-window');
 		var windowH = windowEl.clientHeight;
-		var numH = 50;
+		var numH = 60; // v0.2.1: 60px per number
 
 		// Target: center the winning number in the window
 		// 2nd set starts at index 36, so winning num is at index 36 + result
 		var targetIdx = 36 + result;
 		var targetTop = -(targetIdx * numH) + (windowH/2) - (numH/2);
 
-		strip.style.transition = 'top 2s cubic-bezier(0.17, 0.67, 0.21, 0.99)';
+		strip.style.transition = 'top 2.5s cubic-bezier(0.17, 0.67, 0.21, 0.99)';
 		strip.style.top = targetTop + 'px';
 
-		// Tick sounds during deceleration
+		// Decelerating tick sounds
 		var ticks = 0;
-		var tickInterval = setInterval(function(){
+		var tickDelay = 80;
+		function doTick(){
 			SFX.spin_tick();
 			ticks++;
-			if(ticks > 12){
-				clearInterval(tickInterval);
+			tickDelay += 30; // decelerate
+			if(ticks < 15){
+				setTimeout(doTick, tickDelay);
 			}
-		}, 150);
+		}
+		doTick();
 
 		setTimeout(function(){
 			SFX.result_thud();
@@ -1128,7 +1360,7 @@ var ANIM = (function(){
 			var nums = strip.querySelectorAll('.roulette-num');
 			if(nums[targetIdx]) nums[targetIdx].classList.add('highlight');
 			if(callback) callback();
-		}, 2200);
+		}, 2700);
 	}
 
 	function hideRoulette(){
@@ -1148,10 +1380,10 @@ var ANIM = (function(){
 	function stopSpin(gametype, result, callback){
 		if(gametype === 'flip'){
 			stopCoinSpin(result);
-			setTimeout(function(){ if(callback) callback(); }, 2200);
+			setTimeout(function(){ if(callback) callback(); }, 2800);
 		} else if(gametype === 'dice'){
 			stopDiceSpin(result);
-			setTimeout(function(){ if(callback) callback(); }, 500);
+			setTimeout(function(){ if(callback) callback(); }, 600);
 		} else if(gametype === 'roulette'){
 			stopRouletteSpin(result, callback);
 		} else {
@@ -1190,12 +1422,59 @@ var ANIM = (function(){
  * GAME STATE MACHINE
  * =========================================================================
  * IDLE -> PLACING -> LOCKED -> SPINNING -> RESULT -> WIN/LOSE -> IDLE
+ *
+ * v0.2.1 additions:
+ *   - GAME_BUSY flag (prevents concurrent games)
+ *   - PENDING_RESULT (stores result until animation finishes)
+ *   - MIN_SPIN_MS (minimum 4 seconds of spinning)
+ *   - STEP_TIMEOUT_MS (15 seconds per protocol step)
  * ========================================================================= */
 
 var GAME_PHASE = 'IDLE';
 var PHASE_GAMETYPE = null;  // game type during current round
 var PHASE_PICK = null;      // pick during current round
 var PHASE_BETAMT = null;    // bet during current round
+
+// v0.2.1: new state variables
+var GAME_BUSY = false;                 // prevents multiple simultaneous games
+var PENDING_RESULT = null;             // stores {result, winner} until animation ready
+var SPIN_START_TIME = 0;               // when spinning started
+var MIN_SPIN_MS = 4000;                // minimum spinning time
+var STEP_TIMEOUT_MS = 15000;           // 15-second protocol timeout
+var STEP_TIMEOUT_HANDLE = null;        // current timeout handle
+var IS_HOUSING = false;                // true when we are the house side
+
+
+// -- Protocol step timeout management --
+function startStepTimeout(stepName) {
+	clearStepTimeout();
+	STEP_TIMEOUT_HANDLE = setTimeout(function() {
+		MDS.log("TIMEOUT: Step '" + stepName + "' timed out after " + STEP_TIMEOUT_MS + "ms");
+		addGameLog('warn', 'Timeout waiting for ' + stepName + '. Resetting.');
+		addNotice('warn', 'Timeout: ' + stepName + ' -- game reset');
+		abortAndReset();
+	}, STEP_TIMEOUT_MS);
+}
+
+function clearStepTimeout() {
+	if (STEP_TIMEOUT_HANDLE) {
+		clearTimeout(STEP_TIMEOUT_HANDLE);
+		STEP_TIMEOUT_HANDLE = null;
+	}
+}
+
+function abortAndReset() {
+	clearStepTimeout();
+	PENDING_RESULT = null;
+	SPIN_START_TIME = 0;
+	IS_HOUSING = false;
+	GAME_BUSY = false;
+	if (CURRENT_CHANNEL) {
+		MDS.keypair.set("casino_pending_" + CURRENT_CHANNEL, "");
+	}
+	setGamePhase('IDLE');
+}
+
 
 function setGamePhase(phase, data){
 	GAME_PHASE = phase;
@@ -1210,6 +1489,7 @@ function setGamePhase(phase, data){
 	switch(phase){
 
 		case 'IDLE':
+			clearStepTimeout();
 			ANIM.hideStage(PHASE_GAMETYPE || CURRENT_GAME);
 			ANIM.undimPicks();
 			ANIM.setBorderState(null);
@@ -1218,9 +1498,14 @@ function setGamePhase(phase, data){
 			labelEl.textContent = 'PICK YOUR NUMBER';
 			labelEl.className = 'result-label waiting';
 			enableGameControls(true);
+			GAME_BUSY = false;
+			PENDING_RESULT = null;
+			SPIN_START_TIME = 0;
+			IS_HOUSING = false;
 			break;
 
 		case 'PLACING':
+			GAME_BUSY = true;
 			PHASE_GAMETYPE = CURRENT_GAME;
 			PHASE_PICK = CURRENT_PICK;
 			PHASE_BETAMT = document.getElementById('bet-amount').value;
@@ -1231,26 +1516,39 @@ function setGamePhase(phase, data){
 			labelEl.innerHTML = '<span class="phase-text finding">FINDING HOUSE...</span>';
 			labelEl.className = 'result-label';
 			ANIM.setBorderState('spinning-border');
+			startStepTimeout('house response');
 			break;
 
 		case 'LOCKED':
+			clearStepTimeout();
 			SFX.lock_cash();
 			ANIM.screenFlash('lock');
 			ANIM.flashBalanceLock();
 			labelEl.innerHTML = '<span class="phase-text locked">BET LOCKED</span>';
 			labelEl.className = 'result-label';
+			addNotice('info', 'Bet locked! Waiting for reveal...');
+			startStepTimeout('reveal');
 			break;
 
 		case 'SPINNING':
+			clearStepTimeout();
+			SPIN_START_TIME = Date.now();
 			labelEl.innerHTML = '<span class="phase-text spinning">REVEALING...</span>';
 			labelEl.className = 'result-label';
 			ANIM.startSpin(PHASE_GAMETYPE);
 			if(PHASE_GAMETYPE === 'flip') SFX.coin_flip();
 			else if(PHASE_GAMETYPE === 'dice') SFX.dice_rattle();
 			else SFX.spin_whoosh();
+			startStepTimeout('game result');
+
+			// v0.2.1: Check if PENDING_RESULT arrived before we got to SPINNING
+			if (PENDING_RESULT) {
+				deliverPendingResult();
+			}
 			break;
 
 		case 'RESULT':
+			clearStepTimeout();
 			// data.result = the outcome number (0-indexed)
 			// data.winner = 'player' or 'house'
 			var result = data.result;
@@ -1271,11 +1569,13 @@ function setGamePhase(phase, data){
 			break;
 
 		case 'WIN':
+			clearStepTimeout();
 			ANIM.hideStage(PHASE_GAMETYPE || CURRENT_GAME);
-			ANIM.setBorderState('win-border');
+			// v0.2.1: win-celebrate pulsing border for 2 seconds
+			ANIM.setBorderState('win-celebrate');
 			SFX.win_fanfare();
 			ANIM.screenFlash('win');
-			ANIM.confetti(30);
+			ANIM.confetti(35);  // v0.2.1: 35 particles
 
 			var gametype = PHASE_GAMETYPE || CURRENT_GAME;
 			var resultLabel = data.resultLabel || getPickLabel(gametype, data.result);
@@ -1297,15 +1597,17 @@ function setGamePhase(phase, data){
 			updateStats();
 			addRoundPip(true, resultLabel);
 			addGameLog('win', game.name+': Result='+resultLabel+' Pick='+getPickLabel(gametype, PHASE_PICK)+' -- WIN +'+payout.toFixed(2));
+			addNotice('win', 'WIN! +' + payout.toFixed(2) + ' on ' + game.name);
 
-			// Auto-reset after delay
+			// v0.2.1: 2 seconds of celebration, then reset
 			setTimeout(function(){
 				SFX.ready_chime();
 				setGamePhase('IDLE');
-			}, 3000);
+			}, 2000);
 			break;
 
 		case 'LOSE':
+			clearStepTimeout();
 			ANIM.hideStage(PHASE_GAMETYPE || CURRENT_GAME);
 			ANIM.setBorderState(null);
 			SFX.lose_wah();
@@ -1331,15 +1633,59 @@ function setGamePhase(phase, data){
 			updateStats();
 			addRoundPip(false, resultLabel);
 			addGameLog('loss', game.name+': Result='+resultLabel+' Pick='+getPickLabel(gametype, PHASE_PICK)+' -- LOSS');
+			addNotice('loss', 'LOSS -' + parseFloat(betval).toFixed(2) + ' on ' + game.name);
 
-			// Auto-reset after shorter delay
+			// v0.2.1: quick 1 second reset for losses
 			setTimeout(function(){
 				SFX.ready_chime();
 				setGamePhase('IDLE');
-			}, 2000);
+			}, 1000);
 			break;
 	}
 }
+
+
+/* =========================================================================
+ * PENDING_RESULT DELIVERY
+ * =========================================================================
+ * v0.2.1: The result may arrive while still spinning. We store it as
+ * PENDING_RESULT and only deliver once MIN_SPIN_MS has elapsed.
+ * ========================================================================= */
+
+function storePendingResult(result, winner) {
+	PENDING_RESULT = { result: result, winner: winner };
+	MDS.log("PENDING_RESULT stored: result=" + result + " winner=" + winner + " phase=" + GAME_PHASE);
+
+	if (GAME_PHASE === 'SPINNING') {
+		deliverPendingResult();
+	}
+	// If not yet SPINNING, it will be picked up when SPINNING starts
+}
+
+function deliverPendingResult() {
+	if (!PENDING_RESULT) return;
+
+	var elapsed = Date.now() - SPIN_START_TIME;
+	var remaining = MIN_SPIN_MS - elapsed;
+
+	if (remaining > 0) {
+		// Wait for minimum spin time
+		MDS.log("PENDING_RESULT: waiting " + remaining + "ms for min spin time");
+		setTimeout(function() {
+			if (PENDING_RESULT && GAME_PHASE === 'SPINNING') {
+				var pr = PENDING_RESULT;
+				PENDING_RESULT = null;
+				setGamePhase('RESULT', { result: pr.result, winner: pr.winner });
+			}
+		}, remaining);
+	} else {
+		// Minimum spin time already passed
+		var pr = PENDING_RESULT;
+		PENDING_RESULT = null;
+		setGamePhase('RESULT', { result: pr.result, winner: pr.winner });
+	}
+}
+
 
 function enableGameControls(enabled){
 	var btn = document.getElementById('btn-play');
@@ -1474,7 +1820,7 @@ function acceptChannel(hashid, maximaid){
 		// Check we have enough balance
 		checkBalance(sqlrow.USER2AMOUNT, sqlrow.TOKENID, function(valid){
 			if(!valid){
-				alert('Insufficient funds to join this channel!');
+				thunderAlert('Insufficient funds to join this channel!');
 				return;
 			}
 
@@ -1491,7 +1837,7 @@ function acceptChannel(hashid, maximaid){
 							loadChannels();
 						});
 					}else{
-						alert('Could not contact the other user.');
+						thunderAlert('Could not contact the other user.');
 					}
 				});
 			});
@@ -1504,7 +1850,7 @@ function denyChannel(hashid, maximaid){
 		insertLog(hashid, 'YOU_DENY_CHANNEL', 'Channel denied');
 		loadChannels();
 		if(!delivered){
-			alert('Channel denied but could not notify the other user.');
+			thunderAlert('Channel denied but could not notify the other user.');
 		}
 	});
 }
@@ -1553,9 +1899,7 @@ function requestChannel(){
 	var youAdd  = document.getElementById('you-add').value;
 	var theyAdd = document.getElementById('they-add').value;
 
-	if(!confirm('Request channel with '+name+'?\n\nYou add: '+youAdd+' '+tokName+'\nThey add: '+theyAdd+' '+tokName)){
-		return;
-	}
+	thunderAlert('Requesting channel with ' + name + '...\n\nYou add: ' + youAdd + ' ' + tokName + '\nThey add: ' + theyAdd + ' ' + tokName, 8000);
 
 	if(tokDets.tokenid === '0x00'){
 		doRequestChannel(pubkey, youAdd, theyAdd, tokName, tokDets.tokenid, '');
@@ -1569,11 +1913,11 @@ function requestChannel(){
 function doRequestChannel(pubkey, youAdd, theyAdd, tokName, tokId, tokData){
 	requestNewChannel(pubkey, youAdd, theyAdd, tokName, tokId, tokData, function(delivered, hashid){
 		if(!delivered){
-			alert('Could not contact user. Check Maxima connections.');
+			thunderAlert('Could not contact user. Check Maxima connections.');
 			return;
 		}
 		insertLog(hashid, 'YOU_REQUEST_CHANNEL', 'Channel requested');
-		alert('Channel request sent! Waiting for acceptance.');
+		thunderAlert('Channel request sent! Waiting for acceptance.');
 		showView('channels');
 	});
 }
@@ -1586,9 +1930,12 @@ function enterGame(hashid){
 	GAME_PROFIT = new Decimal(0);
 	GAME_ROUNDS = 0;
 	GAME_PHASE = 'IDLE';
+	GAME_BUSY = false;
+	PENDING_RESULT = null;
 
-	// Clear round pips
+	// Clear round pips and noticeboard
 	document.getElementById('round-pips').innerHTML = '';
+	document.getElementById('noticeboard-entries').innerHTML = '';
 
 	// Load channel data and populate the game view
 	sqlSelectChannel(hashid, function(sql){
@@ -1607,6 +1954,7 @@ function enterGame(hashid){
 		selectGameType('flip');
 		showView('game');
 		addGameLog('system', 'Session started with '+name+'. Channel balance: '+myamt+' / '+theiramt);
+		addNotice('system', 'Session started with ' + name);
 	});
 }
 
@@ -1665,7 +2013,7 @@ function selectPick(pick){
 
 function updatePlayButton(){
 	var btn = document.getElementById('btn-play');
-	if(GAME_PHASE !== 'IDLE'){
+	if(GAME_PHASE !== 'IDLE' || GAME_BUSY){
 		btn.disabled = true;
 		return;
 	}
@@ -1675,7 +2023,8 @@ function updatePlayButton(){
 
 /* ---- Play a round ---- */
 function playRound(){
-	if(!CURRENT_CHANNEL || CURRENT_PICK < 0 || GAME_PHASE !== 'IDLE') return;
+	// v0.2.1: GAME_BUSY blocks new bets
+	if(!CURRENT_CHANNEL || CURRENT_PICK < 0 || GAME_PHASE !== 'IDLE' || GAME_BUSY) return;
 
 	var betamt = document.getElementById('bet-amount').value;
 	var gametype = CURRENT_GAME;
@@ -1685,9 +2034,12 @@ function playRound(){
 	// Validate bet amount
 	var bet = parseFloat(betamt);
 	if(isNaN(bet) || bet <= 0){
-		alert('Enter a valid bet amount');
+		thunderAlert('Enter a valid bet amount');
 		return;
 	}
+
+	// v0.2.1: Set GAME_BUSY immediately
+	GAME_BUSY = true;
 
 	// Sound + animation for button press
 	SFX.lever_pull();
@@ -1700,6 +2052,7 @@ function playRound(){
 	setGamePhase('PLACING');
 
 	addGameLog('info', 'Placing '+game.name+' bet: '+betamt+' on '+getPickLabel(gametype, pick));
+	addNotice('info', 'Bet placed: ' + betamt + ' on ' + getPickLabel(gametype, pick));
 
 	// Store our pick and bet so service.js can auto-commit when the house responds
 	MDS.keypair.set("casino_pending_"+CURRENT_CHANNEL, JSON.stringify({
@@ -1725,9 +2078,10 @@ function playRound(){
 				addGameLog('info', 'Request sent. Waiting for house...');
 			}else{
 				addGameLog('warn', 'Could not contact counterparty. Check Maxima.');
+				addNotice('warn', 'Delivery failed. Check Maxima.');
 				MDS.log("GAME_REQUEST DELIVERY FAILED: "+JSON.stringify(maxresp));
 				MDS.keypair.set("casino_pending_"+CURRENT_CHANNEL, "");
-				setGamePhase('IDLE');
+				abortAndReset();
 			}
 		});
 	});
@@ -1789,41 +2143,151 @@ function resetPlayButton(){
 
 /* ---- Channel close ---- */
 function closeChannelPrompt(){
-	if(!confirm('Close this channel?\n\nCooperative close sends 1 transaction.\nFunds return to both parties.')){
-		return;
-	}
+	thunderAlert('Close this channel? Cooperative close sends 1 transaction. Funds return to both parties. Click OK to proceed.', 10000);
 
-	sqlSelectChannel(CURRENT_CHANNEL, function(sql){
-		var ch = sql.rows[0];
-		var othermax = (ch.USERNUM == '1') ? ch.USER2MAXIMAID : ch.USER1MAXIMAID;
+	// Proceed after a short delay for user to read
+	setTimeout(function(){
+		sqlSelectChannel(CURRENT_CHANNEL, function(sql){
+			var ch = sql.rows[0];
+			var othermax = (ch.USERNUM == '1') ? ch.USER2MAXIMAID : ch.USER1MAXIMAID;
 
-		MDS.cmd("coins address:"+ch.FUNDINGADDRESS, function(fcoins){
-			if(fcoins.response.length === 0){
-				alert('Funding coin not found. Wait for confirmation.');
-				return;
-			}
-			var coinage = fcoins.response[0].age;
-			if(+coinage < 3){
-				alert('Funding coin too young ('+coinage+' blocks). Wait a few more blocks.');
-				return;
-			}
+			MDS.cmd("coins address:"+ch.FUNDINGADDRESS, function(fcoins){
+				if(fcoins.response.length === 0){
+					thunderAlert('Funding coin not found. Wait for confirmation.');
+					return;
+				}
+				var coinage = fcoins.response[0].age;
+				if(+coinage < 3){
+					thunderAlert('Funding coin too young ('+coinage+' blocks). Wait a few more blocks.');
+					return;
+				}
 
-			spendFundingTxn(ch, function(spendtxn){
-				sendSpendFunding(CURRENT_CHANNEL, othermax, spendtxn, function(delivered){
-					if(delivered){
-						addGameLog('system', 'Cooperative close requested');
-						alert('Close request sent!');
-					}else{
-						alert('Could not contact counterparty. Try unilateral close.');
-					}
+				spendFundingTxn(ch, function(spendtxn){
+					sendSpendFunding(CURRENT_CHANNEL, othermax, spendtxn, function(delivered){
+						if(delivered){
+							addGameLog('system', 'Cooperative close requested');
+							addNotice('system', 'Channel close requested');
+							thunderAlert('Close request sent!');
+						}else{
+							thunderAlert('Could not contact counterparty. Try unilateral close.');
+						}
+					});
 				});
 			});
 		});
-	});
+	}, 500);
 }
 
 /* ---- Bet amount input listener ---- */
 document.getElementById('bet-amount').addEventListener('input', updatePlayButton);
+
+
+/* =========================================================================
+ * HOUSE-SIDE FEEDBACK
+ * =========================================================================
+ * v0.2.1: When auto-housing, show the game animation and result
+ * on the house's screen too.
+ * ========================================================================= */
+
+function showHouseSideFeedback(gametype, result, winner, betamt) {
+	// Only show if we're viewing the game for this channel
+	if (CURRENT_VIEW !== 'game') return;
+
+	IS_HOUSING = true;
+	var isHouseWin = (winner === 'house');
+
+	addNotice(isHouseWin ? 'win' : 'loss',
+		'HOUSE: ' + (isHouseWin ? 'Won' : 'Lost') + ' ' + betamt + ' on ' + gametype);
+
+	// If the player-side isn't busy with their own game, show animation
+	if (GAME_PHASE === 'IDLE' && !GAME_BUSY) {
+		// Show a brief animation for the house side
+		PHASE_GAMETYPE = gametype;
+		ANIM.startSpin(gametype);
+
+		setTimeout(function() {
+			if (result >= 0) {
+				ANIM.stopSpin(gametype, result, function() {
+					setTimeout(function() {
+						ANIM.hideStage(gametype);
+						ANIM.setBorderState(null);
+
+						var numEl = document.getElementById('result-number');
+						var labelEl = document.getElementById('result-label');
+
+						if (isHouseWin) {
+							numEl.textContent = 'HOUSE WINS';
+							numEl.className = 'result-number win result-bounce';
+							labelEl.textContent = 'YOU HOUSED THIS ROUND';
+							labelEl.className = 'result-label win';
+							SFX.win_fanfare();
+							ANIM.screenFlash('win');
+							ANIM.confetti(20);
+						} else {
+							numEl.textContent = 'HOUSE LOST';
+							numEl.className = 'result-number lose';
+							labelEl.textContent = 'YOU HOUSED THIS ROUND';
+							labelEl.className = 'result-label lose';
+							SFX.lose_wah();
+						}
+
+						// Refresh balances
+						sqlSelectChannel(CURRENT_CHANNEL, function(s){
+							if(s.count > 0){
+								var ch = s.rows[0];
+								var my = (ch.USERNUM === '1') ? ch.USER1AMOUNT : ch.USER2AMOUNT;
+								var th = (ch.USERNUM === '1') ? ch.USER2AMOUNT : ch.USER1AMOUNT;
+								document.getElementById('game-my-balance').textContent = my;
+								document.getElementById('game-their-balance').textContent = th;
+							}
+						});
+
+						setTimeout(function() {
+							IS_HOUSING = false;
+							numEl.textContent = '?';
+							numEl.className = 'result-number waiting';
+							labelEl.textContent = 'PICK YOUR NUMBER';
+							labelEl.className = 'result-label waiting';
+						}, 2000);
+					}, 500);
+				});
+			} else {
+				ANIM.hideStage(gametype);
+				IS_HOUSING = false;
+			}
+		}, 2000);
+	}
+}
+
+
+/* =========================================================================
+ * STALE CHANNEL CLEANUP
+ * =========================================================================
+ * v0.2.1: On init, check for channels where funding is gone.
+ * ========================================================================= */
+
+function cleanupStaleChannels() {
+	sqlSelectAllOpenChannels(function(res) {
+		if (!res || !res.rows) return;
+		for (var i = 0; i < res.rows.length; i++) {
+			(function(ch) {
+				if (!ch.FUNDINGADDRESS) return;
+				var state = ch.STATE;
+				if (!state.startsWith('STATE_CHANNEL_OPEN')) return;
+
+				MDS.cmd("coins address:" + ch.FUNDINGADDRESS, function(fcoins) {
+					if (fcoins.response.length === 0) {
+						MDS.log("STALE CHANNEL: " + ch.HASHID + " — funding gone, marking closed");
+						addNotice('warn', 'Stale channel detected: ' + (ch.USER2NAME || ch.USER1NAME || ch.HASHID.substring(0, 8)));
+						// Don't auto-close, just log it — user should handle
+						insertLog(ch.HASHID, 'STALE_CHANNEL', 'Funding coin missing — channel may need attention');
+					}
+				});
+			})(res.rows[i]);
+		}
+	});
+}
+
 
 /* =========================================================================
  * MDS INITIALIZATION
@@ -1838,6 +2302,8 @@ MDS.init(function(msg){
 				MDS.cmd("maxcontacts", function(mc){
 					MAXIMA_CONTACTS = mc.response.contacts;
 					loadChannels();
+					// v0.2.1: stale channel cleanup on init
+					cleanupStaleChannels();
 				});
 			});
 		});
@@ -1867,6 +2333,7 @@ MDS.init(function(msg){
 				if(comms.event === 'GAME_OFFER'){
 					// We received a game offer — auto-accept for now
 					addGameLog('info', 'Game offer received: '+comms.data.gametype);
+					addNotice('info', 'Game offer: ' + comms.data.gametype);
 
 				}else if(comms.event === 'BET_LOCKED'){
 					addGameLog('info', 'Bet locked! Waiting for reveal...');
@@ -1879,6 +2346,7 @@ MDS.init(function(msg){
 
 				}else if(comms.event === 'GAME_RESOLVED'){
 					addGameLog('info', 'Game resolved! Winner: '+comms.data.winner);
+					addNotice('info', 'Game resolved: ' + comms.data.winner);
 
 				}else if(comms.event === 'GAME_RESULT_VERIFIED'){
 					addGameLog('info', 'Result verified: '+comms.data.winner);
@@ -1903,10 +2371,8 @@ MDS.init(function(msg){
 
 					// If we have result data, use the full animation
 					if(comms.data.result !== undefined && GAME_PHASE !== 'IDLE'){
-						setGamePhase('RESULT', {
-							result: parseInt(comms.data.result),
-							winner: isWin ? 'player' : 'house'
-						});
+						// v0.2.1: use PENDING_RESULT pattern
+						storePendingResult(parseInt(comms.data.result), isWin ? 'player' : 'house');
 					} else {
 						// Fallback: basic display
 						var numEl = document.getElementById('result-number');
@@ -1920,7 +2386,7 @@ MDS.init(function(msg){
 						if(isWin){
 							SFX.win_fanfare();
 							ANIM.screenFlash('win');
-							ANIM.confetti(20);
+							ANIM.confetti(35);
 							ANIM.flashBalance(true);
 							GAME_WINS++;
 						} else {
@@ -1932,13 +2398,16 @@ MDS.init(function(msg){
 						GAME_ROUNDS++;
 						updateStats();
 						addRoundPip(isWin, isWin ? 'W' : 'L');
+						addNotice(isWin ? 'win' : 'loss', (isWin ? 'WIN' : 'LOSS') + ' (fallback)');
 						resetPlayButton();
+						GAME_BUSY = false;
 						GAME_PHASE = 'IDLE';
 					}
 
 				}else if(comms.event === 'GAME_ABANDONED'){
 					addGameLog('warn', 'Game abandoned: '+comms.data.reason);
-					setGamePhase('IDLE');
+					addNotice('warn', 'Game abandoned: ' + (comms.data.reason || 'Unknown'));
+					abortAndReset();
 				}
 			}
 		}
@@ -1958,6 +2427,8 @@ MDS.init(function(msg){
 					MDS.log("AUTO-HOUSE: Received GAME_REQUEST for "+maxmsg.gametype+" bet:"+maxmsg.betamt);
 					var requesterPubkey = msg.data.from;
 
+					addNotice('info', 'Incoming bet: ' + maxmsg.betamt + ' on ' + maxmsg.gametype);
+
 					sqlSelectChannel(maxmsg.hashid, function(sql){
 						if(sql.count == 0){
 							MDS.log("AUTO-HOUSE: Channel NOT FOUND: "+maxmsg.hashid);
@@ -1975,6 +2446,7 @@ MDS.init(function(msg){
 						var validation = validateBet(sqlrow, maxmsg.betamt, game.range, maxmsg.pick, bettor);
 						if(!validation.valid){
 							MDS.log("AUTO-HOUSE: Bet invalid: "+validation.error);
+							addNotice('warn', 'Bet rejected: ' + validation.error);
 							sendMaximaMessage(requesterPubkey,
 								gameAbandonedMessage(maxmsg.hashid, "Bet invalid: "+validation.error));
 							return;
@@ -1991,6 +2463,7 @@ MDS.init(function(msg){
 							// Store house commit on channel
 							MDS.sql("UPDATE channels SET housecommit='"+data.commit+"' WHERE hashid='"+maxmsg.hashid+"'", function(){
 								MDS.log("AUTO-HOUSE: Sending GAME_OFFER with commit:"+data.commit.substring(0,16)+"..");
+								addNotice('info', 'Housing bet: commit sent');
 
 								// Send GAME_OFFER back
 								sendMaximaMessage(requesterPubkey,
@@ -2025,6 +2498,7 @@ MDS.init(function(msg){
 								if(delivered){
 									if(CURRENT_VIEW === 'game'){
 										addGameLog('info', 'Bet committed. Waiting for house reveal...');
+										addNotice('info', 'Bet committed. Awaiting reveal...');
 									}
 								}
 								MDS.keypair.set("casino_pending_"+maxmsg.hashid, "");
@@ -2056,12 +2530,9 @@ MDS.init(function(msg){
 										}
 									}
 
-									// If we have the result number and we're in an active game phase
+									// v0.2.1: use PENDING_RESULT + MIN_SPIN pattern
 									if(resultNum >= 0 && GAME_PHASE === 'SPINNING'){
-										setGamePhase('RESULT', {
-											result: resultNum,
-											winner: winner
-										});
+										storePendingResult(resultNum, winner);
 									} else if(GAME_PHASE === 'SPINNING' || GAME_PHASE === 'LOCKED' || GAME_PHASE === 'PLACING'){
 										// Compute outcome from secrets if we have them
 										// Fall back to showing WIN/LOSE
@@ -2074,7 +2545,7 @@ MDS.init(function(msg){
 										if(isWin){
 											SFX.win_fanfare();
 											ANIM.screenFlash('win');
-											ANIM.confetti(25);
+											ANIM.confetti(35);
 											numEl.textContent = 'WIN';
 											numEl.className = 'result-number win result-bounce';
 											labelEl.textContent = 'YOU WIN!';
@@ -2103,6 +2574,7 @@ MDS.init(function(msg){
 										updateStats();
 										addRoundPip(isWin, isWin ? 'W' : 'L');
 										addGameLog(isWin ? 'win' : 'loss', 'Round result: ' + (isWin ? 'WIN' : 'LOSS'));
+										addNotice(isWin ? 'win' : 'loss', (isWin ? 'WIN' : 'LOSS') + ' (reveal fallback)');
 
 										// Refresh balances
 										sqlSelectChannel(maxmsg.hashid, function(s3){
@@ -2117,8 +2589,9 @@ MDS.init(function(msg){
 
 										setTimeout(function(){
 											SFX.ready_chime();
+											GAME_BUSY = false;
 											setGamePhase('IDLE');
-										}, isWin ? 3000 : 2000);
+										}, isWin ? 2000 : 1000);
 									} else {
 										// Not in game view or not in active phase
 										document.getElementById('result-label').textContent = winner === 'player' ? 'YOU WIN!' : 'YOU LOSE';
@@ -2126,6 +2599,7 @@ MDS.init(function(msg){
 										document.getElementById('result-number').className = 'result-number ' + (winner === 'player' ? 'win' : 'lose');
 										document.getElementById('result-label').className = 'result-label ' + (winner === 'player' ? 'win' : 'lose');
 										resetPlayButton();
+										GAME_BUSY = false;
 										GAME_PHASE = 'IDLE';
 									}
 								});
@@ -2136,6 +2610,8 @@ MDS.init(function(msg){
 				}else if(maxmsg.type === 'GAME_ACCEPT'){
 					// ---- Player accepted our game (we're the house) ----
 					MDS.log("GOT GAME_ACCEPT: pick:"+maxmsg.pick+" bet:"+maxmsg.betamt);
+					addNotice('info', 'Housing: player committed pick=' + maxmsg.pick);
+
 					sqlSelectChannel(maxmsg.hashid, function(sql){
 						if(sql.count == 0){ MDS.log("GAME_ACCEPT: no channel"); return; }
 						var sqlrow = sql.rows[0];
@@ -2150,6 +2626,7 @@ MDS.init(function(msg){
 										gameBetSignedMessage(maxmsg.hashid, newseq, settletxn, updatetxn),
 										function(){
 											MDS.log("GAME_ACCEPT: auto-revealing...");
+											addNotice('info', 'Housing: revealing secret...');
 											revealGameSecret(maxmsg.hashid, function(ok){
 												MDS.log("GAME_ACCEPT: reveal sent:"+ok);
 											});
@@ -2181,6 +2658,7 @@ MDS.init(function(msg){
 								updateNewSequenceTxn(maxmsg.hashid, maxmsg.sequence, n1, n2, cs, cu, function(){
 									MDS.log("BET LOCKED! Waiting for reveal...");
 									addGameLog('info', 'Bet locked and co-signed. Awaiting reveal...');
+									addNotice('info', 'Co-signed. Awaiting reveal...');
 								});
 							});
 						});
@@ -2199,6 +2677,7 @@ MDS.init(function(msg){
 							computeOutcome(sqlrow.HOUSESECRET, maxmsg.playersecret, parseInt(sqlrow.GAMERANGE), function(oc){
 								var w = (oc.result==parseInt(sqlrow.PLAYERPICK)) ? "player" : "house";
 								MDS.log("VERIFIED: "+w);
+								addNotice('info', 'Housing: verified result = ' + w);
 								updateGameResult(maxmsg.hashid, maxmsg.playersecret, (w==="player")?"LOSS":"WIN", function(){
 									var nb = calculateGameBalance(sqlrow, w);
 									var ns = new Decimal(sqlrow.SEQUENCE).plus(1);
@@ -2211,6 +2690,14 @@ MDS.init(function(msg){
 														sendMaximaMessage(msg.data.from,
 															gameResultSignedMessage(maxmsg.hashid, ns.toString(), ss, su));
 														MDS.log("Resolved balance sent");
+
+														// v0.2.1: house-side feedback
+														showHouseSideFeedback(
+															sqlrow.GAMETYPE || CURRENT_GAME,
+															oc.result,
+															w,
+															sqlrow.BETAMOUNT || '?'
+														);
 													});
 												});
 											});
@@ -2250,6 +2737,28 @@ MDS.init(function(msg){
 										return;
 									}
 
+									// v0.2.1: use PENDING_RESULT pattern if spinning
+									if (GAME_PHASE === 'SPINNING') {
+										var resultNum = -1;
+										if (sqlrow.GAMERESULTNUM !== undefined && sqlrow.GAMERESULTNUM !== null) {
+											resultNum = parseInt(sqlrow.GAMERESULTNUM);
+										}
+										if (resultNum >= 0) {
+											storePendingResult(resultNum, isWin ? 'player' : 'house');
+											// Update balances
+											sqlSelectChannel(maxmsg.hashid, function(s3){
+												if(s3.count>0){
+													var ch=s3.rows[0];
+													var my=(ch.USERNUM==='1')?ch.USER1AMOUNT:ch.USER2AMOUNT;
+													var th=(ch.USERNUM==='1')?ch.USER2AMOUNT:ch.USER1AMOUNT;
+													document.getElementById('game-my-balance').textContent=my;
+													document.getElementById('game-their-balance').textContent=th;
+												}
+											});
+											return;
+										}
+									}
+
 									// Show result with animations
 									ANIM.hideStage(PHASE_GAMETYPE || CURRENT_GAME);
 									ANIM.setBorderState(null);
@@ -2260,7 +2769,7 @@ MDS.init(function(msg){
 									if(isWin){
 										SFX.win_fanfare();
 										ANIM.screenFlash('win');
-										ANIM.confetti(25);
+										ANIM.confetti(35);
 										numEl.textContent = 'WIN';
 										numEl.className = 'result-number win result-bounce';
 										labelEl.textContent = 'YOU WIN!';
@@ -2283,6 +2792,7 @@ MDS.init(function(msg){
 									GAME_ROUNDS++;
 									updateStats();
 									addRoundPip(isWin, isWin ? 'W' : 'L');
+									addNotice(isWin ? 'win' : 'loss', (isWin ? 'WIN' : 'LOSS') + ' (round complete)');
 
 									sqlSelectChannel(maxmsg.hashid, function(s3){
 										if(s3.count>0){
@@ -2296,8 +2806,9 @@ MDS.init(function(msg){
 
 									setTimeout(function(){
 										SFX.ready_chime();
+										GAME_BUSY = false;
 										setGamePhase('IDLE');
-									}, isWin ? 3000 : 2000);
+									}, isWin ? 2000 : 1000);
 								}
 							});
 					});
@@ -2305,7 +2816,8 @@ MDS.init(function(msg){
 				}else if(maxmsg.type === 'GAME_ABANDONED'){
 					MDS.log("GAME_ABANDONED: "+maxmsg.reason);
 					addGameLog('warn', 'Game abandoned: '+(maxmsg.reason || 'Unknown'));
-					setGamePhase('IDLE');
+					addNotice('warn', 'Game abandoned: ' + (maxmsg.reason || 'Unknown'));
+					abortAndReset();
 				}
 			});
 		}
