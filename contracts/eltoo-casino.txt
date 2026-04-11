@@ -1,0 +1,25 @@
+/* Thunder Casino — Game-Aware ELTOO Script (Main) */
+/* Security: MULTISIG on all paths. Phase=1 MUST go through MAST — no unguarded settlement when game active */
+
+LET rid=[#HASHID]
+LET st=STATE(100) LET sq=STATE(101) LET ps=PREVSTATE(101)
+ASSERT MULTISIG(2 #USER1 #USER2)
+
+/* UPDATE: higher sequence replaces old state — both must sign */
+IF st EQ FALSE THEN
+  IF sq GT ps THEN RETURN TRUE ENDIF
+  RETURN FALSE
+ENDIF
+
+/* SETTLEMENT paths — only when st=TRUE */
+LET gp=PREVSTATE(102)
+
+/* Normal settle: no game in progress, coinage met */
+IF gp EQ 0 AND sq EQ ps AND @COINAGE GTE #TIMEOUT THEN
+  RETURN TRUE
+ENDIF
+
+/* Phase 1 (game active): ALL settlement MUST go through MAST dispute branches */
+/* No unguarded SIGNEDBY path — lesson from Limit minArmyKnife incident */
+MAST #MASTROOT
+RETURN FALSE

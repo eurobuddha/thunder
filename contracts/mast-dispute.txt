@@ -1,0 +1,23 @@
+/* MAST Branch 3: Player Dispute — Proves They Won */
+/* Player won but house refuses to sign winning settlement. Available at 32 blocks */
+/* Security: Verifies BOTH secrets via SHA3, computes outcome on-chain, VERIFYOUT enforces winning payout */
+/* Addresses from PREVSTATE only — never getaddress. Lesson: minArmyKnife incident */
+
+ASSERT PREVSTATE(102) EQ 1
+ASSERT @COINAGE GTE 32
+LET bt=PREVSTATE(108)
+IF bt EQ 1 THEN ASSERT SIGNEDBY(PREVSTATE(115))
+ELSE ASSERT SIGNEDBY(PREVSTATE(116)) ENDIF
+LET hs=STATE(113) ASSERT SHA3(hs) EQ PREVSTATE(106)
+LET sc=STATE(114) ASSERT SHA3(sc) EQ PREVSTATE(105)
+LET h=SHA3(CONCAT(hs sc)) LET r=NUMBER(SUBSET(0 4 h))%PREVSTATE(104)
+ASSERT r EQ PREVSTATE(107)
+LET ba=PREVSTATE(103) LET rn=PREVSTATE(104)
+LET a1=PREVSTATE(109) LET a2=PREVSTATE(110)
+LET v1=PREVSTATE(111) LET v2=PREVSTATE(112)
+LET wn=ba*rn
+IF bt EQ 1 THEN LET p1=v1+wn-ba LET p2=v2-wn+ba
+ELSE LET p1=v1-wn+ba LET p2=v2+wn-ba ENDIF
+IF p1 GT 0 THEN ASSERT VERIFYOUT(@INPUT a1 p1 @TOKENID FALSE) ENDIF
+IF p2 GT 0 THEN ASSERT VERIFYOUT(@INPUT+1 a2 p2 @TOKENID FALSE) ENDIF
+RETURN TRUE

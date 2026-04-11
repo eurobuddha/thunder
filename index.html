@@ -1,0 +1,1029 @@
+<html>
+<head>
+	<title>Thunder Casino</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<meta charset="UTF-8">
+
+	<!-- MDS Library -->
+	<script type="text/javascript" src="./js/mds.js"></script>
+
+	<!-- Fonts — Orbitron for machine display, Chakra Petch for body, JetBrains Mono for logs -->
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Chakra+Petch:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+	<!-- Theme -->
+	<link rel="stylesheet" href="style.css">
+	<link rel="icon" type="image/x-icon" href="favicon.ico">
+
+	<!-- Libraries -->
+	<script type="text/javascript" src="./js/decimal.js"></script>
+	<script type="text/javascript" src="./js/jslib.js"></script>
+	<script type="text/javascript" src="./js/utils.js"></script>
+	<script type="text/javascript" src="./js/auth.js"></script>
+	<script type="text/javascript" src="./js/mast.js"></script>
+	<script type="text/javascript" src="./js/txns.js"></script>
+	<script type="text/javascript" src="./js/sql.js"></script>
+	<script type="text/javascript" src="./js/messages.js"></script>
+	<script type="text/javascript" src="./js/maxima.js"></script>
+	<script type="text/javascript" src="./js/mast-txns.js"></script>
+	<script type="text/javascript" src="./js/casino.js"></script>
+	<script type="text/javascript" src="./js/channelfunction.js"></script>
+	<script type="text/javascript" src="./js/items.js"></script>
+</head>
+
+<body>
+<div class="app-container">
+
+	<!-- ============================================================ -->
+	<!-- HEADER — Machine top panel                                    -->
+	<!-- ============================================================ -->
+	<div class="header">
+		<div class="header-brand">
+			<div class="header-icon">T</div>
+			<div>
+				<div class="header-title">THUNDER CASINO</div>
+				<div class="header-subtitle">Provably Fair Layer 2 Gaming</div>
+			</div>
+		</div>
+		<div class="header-nav">
+			<button class="btn btn-secondary btn-sm" onclick="showView('channels')">CHANNELS</button>
+			<button class="btn btn-primary btn-sm" onclick="showView('newchannel')">+ NEW</button>
+		</div>
+	</div>
+
+	<!-- ============================================================ -->
+	<!-- VIEW: CHANNEL LIST                                            -->
+	<!-- ============================================================ -->
+	<div id="view-channels">
+		<div id="channel-list">
+			<!-- Populated by JS -->
+		</div>
+	</div>
+
+	<!-- ============================================================ -->
+	<!-- VIEW: NEW CHANNEL                                             -->
+	<!-- ============================================================ -->
+	<div id="view-newchannel" class="hidden">
+		<div class="card">
+			<div class="card-header">
+				<div class="card-title">OPEN NEW CHANNEL</div>
+			</div>
+			<div class="form-group">
+				<label class="form-label">Maxima Contact</label>
+				<select id="contact-select" class="form-select"></select>
+			</div>
+			<div class="form-group">
+				<label class="form-label">Token</label>
+				<select id="token-select" class="form-select"></select>
+			</div>
+			<div style="display:flex; gap:16px;">
+				<div class="form-group" style="flex:1;">
+					<label class="form-label">You Add</label>
+					<input id="you-add" type="number" class="form-input" value="10" min="0">
+				</div>
+				<div class="form-group" style="flex:1;">
+					<label class="form-label">They Add</label>
+					<input id="they-add" type="number" class="form-input" value="10" min="0">
+				</div>
+			</div>
+			<div class="text-center mt-24">
+				<button id="btn-request-channel" class="btn btn-primary btn-lg" onclick="requestChannel()">
+					REQUEST CHANNEL
+				</button>
+			</div>
+		</div>
+	</div>
+
+	<!-- ============================================================ -->
+	<!-- VIEW: GAME SESSION — The main play surface                    -->
+	<!-- ============================================================ -->
+	<div id="view-game" class="hidden">
+
+		<!-- Balance bar -->
+		<div class="balance-bar">
+			<div>
+				<div class="balance-label">Your Balance</div>
+				<div id="game-my-balance" class="balance-amount">0</div>
+			</div>
+			<div>
+				<div class="balance-label" style="text-align:center;">Channel</div>
+				<div id="game-channel-name" class="text-ghost" style="text-align:center; font-size:13px;"></div>
+			</div>
+			<div style="text-align:right;">
+				<div class="balance-label">Their Balance</div>
+				<div id="game-their-balance" class="balance-amount opponent">0</div>
+			</div>
+		</div>
+
+		<!-- Stats bar -->
+		<div class="stats-bar" id="game-stats">
+			<div class="stat-item">
+				<div class="stat-value wins" id="stat-wins">0</div>
+				<div class="stat-label">Wins</div>
+			</div>
+			<div class="stat-item">
+				<div class="stat-value losses" id="stat-losses">0</div>
+				<div class="stat-label">Losses</div>
+			</div>
+			<div class="stat-item">
+				<div class="stat-value" id="stat-profit">0</div>
+				<div class="stat-label">Net P&amp;L</div>
+			</div>
+			<div class="stat-item">
+				<div class="stat-value text-gold" id="stat-rounds">0</div>
+				<div class="stat-label">Rounds</div>
+			</div>
+		</div>
+
+		<!-- Round history pips -->
+		<div class="round-history" id="round-pips"></div>
+
+		<!-- Game area -->
+		<div class="game-area" id="game-area">
+
+			<!-- Game type selector -->
+			<div class="game-selector">
+				<button class="game-type-btn active" data-game="flip" onclick="selectGameType('flip')">COIN FLIP</button>
+				<button class="game-type-btn" data-game="dice" onclick="selectGameType('dice')">DICE</button>
+				<button class="game-type-btn" data-game="roulette" onclick="selectGameType('roulette')">ROULETTE</button>
+			</div>
+
+			<!-- Result display -->
+			<div class="result-display" id="result-display">
+				<div class="result-number waiting" id="result-number">?</div>
+				<div class="result-label waiting" id="result-label">PICK YOUR NUMBER</div>
+			</div>
+
+			<!-- Pick selector -->
+			<div id="pick-container">
+				<!-- Populated by selectGameType() -->
+			</div>
+
+			<!-- Bet input -->
+			<div class="bet-area">
+				<div>
+					<div class="bet-label">BET AMOUNT</div>
+					<input id="bet-amount" type="number" class="bet-input" placeholder="0" value="1" min="0.001" step="0.1">
+				</div>
+			</div>
+
+			<!-- Play button -->
+			<div class="text-center mt-24">
+				<button id="btn-play" class="btn btn-primary btn-lg" onclick="playRound()" disabled>
+					PLACE BET
+				</button>
+			</div>
+
+			<!-- Odds display -->
+			<div class="text-center mt-16">
+				<span class="text-ghost" id="odds-display">Select a game to see odds</span>
+			</div>
+		</div>
+
+		<!-- Game log -->
+		<div class="mt-24">
+			<div class="card-title mb-16">GAME LOG</div>
+			<div class="log-panel" id="game-log">
+				<div class="log-entry">
+					<span class="log-type system">SYSTEM</span>
+					<span class="log-msg">Channel opened. Ready to play.</span>
+				</div>
+			</div>
+		</div>
+
+		<!-- Channel controls -->
+		<div class="flex-between mt-24">
+			<button class="btn btn-secondary btn-sm" onclick="showView('channels')">BACK</button>
+			<button class="btn btn-danger btn-sm" onclick="closeChannelPrompt()">CLOSE CHANNEL</button>
+		</div>
+	</div>
+
+</div><!-- /app-container -->
+
+<!-- ============================================================ -->
+<!-- JAVASCRIPT — Application Logic                                -->
+<!-- ============================================================ -->
+<script type="text/javascript">
+
+/* ---- State ---- */
+var CURRENT_VIEW     = 'channels';
+var CURRENT_CHANNEL  = null;    // hashid of the active game channel
+var CURRENT_GAME     = 'flip';  // flip, dice, roulette
+var CURRENT_PICK     = -1;      // player's selected number
+var MAXIMA_CONTACTS  = [];
+var USER_BALANCE     = [];
+var GAME_WINS        = 0;
+var GAME_LOSSES      = 0;
+var GAME_PROFIT      = new Decimal(0);
+var GAME_ROUNDS      = 0;
+
+/* ---- View management ---- */
+function showView(view){
+	CURRENT_VIEW = view;
+	document.getElementById('view-channels').classList.add('hidden');
+	document.getElementById('view-newchannel').classList.add('hidden');
+	document.getElementById('view-game').classList.add('hidden');
+	document.getElementById('view-'+view).classList.remove('hidden');
+
+	if(view === 'channels') loadChannels();
+	if(view === 'newchannel') loadNewChannelForm();
+}
+
+/* ---- Channel list ---- */
+function loadChannels(){
+	sqlSelectAllOpenChannels(function(res){
+		var html = '';
+		if(res.rows.length === 0){
+			html = '<div class="welcome">'
+				+'<h2>Welcome to Thunder Casino</h2>'
+				+'<p>Open a channel with a Maxima contact to start playing.<br>'
+				+'Instant games, provably fair, Layer 2 speed.</p>'
+				+'<button class="btn btn-primary btn-lg" onclick="showView(\'newchannel\')">OPEN CHANNEL</button>'
+				+'</div>';
+		}else{
+			for(var i=0; i<res.rows.length; i++){
+				html += buildChannelRow(res.rows[i]);
+			}
+		}
+		document.getElementById('channel-list').innerHTML = html;
+	});
+}
+
+function buildChannelRow(ch){
+	var name = (ch.USERNUM === '1')
+		? decodeStringFromDB(ch.USER2NAME || 'Contact')
+		: decodeStringFromDB(ch.USER1NAME || 'Contact');
+	var myamt = (ch.USERNUM === '1') ? ch.USER1AMOUNT : ch.USER2AMOUNT;
+	var total = ch.TOTALAMOUNT;
+	var state = ch.STATE;
+	var canPlay = state.startsWith('STATE_CHANNEL_OPEN');
+
+	// Human-readable state label
+	var stateLabel = state.replace('STATE_','').replace(/_/g,' ');
+
+	// Counterparty Maxima ID for cancel/deny/accept messages
+	var otherMaximaId = (ch.USERNUM === '1') ? ch.USER2MAXIMAID : ch.USER1MAXIMAID;
+
+	var html = '<div class="channel-row'+(canPlay ? ' card-active' : '')+'">'
+		+'<div style="flex:1;">'
+		+'<div class="channel-name">'+name+'</div>'
+		+'<div class="channel-state">'+stateLabel+'</div>'
+		+'</div>'
+		+'<div style="text-align:right; margin-right:16px;">'
+		+'<div class="channel-balance">'+(myamt || '—')+'</div>'
+		+'<div class="channel-total">'+(total ? 'of '+total+' total' : '')+'</div>'
+		+'</div>'
+		+'<div class="channel-actions">';
+
+	// ---- Buttons depend on channel state ----
+
+	if(state === 'STATE_SENT_START_CHANNEL'){
+		// We sent a request, waiting for their response
+		html += '<button class="btn btn-danger btn-sm" onclick="cancelChannel(\''+ch.HASHID+'\',\''+otherMaximaId+'\')">CANCEL</button>';
+
+	}else if(state === 'STATE_REQUEST_START_CHANNEL'){
+		// We RECEIVED a request — show ACCEPT / DENY
+		html += '<button class="btn btn-danger btn-sm" onclick="denyChannel(\''+ch.HASHID+'\',\''+otherMaximaId+'\')">DENY</button> ';
+		html += '<button class="btn btn-success btn-sm" onclick="acceptChannel(\''+ch.HASHID+'\',\''+otherMaximaId+'\')">ACCEPT</button>';
+
+	}else if(state === 'STATE_REQUEST_ACCEPTED' || state === 'STATE_CHANNEL_CREATE_1' || state === 'STATE_CHANNEL_CREATE_2'){
+		// Channel creation in progress
+		html += '<span class="text-ghost" style="font-size:12px;">Setting up...</span>';
+
+	}else if(canPlay){
+		// Channel is open — can play games
+		html += '<button class="btn btn-primary btn-sm" onclick="enterGame(\''+ch.HASHID+'\')">PLAY</button>';
+
+	}else if(state === 'STATE_CHANNEL_START_CLOSE'){
+		// Channel is closing
+		html += '<span class="text-ghost" style="font-size:12px;">Closing...</span>';
+
+	}else if(state === 'STATE_REQUEST_DENIED' || state === 'STATE_REQUEST_CANCELLED'){
+		// Dead request
+		html += '<span class="text-pink" style="font-size:12px;">'+stateLabel+'</span>';
+	}
+
+	html += '</div></div>';
+	return html;
+}
+
+/* ---- Channel accept/deny/cancel actions ---- */
+
+function acceptChannel(hashid, maximaid){
+	// Get our user details for the accept message
+	var userdets = getUserDetails();
+
+	// Update user2 details on the channel (we are user2 — the receiver)
+	updateChannelUser2(hashid, userdets, function(sqlrow){
+
+		// Check we have enough balance
+		checkBalance(sqlrow.USER2AMOUNT, sqlrow.TOKENID, function(valid){
+			if(!valid){
+				alert('Insufficient funds to join this channel!');
+				return;
+			}
+
+			// Set our public key on the channel
+			updateMyPublicKey(hashid, userdets.publickey, function(){
+
+				// Send acceptance via Maxima
+				acceptStartChannel(maximaid, hashid, function(delivered){
+					if(delivered){
+						insertLog(hashid, 'YOU_ACCEPT_CHANNEL',
+							'Channel accepted for '+decodeStringFromDB(sqlrow.USER1NAME));
+
+						updateChannelState(hashid, 'STATE_REQUEST_ACCEPTED', function(){
+							loadChannels();
+						});
+					}else{
+						alert('Could not contact the other user.');
+					}
+				});
+			});
+		});
+	});
+}
+
+function denyChannel(hashid, maximaid){
+	denyStartChannel(maximaid, hashid, function(delivered){
+		insertLog(hashid, 'YOU_DENY_CHANNEL', 'Channel denied');
+		loadChannels();
+		if(!delivered){
+			alert('Channel denied but could not notify the other user.');
+		}
+	});
+}
+
+function cancelChannel(hashid, maximaid){
+	insertLog(hashid, 'YOU_CANCEL_REQUEST', 'Channel request cancelled');
+	cancelNewChannel(hashid, maximaid, function(delivered){
+		loadChannels();
+	});
+}
+
+/* ---- New channel form ---- */
+function loadNewChannelForm(){
+	MDS.cmd("maxcontacts", function(mc){
+		MAXIMA_CONTACTS = mc.response.contacts;
+		var sel = document.getElementById('contact-select');
+		sel.innerHTML = '';
+		for(var i=0; i<MAXIMA_CONTACTS.length; i++){
+			var opt = document.createElement('option');
+			opt.value = MAXIMA_CONTACTS[i].publickey;
+			opt.text = MAXIMA_CONTACTS[i].extradata.name;
+			sel.appendChild(opt);
+		}
+	});
+
+	MDS.cmd("balance", function(bal){
+		USER_BALANCE = bal.response;
+		var sel = document.getElementById('token-select');
+		sel.innerHTML = '';
+		for(var i=0; i<USER_BALANCE.length; i++){
+			var opt = document.createElement('option');
+			opt.value = USER_BALANCE[i].tokenid;
+			opt.text = (USER_BALANCE[i].tokenid === '0x00') ? 'Minima' : USER_BALANCE[i].token.name;
+			sel.appendChild(opt);
+		}
+	});
+}
+
+function requestChannel(){
+	var selIdx  = document.getElementById('contact-select').selectedIndex;
+	var pubkey  = MAXIMA_CONTACTS[selIdx].publickey;
+	var name    = MAXIMA_CONTACTS[selIdx].extradata.name;
+	var tokIdx  = document.getElementById('token-select').selectedIndex;
+	var tokDets = USER_BALANCE[tokIdx];
+	var tokName = (tokDets.tokenid === '0x00') ? 'Minima' : tokDets.token.name;
+	var youAdd  = document.getElementById('you-add').value;
+	var theyAdd = document.getElementById('they-add').value;
+
+	if(!confirm('Request channel with '+name+'?\n\nYou add: '+youAdd+' '+tokName+'\nThey add: '+theyAdd+' '+tokName)){
+		return;
+	}
+
+	if(tokDets.tokenid === '0x00'){
+		doRequestChannel(pubkey, youAdd, theyAdd, tokName, tokDets.tokenid, '');
+	}else{
+		MDS.cmd("tokens action:export tokenid:"+tokDets.tokenid, function(tok){
+			doRequestChannel(pubkey, youAdd, theyAdd, tokName, tokDets.tokenid, tok.response.data);
+		});
+	}
+}
+
+function doRequestChannel(pubkey, youAdd, theyAdd, tokName, tokId, tokData){
+	requestNewChannel(pubkey, youAdd, theyAdd, tokName, tokId, tokData, function(delivered, hashid){
+		if(!delivered){
+			alert('Could not contact user. Check Maxima connections.');
+			return;
+		}
+		insertLog(hashid, 'YOU_REQUEST_CHANNEL', 'Channel requested');
+		alert('Channel request sent! Waiting for acceptance.');
+		showView('channels');
+	});
+}
+
+/* ---- Enter game session ---- */
+function enterGame(hashid){
+	CURRENT_CHANNEL = hashid;
+	GAME_WINS = 0;
+	GAME_LOSSES = 0;
+	GAME_PROFIT = new Decimal(0);
+	GAME_ROUNDS = 0;
+
+	// Load channel data and populate the game view
+	sqlSelectChannel(hashid, function(sql){
+		var ch = sql.rows[0];
+		var myamt    = (ch.USERNUM === '1') ? ch.USER1AMOUNT : ch.USER2AMOUNT;
+		var theiramt = (ch.USERNUM === '1') ? ch.USER2AMOUNT : ch.USER1AMOUNT;
+		var name     = (ch.USERNUM === '1')
+			? decodeStringFromDB(ch.USER2NAME || 'Contact')
+			: decodeStringFromDB(ch.USER1NAME || 'Contact');
+
+		document.getElementById('game-my-balance').textContent = myamt;
+		document.getElementById('game-their-balance').textContent = theiramt;
+		document.getElementById('game-channel-name').textContent = name;
+
+		updateStats();
+		selectGameType('flip');
+		showView('game');
+		addGameLog('system', 'Session started with '+name+'. Channel balance: '+myamt+' / '+theiramt);
+	});
+}
+
+/* ---- Game type selection ---- */
+function selectGameType(gametype){
+	CURRENT_GAME = gametype;
+	CURRENT_PICK = -1;
+
+	// Update selector buttons
+	document.querySelectorAll('.game-type-btn').forEach(function(btn){
+		btn.classList.toggle('active', btn.dataset.game === gametype);
+	});
+
+	// Build pick grid
+	var game = GAME_TYPES[gametype];
+	var gridClass = 'pick-grid '+gametype;
+	var html = '<div class="'+gridClass+'">';
+
+	for(var i=0; i<game.range; i++){
+		var label = getPickLabel(gametype, i);
+		html += '<button class="pick-btn" data-pick="'+i+'" onclick="selectPick('+i+')">'+label+'</button>';
+	}
+	html += '</div>';
+	document.getElementById('pick-container').innerHTML = html;
+
+	// Update odds display
+	var odds = (game.payout - 1) + ':1';
+	document.getElementById('odds-display').textContent = game.name+' — '+game.range+' outcomes — '+odds+' payout';
+
+	// Reset result
+	document.getElementById('result-number').textContent = '?';
+	document.getElementById('result-number').className = 'result-number waiting';
+	document.getElementById('result-label').textContent = 'PICK YOUR NUMBER';
+	document.getElementById('result-label').className = 'result-label waiting';
+
+	updatePlayButton();
+}
+
+/* ---- Pick selection ---- */
+function selectPick(pick){
+	CURRENT_PICK = pick;
+
+	// Update visual selection
+	document.querySelectorAll('.pick-btn').forEach(function(btn){
+		btn.classList.toggle('selected', parseInt(btn.dataset.pick) === pick);
+	});
+
+	updatePlayButton();
+}
+
+function updatePlayButton(){
+	var btn = document.getElementById('btn-play');
+	var bet = parseFloat(document.getElementById('bet-amount').value);
+	btn.disabled = (CURRENT_PICK < 0 || isNaN(bet) || bet <= 0);
+}
+
+/* ---- Play a round ---- */
+function playRound(){
+	if(!CURRENT_CHANNEL || CURRENT_PICK < 0) return;
+
+	var betamt = document.getElementById('bet-amount').value;
+	var gametype = CURRENT_GAME;
+	var pick = CURRENT_PICK;
+	var game = GAME_TYPES[gametype];
+
+	// Validate bet amount
+	var bet = parseFloat(betamt);
+	if(isNaN(bet) || bet <= 0){
+		alert('Enter a valid bet amount');
+		return;
+	}
+
+	// Disable play button during round
+	document.getElementById('btn-play').disabled = true;
+	document.getElementById('btn-play').textContent = 'PLAYING...';
+
+	// Show waiting state
+	document.getElementById('result-number').textContent = '?';
+	document.getElementById('result-number').className = 'result-number waiting';
+	document.getElementById('result-label').textContent = 'FINDING HOUSE...';
+	document.getElementById('result-label').className = 'result-label waiting';
+
+	addGameLog('info', 'Placing '+game.name+' bet: '+betamt+' on '+getPickLabel(gametype, pick));
+
+	// Store our pick and bet so service.js can auto-commit when the house responds
+	MDS.keypair.set("casino_pending_"+CURRENT_CHANNEL, JSON.stringify({
+		gametype: gametype,
+		pick: pick,
+		betamt: betamt
+	}));
+
+	// Send GAME_REQUEST to the counterparty — they will auto-house it
+	sqlSelectChannel(CURRENT_CHANNEL, function(sql){
+		var ch = sql.rows[0];
+		var othermax = (ch.USERNUM == '1') ? ch.USER2MAXIMAID : ch.USER1MAXIMAID;
+
+		MDS.log("GAME_REQUEST: sending to "+othermax.substring(0,30)+".. hashid:"+CURRENT_CHANNEL+" game:"+gametype+" pick:"+pick+" bet:"+betamt);
+
+		var msg = gameRequestMessage(CURRENT_CHANNEL, gametype, pick, betamt);
+		MDS.log("GAME_REQUEST msg: "+JSON.stringify(msg));
+
+		sendMaximaMessage(othermax, msg, function(maxresp){
+			MDS.log("GAME_REQUEST maxresp: "+JSON.stringify(maxresp));
+
+			if(maxresp && maxresp.response && maxresp.response.delivered){
+				addGameLog('info', 'Request sent. Waiting for house...');
+				document.getElementById('result-label').textContent = 'WAITING FOR HOUSE...';
+			}else{
+				addGameLog('warn', 'Could not contact counterparty. Check Maxima.');
+				MDS.log("GAME_REQUEST DELIVERY FAILED: "+JSON.stringify(maxresp));
+				MDS.keypair.set("casino_pending_"+CURRENT_CHANNEL, "");
+				resetPlayButton();
+			}
+		});
+	});
+}
+
+/* ---- Display game result ---- */
+function showResult(winner, result, gametype, pick){
+	var game = GAME_TYPES[gametype];
+	var resultLabel = getPickLabel(gametype, result);
+	var pickLabel = getPickLabel(gametype, pick);
+	var isWin = (winner === 'player');
+
+	// Big number display
+	var numEl = document.getElementById('result-number');
+	numEl.textContent = resultLabel;
+	numEl.className = 'result-number ' + (isWin ? 'win' : 'lose');
+
+	// Label
+	var labelEl = document.getElementById('result-label');
+	if(isWin){
+		var betamt = parseFloat(document.getElementById('bet-amount').value);
+		var payout = betamt * (game.payout - 1);
+		labelEl.textContent = 'YOU WIN +' + payout.toFixed(2);
+		labelEl.className = 'result-label win';
+	}else{
+		labelEl.textContent = 'YOU LOSE';
+		labelEl.className = 'result-label lose';
+	}
+
+	// Highlight the correct pick in the grid
+	document.querySelectorAll('.pick-btn').forEach(function(btn){
+		var p = parseInt(btn.dataset.pick);
+		if(p === result && p === pick){
+			btn.classList.add('result-match');
+		}else if(p === result){
+			btn.classList.add('result-match');
+		}else if(p === pick){
+			btn.classList.add('result-miss');
+		}
+	});
+
+	// Update stats
+	if(isWin){
+		GAME_WINS++;
+		var betval = new Decimal(document.getElementById('bet-amount').value);
+		GAME_PROFIT = GAME_PROFIT.plus(betval.mul(game.payout - 1));
+	}else{
+		GAME_LOSSES++;
+		var betval = new Decimal(document.getElementById('bet-amount').value);
+		GAME_PROFIT = GAME_PROFIT.sub(betval);
+	}
+	GAME_ROUNDS++;
+	updateStats();
+
+	// Add round pip
+	addRoundPip(isWin, resultLabel);
+
+	// Log
+	addGameLog(isWin ? 'win' : 'loss',
+		game.name+': Result='+resultLabel+' Pick='+pickLabel+' — '+(isWin ? 'WIN' : 'LOSS'));
+
+	resetPlayButton();
+}
+
+/* ---- Stats ---- */
+function updateStats(){
+	document.getElementById('stat-wins').textContent = GAME_WINS;
+	document.getElementById('stat-losses').textContent = GAME_LOSSES;
+	document.getElementById('stat-rounds').textContent = GAME_ROUNDS;
+
+	var profitEl = document.getElementById('stat-profit');
+	var profitVal = GAME_PROFIT.toFixed(2);
+	profitEl.textContent = (GAME_PROFIT.greaterThanOrEqualTo(0) ? '+' : '') + profitVal;
+	profitEl.className = 'stat-value ' + (GAME_PROFIT.greaterThanOrEqualTo(0) ? 'profit-up' : 'profit-down');
+}
+
+function addRoundPip(isWin, label){
+	var pip = document.createElement('div');
+	pip.className = 'round-pip ' + (isWin ? 'win' : 'loss');
+	pip.textContent = label.substring(0, 2);
+	document.getElementById('round-pips').appendChild(pip);
+}
+
+/* ---- Game log ---- */
+function addGameLog(type, message){
+	var log = document.getElementById('game-log');
+	var time = new Date().toLocaleTimeString();
+	var entry = document.createElement('div');
+	entry.className = 'log-entry';
+	entry.innerHTML = '<span class="log-time">'+time+'</span>'
+		+'<span class="log-type '+type+'">'+type.toUpperCase()+'</span>'
+		+'<span class="log-msg">'+message+'</span>';
+	log.insertBefore(entry, log.firstChild);
+
+	// Cap at 50 entries
+	while(log.children.length > 50){
+		log.removeChild(log.lastChild);
+	}
+}
+
+function resetPlayButton(){
+	var btn = document.getElementById('btn-play');
+	btn.textContent = 'PLACE BET';
+	btn.disabled = false;
+}
+
+/* ---- Channel close ---- */
+function closeChannelPrompt(){
+	if(!confirm('Close this channel?\n\nCooperative close sends 1 transaction.\nFunds return to both parties.')){
+		return;
+	}
+
+	sqlSelectChannel(CURRENT_CHANNEL, function(sql){
+		var ch = sql.rows[0];
+		var othermax = (ch.USERNUM == '1') ? ch.USER2MAXIMAID : ch.USER1MAXIMAID;
+
+		MDS.cmd("coins address:"+ch.FUNDINGADDRESS, function(fcoins){
+			if(fcoins.response.length === 0){
+				alert('Funding coin not found. Wait for confirmation.');
+				return;
+			}
+			var coinage = fcoins.response[0].age;
+			if(+coinage < 3){
+				alert('Funding coin too young ('+coinage+' blocks). Wait a few more blocks.');
+				return;
+			}
+
+			spendFundingTxn(ch, function(spendtxn){
+				sendSpendFunding(CURRENT_CHANNEL, othermax, spendtxn, function(delivered){
+					if(delivered){
+						addGameLog('system', 'Cooperative close requested');
+						alert('Close request sent!');
+					}else{
+						alert('Could not contact counterparty. Try unilateral close.');
+					}
+				});
+			});
+		});
+	});
+}
+
+/* ---- Bet amount input listener ---- */
+document.getElementById('bet-amount').addEventListener('input', updatePlayButton);
+
+/* =========================================================================
+ * MDS INITIALIZATION
+ * ========================================================================= */
+
+MDS.init(function(msg){
+
+	if(msg.event === 'inited'){
+		// Create database and load identity
+		createDB(function(){
+			initAuthDetails(function(){
+				MDS.cmd("maxcontacts", function(mc){
+					MAXIMA_CONTACTS = mc.response.contacts;
+					loadChannels();
+				});
+			});
+		});
+
+	}else if(msg.event === 'MDSCOMMS'){
+		// Messages from service.js
+		if(!msg.data.public){
+			var comms = JSON.parse(msg.data.message);
+
+			if(comms.type === 'REFRESH_CHANNEL'){
+				if(CURRENT_VIEW === 'channels') loadChannels();
+				// Update game balances if we're in a game session
+				if(CURRENT_VIEW === 'game' && CURRENT_CHANNEL){
+					sqlSelectChannel(CURRENT_CHANNEL, function(sql){
+						if(sql.count > 0){
+							var ch = sql.rows[0];
+							var myamt    = (ch.USERNUM === '1') ? ch.USER1AMOUNT : ch.USER2AMOUNT;
+							var theiramt = (ch.USERNUM === '1') ? ch.USER2AMOUNT : ch.USER1AMOUNT;
+							document.getElementById('game-my-balance').textContent = myamt;
+							document.getElementById('game-their-balance').textContent = theiramt;
+						}
+					});
+				}
+
+			}else if(comms.type === 'GAME_EVENT' && comms.hashid === CURRENT_CHANNEL){
+
+				if(comms.event === 'GAME_OFFER'){
+					// We received a game offer — auto-accept for now
+					addGameLog('info', 'Game offer received: '+comms.data.gametype);
+
+				}else if(comms.event === 'BET_LOCKED'){
+					addGameLog('info', 'Bet locked! Waiting for reveal...');
+					document.getElementById('result-label').textContent = 'BET LOCKED...';
+
+				}else if(comms.event === 'GAME_RESOLVED'){
+					addGameLog('info', 'Game resolved! Winner: '+comms.data.winner);
+
+				}else if(comms.event === 'GAME_RESULT_VERIFIED'){
+					addGameLog('info', 'Result verified: '+comms.data.winner);
+
+				}else if(comms.event === 'GAME_COMPLETE'){
+					// Full round complete — show the result
+					var winner = comms.data.winner;
+					// Refresh channel data to get updated balances
+					sqlSelectChannel(CURRENT_CHANNEL, function(sql){
+						if(sql.count > 0){
+							var ch = sql.rows[0];
+							var myamt    = (ch.USERNUM === '1') ? ch.USER1AMOUNT : ch.USER2AMOUNT;
+							var theiramt = (ch.USERNUM === '1') ? ch.USER2AMOUNT : ch.USER1AMOUNT;
+							document.getElementById('game-my-balance').textContent = myamt;
+							document.getElementById('game-their-balance').textContent = theiramt;
+						}
+					});
+
+					// Determine if WE are the winner
+					var amIBettor = true; // In current flow, we initiated the bet
+					var isWin = (amIBettor && winner === 'player') || (!amIBettor && winner === 'house');
+
+					// TODO: get the actual result number from the game round data
+					// For now, show the winner
+					var numEl = document.getElementById('result-number');
+					numEl.textContent = isWin ? 'WIN' : 'LOSE';
+					numEl.className = 'result-number ' + (isWin ? 'win' : 'lose');
+
+					var labelEl = document.getElementById('result-label');
+					labelEl.textContent = isWin ? 'YOU WIN!' : 'YOU LOSE';
+					labelEl.className = 'result-label ' + (isWin ? 'win' : 'lose');
+
+					if(isWin){ GAME_WINS++; }else{ GAME_LOSSES++; }
+					GAME_ROUNDS++;
+					updateStats();
+					addRoundPip(isWin, isWin ? 'W' : 'L');
+					resetPlayButton();
+
+				}else if(comms.event === 'GAME_ABANDONED'){
+					addGameLog('warn', 'Game abandoned: '+comms.data.reason);
+					resetPlayButton();
+				}
+			}
+		}
+
+	}else if(msg.event === 'MAXIMA'){
+		// Handle Maxima messages in the frontend
+		if(msg.data.application === 'thunderpay'){
+			var datahex = msg.data.data;
+			convertHEXtoJSON(datahex, function(maxmsg){
+				MDS.log("INDEX.HTML MAXIMA ["+maxmsg.type+"] hashid:"+(maxmsg.hashid||"none"));
+
+				if(maxmsg.type === 'SYNACK_MESSAGE'){
+					synackMessageReceived(maxmsg);
+
+				}else if(maxmsg.type === 'GAME_REQUEST'){
+					// ---- AUTO-HOUSE: Someone wants to play against us ----
+					MDS.log("AUTO-HOUSE: Received GAME_REQUEST for "+maxmsg.gametype+" bet:"+maxmsg.betamt);
+					var requesterPubkey = msg.data.from;
+
+					sqlSelectChannel(maxmsg.hashid, function(sql){
+						if(sql.count == 0){
+							MDS.log("AUTO-HOUSE: Channel NOT FOUND: "+maxmsg.hashid);
+							return;
+						}
+						var sqlrow = sql.rows[0];
+						var game = GAME_TYPES[maxmsg.gametype];
+						if(!game){
+							MDS.log("AUTO-HOUSE: Unknown game: "+maxmsg.gametype);
+							return;
+						}
+
+						// Bettor is the sender (the other user)
+						var bettor = (sqlrow.USERNUM == '1') ? 2 : 1;
+						var validation = validateBet(sqlrow, maxmsg.betamt, game.range, maxmsg.pick, bettor);
+						if(!validation.valid){
+							MDS.log("AUTO-HOUSE: Bet invalid: "+validation.error);
+							sendMaximaMessage(requesterPubkey,
+								gameAbandonedMessage(maxmsg.hashid, "Bet invalid: "+validation.error));
+							return;
+						}
+
+						// Generate house secret and commit
+						MDS.log("AUTO-HOUSE: Generating house secret...");
+						houseStartRound(maxmsg.hashid, maxmsg.gametype, function(data){
+							if(!data){
+								MDS.log("AUTO-HOUSE: Secret generation failed");
+								return;
+							}
+
+							// Store house commit on channel
+							MDS.sql("UPDATE channels SET housecommit='"+data.commit+"' WHERE hashid='"+maxmsg.hashid+"'", function(){
+								MDS.log("AUTO-HOUSE: Sending GAME_OFFER with commit:"+data.commit.substring(0,16)+"..");
+
+								// Send GAME_OFFER back
+								sendMaximaMessage(requesterPubkey,
+									gameOfferMessage(maxmsg.hashid, data.commit, maxmsg.gametype, game.range));
+							});
+						});
+					});
+
+				}else if(maxmsg.type === 'GAME_OFFER'){
+					// ---- We requested a game, house sent us their commit ----
+					MDS.log("GOT GAME_OFFER: house commit:"+maxmsg.housecommit.substring(0,16)+"..");
+
+					// Retrieve pending game request
+					MDS.keypair.get("casino_pending_"+maxmsg.hashid, function(pendingres){
+						if(!pendingres.status || !pendingres.value){
+							MDS.log("No pending game for "+maxmsg.hashid);
+							return;
+						}
+						var pending = JSON.parse(pendingres.value);
+						MDS.log("AUTO-COMMIT: pick:"+pending.pick+" bet:"+pending.betamt+" game:"+pending.gametype);
+
+						// Accept the game round
+						acceptGameRound(maxmsg.hashid, maxmsg.housecommit,
+							pending.gametype, pending.pick, pending.betamt,
+							function(delivered){
+								MDS.log("AUTO-COMMIT result: delivered="+delivered);
+								if(delivered){
+									document.getElementById('result-label').textContent = 'BET COMMITTED...';
+								}
+								MDS.keypair.set("casino_pending_"+maxmsg.hashid, "");
+							});
+					});
+
+				}else if(maxmsg.type === 'GAME_REVEAL'){
+					// ---- House revealed secret, auto-resolve ----
+					MDS.log("GOT GAME_REVEAL: resolving...");
+					updateGameHouseRevealed(maxmsg.hashid, maxmsg.housesecret, function(){
+						resolveGameRound(maxmsg.hashid, maxmsg.housesecret, function(winner, delivered){
+							MDS.log("RESOLVED: winner="+winner+" delivered="+delivered);
+							if(winner){
+								document.getElementById('result-label').textContent = winner === 'player' ? 'YOU WIN!' : 'YOU LOSE';
+								document.getElementById('result-number').textContent = winner === 'player' ? 'WIN' : 'LOSE';
+								document.getElementById('result-number').className = 'result-number ' + (winner === 'player' ? 'win' : 'lose');
+								document.getElementById('result-label').className = 'result-label ' + (winner === 'player' ? 'win' : 'lose');
+								resetPlayButton();
+							}
+						});
+					});
+
+				}else if(maxmsg.type === 'GAME_ACCEPT'){
+					// ---- Player accepted our game (we're the house) ----
+					MDS.log("GOT GAME_ACCEPT: pick:"+maxmsg.pick+" bet:"+maxmsg.betamt);
+					sqlSelectChannel(maxmsg.hashid, function(sql){
+						if(sql.count == 0){ MDS.log("GAME_ACCEPT: no channel"); return; }
+						var sqlrow = sql.rows[0];
+						var bettor = (sqlrow.USERNUM == '1') ? 2 : 1;
+						signGameBet(maxmsg.hashid, maxmsg.playercommit,
+							sqlrow.HOUSECOMMIT, maxmsg.gametype, maxmsg.pick, maxmsg.betamt, bettor,
+							function(settletxn, updatetxn){
+								MDS.log("GAME_ACCEPT: pessimistic signed, sending to player");
+								sqlSelectChannel(maxmsg.hashid, function(sql2){
+									var newseq = sql2.rows[0].SEQUENCE;
+									sendMaximaMessage(msg.data.from,
+										gameBetSignedMessage(maxmsg.hashid, newseq, settletxn, updatetxn),
+										function(){
+											MDS.log("GAME_ACCEPT: auto-revealing...");
+											revealGameSecret(maxmsg.hashid, function(ok){
+												MDS.log("GAME_ACCEPT: reveal sent:"+ok);
+											});
+										});
+								});
+							});
+					});
+
+				}else if(maxmsg.type === 'GAME_BET_SIGNED'){
+					// ---- House sent signed pessimistic balance (we're the player) ----
+					MDS.log("GOT GAME_BET_SIGNED: co-signing...");
+					sqlSelectChannel(maxmsg.hashid, function(sql){
+						if(sql.count == 0){ return; }
+						var sqlrow = sql.rows[0];
+						signTxn(maxmsg.settletxn, sqlrow.USERPUBLICKEY, function(cs){
+							signTxn(maxmsg.updatetxn, sqlrow.USERPUBLICKEY, function(cu){
+								var ba = new Decimal(sqlrow.BETAMOUNT||'0');
+								var bt = parseInt(sqlrow.BETTOR||'0');
+								var u1 = new Decimal(sqlrow.PREBETAMT1||sqlrow.USER1AMOUNT);
+								var u2 = new Decimal(sqlrow.PREBETAMT2||sqlrow.USER2AMOUNT);
+								var n1 = (bt==1) ? u1.sub(ba).toString() : u1.plus(ba).toString();
+								var n2 = (bt==1) ? u2.plus(ba).toString() : u2.sub(ba).toString();
+								updateNewSequenceTxn(maxmsg.hashid, maxmsg.sequence, n1, n2, cs, cu, function(){
+									MDS.log("BET LOCKED! Waiting for reveal...");
+									if(CURRENT_VIEW==='game') document.getElementById('result-label').textContent='BET LOCKED...';
+								});
+							});
+						});
+					});
+
+				}else if(maxmsg.type === 'GAME_RESULT'){
+					// ---- Player sent outcome (we're the house) — verify and send resolved balance ----
+					MDS.log("GOT GAME_RESULT: winner="+maxmsg.winner);
+					sqlSelectChannel(maxmsg.hashid, function(sql){
+						if(sql.count==0){ return; }
+						var sqlrow = sql.rows[0];
+						MDS.cmd("hash data:"+maxmsg.playersecret, function(hr){
+							if(hr.response.hash !== sqlrow.PLAYERCOMMIT){
+								MDS.log("CHEAT: secret mismatch!"); return;
+							}
+							computeOutcome(sqlrow.HOUSESECRET, maxmsg.playersecret, parseInt(sqlrow.GAMERANGE), function(oc){
+								var w = (oc.result==parseInt(sqlrow.PLAYERPICK)) ? "player" : "house";
+								MDS.log("VERIFIED: "+w);
+								updateGameResult(maxmsg.hashid, maxmsg.playersecret, (w==="player")?"LOSS":"WIN", function(){
+									var nb = calculateGameBalance(sqlrow, w);
+									var ns = new Decimal(sqlrow.SEQUENCE).plus(1);
+									createSettlementTxn(sqlrow.HASHID, ns, sqlrow.ELTOOADDRESS, sqlrow.TOTALAMOUNT,
+										nb.user1amount, sqlrow.USER1ADDRESS, nb.user2amount, sqlrow.USER2ADDRESS,
+										sqlrow.TOKENID, null, function(st){
+											createUpdateTxn(ns, sqlrow.ELTOOADDRESS, sqlrow.TOTALAMOUNT, sqlrow.TOKENID, null, function(ut){
+												signTxn(st, sqlrow.USERPUBLICKEY, function(ss){
+													signTxn(ut, sqlrow.USERPUBLICKEY, function(su){
+														sendMaximaMessage(msg.data.from,
+															gameResultSignedMessage(maxmsg.hashid, ns.toString(), ss, su));
+														MDS.log("Resolved balance sent");
+													});
+												});
+											});
+										});
+								});
+							});
+						});
+					});
+
+				}else if(maxmsg.type === 'GAME_RESULT_SIGNED'){
+					// ---- Co-sign resolved balance and complete the round ----
+					MDS.log("GOT GAME_RESULT_SIGNED: completing...");
+					sqlSelectChannel(maxmsg.hashid, function(sql){
+						if(sql.count==0){ return; }
+						var sqlrow = sql.rows[0];
+						var amI = (sqlrow.USERNUM==parseInt(sqlrow.BETTOR));
+						var w = amI ? ((sqlrow.GAMERESULT==="WIN")?"player":"house") : ((sqlrow.GAMERESULT==="WIN")?"house":"player");
+						var nb = calculateGameBalance(sqlrow, w);
+						completeGameRound(maxmsg.hashid, maxmsg.sequence, maxmsg.settletxn, maxmsg.updatetxn,
+							w, nb.user1amount, nb.user2amount, function(){
+								MDS.log("ROUND COMPLETE! "+w);
+								var isWin = (amI && w==='player') || (!amI && w==='house');
+								if(CURRENT_VIEW==='game'){
+									document.getElementById('result-number').textContent = isWin?'WIN':'LOSE';
+									document.getElementById('result-number').className = 'result-number '+(isWin?'win':'lose');
+									document.getElementById('result-label').textContent = isWin?'YOU WIN!':'YOU LOSE';
+									document.getElementById('result-label').className = 'result-label '+(isWin?'win':'lose');
+									sqlSelectChannel(maxmsg.hashid, function(s3){
+										if(s3.count>0){
+											var ch=s3.rows[0];
+											var my=(ch.USERNUM==='1')?ch.USER1AMOUNT:ch.USER2AMOUNT;
+											var th=(ch.USERNUM==='1')?ch.USER2AMOUNT:ch.USER1AMOUNT;
+											document.getElementById('game-my-balance').textContent=my;
+											document.getElementById('game-their-balance').textContent=th;
+										}
+									});
+								}
+								resetPlayButton();
+							});
+					});
+
+				}else if(maxmsg.type === 'GAME_ABANDONED'){
+					MDS.log("GAME_ABANDONED: "+maxmsg.reason);
+					resetPlayButton();
+				}
+			});
+		}
+
+	}else if(msg.event === 'NEWBLOCK'){
+		// Check for old items and clean up
+		removeAllOldItems(function(somerem){
+			if(somerem && CURRENT_VIEW === 'channels') loadChannels();
+		});
+	}
+});
+
+</script>
+
+</body>
+</html>
