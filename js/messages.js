@@ -417,3 +417,97 @@ function gameAbandonedMessage(hashid, reason){
 	msg.reason   = reason;
 	return msg;
 }
+
+
+/* =========================================================================
+ * PROPS / WAGER MESSAGES
+ * =========================================================================
+ *
+ * PROP_OFFER     → Proposer sends a proposition + their stake + wanted stake
+ * PROP_ACCEPT    → Taker accepts the other side
+ * PROP_SIGNED    → Exchange signed pessimistic balance
+ * PROP_SETTLE    → One side submits their verdict (TRUE or FALSE)
+ * PROP_AGREED    → Both agree, exchange signed resolved balance
+ * PROP_CANCELLED → Proposer cancels before taker accepts
+ * ========================================================================= */
+
+/**
+ * PROP_OFFER — Propose a bet on a real-world event.
+ *
+ * @param hashid      — Channel identifier
+ * @param proposition — The proposition text ("England win the Euros")
+ * @param mystake     — How much the proposer is betting
+ * @param wantstake   — How much they want from the taker
+ * @param side        — "TRUE" or "FALSE" (what the proposer believes)
+ */
+function propOfferMessage(hashid, proposition, mystake, wantstake, side){
+	var msg         = {};
+	msg.type        = "PROP_OFFER";
+	msg.hashid      = hashid;
+	msg.proposition = proposition;
+	msg.mystake     = mystake;
+	msg.wantstake   = wantstake;
+	msg.side        = side;
+	return msg;
+}
+
+/**
+ * PROP_ACCEPT — Take the other side of a proposition.
+ */
+function propAcceptMessage(hashid){
+	var msg      = {};
+	msg.type     = "PROP_ACCEPT";
+	msg.hashid   = hashid;
+	return msg;
+}
+
+/**
+ * PROP_SIGNED — Exchange signed pessimistic balance for the prop.
+ */
+function propSignedMessage(hashid, sequence, settletxn, updatetxn){
+	var msg          = {};
+	msg.type         = "PROP_SIGNED";
+	msg.hashid       = hashid;
+	msg.sequence     = sequence;
+	msg.settletxn    = settletxn;
+	msg.updatetxn    = updatetxn;
+	return msg;
+}
+
+/**
+ * PROP_SETTLE — Submit your verdict on the outcome.
+ *
+ * @param hashid  — Channel identifier
+ * @param outcome — "TRUE" or "FALSE"
+ */
+function propSettleMessage(hashid, outcome){
+	var msg      = {};
+	msg.type     = "PROP_SETTLE";
+	msg.hashid   = hashid;
+	msg.outcome  = outcome;
+	return msg;
+}
+
+/**
+ * PROP_AGREED — Both agree on outcome. Exchange signed resolved balance.
+ */
+function propAgreedMessage(hashid, sequence, settletxn, updatetxn, outcome){
+	var msg          = {};
+	msg.type         = "PROP_AGREED";
+	msg.hashid       = hashid;
+	msg.sequence     = sequence;
+	msg.settletxn    = settletxn;
+	msg.updatetxn    = updatetxn;
+	msg.outcome      = outcome;
+	return msg;
+}
+
+/**
+ * PROP_CANCELLED — Proposer cancels before anyone accepts.
+ */
+function propCancelledMessage(hashid){
+	var msg      = {};
+	msg.type     = "PROP_CANCELLED";
+	msg.hashid   = hashid;
+	return msg;
+}

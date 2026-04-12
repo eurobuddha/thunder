@@ -658,3 +658,114 @@ function getLogs(hashid, callback){
 		if(callback){ callback(msg); }
 	});
 }
+
+
+/* =========================================================================
+ * PROPS TABLE + CRUD
+ * =========================================================================
+ * One row per proposition bet. Tracks the full lifecycle from offer
+ * through settlement.
+ * ========================================================================= */
+
+/**
+ * Create the props table. Called from createDB.
+ * NOTE: This needs to be added to the createDB chain.
+ * For now it's a separate function called on init.
+ */
+function createPropsTable(callback){
+	var sql = "CREATE TABLE IF NOT EXISTS `props` ( "
+		+"  `id` bigint auto_increment, "
+		+"  `hashid` varchar(256) NOT NULL, "          // Channel
+		+"  `proposition` varchar(1024) NOT NULL, "    // The bet text
+		+"  `proposer` int NOT NULL, "                 // Who proposed (1 or 2)
+		+"  `proposerside` varchar(16) NOT NULL, "     // TRUE or FALSE
+		+"  `mystake` varchar(256) NOT NULL, "         // Proposer's stake
+		+"  `wantstake` varchar(256) NOT NULL, "       // What they want from taker
+		+"  `propstate` varchar(64) NOT NULL, "        // offered, active, settling, agreed, disputed
+		+"  `proposeroutcome` varchar(16) default '', " // Proposer's verdict
+		+"  `takeroutcome` varchar(16) default '', "    // Taker's verdict
+		+"  `finaloutcome` varchar(16) default '', "    // Agreed outcome
+		+"  `date` bigint NOT NULL "
+		+" )";
+	MDS.sql(sql, function(msg){
+		if(callback){ callback(msg); }
+	});
+}
+
+/** Insert a new prop */
+function insertProp(hashid, proposition, proposer, side, mystake, wantstake, callback){
+	var sql = "INSERT INTO props(hashid, proposition, proposer, proposerside, mystake, wantstake, propstate, date) "
+		+"VALUES ('"+hashid+"','"+encodeStringForDB(proposition)+"',"+proposer+",'"+side+"','"
+		+mystake+"','"+wantstake+"','offered',"+getTimeMilli()+")";
+	MDS.sql(sql, function(msg){
+		if(callback){ callback(msg); }
+	});
+}
+
+/** Get the active prop for a channel */
+function selectActiveProp(hashid, callback){
+	MDS.sql("SELECT * FROM props WHERE hashid='"+hashid+"' AND propstate NOT IN ('agreed','disputed','expired','cancelled') ORDER BY id DESC LIMIT 1", function(msg){
+		if(callback){ callback(msg); }
+	});
+}
+
+/** Get all props for a channel (history) */
+function selectAllProps(hashid, callback){
+	MDS.sql("SELECT * FROM props WHERE hashid='"+hashid+"' ORDER BY date DESC", function(msg){
+		if(callback){ callback(msg); }
+	});
+}
+
+/** Update prop state */
+function updatePropState(hashid, propstate, callback){
+	MDS.sql("UPDATE props SET propstate='"+propstate+"' WHERE hashid='"+hashid+"' AND propstate NOT IN ('agreed','disputed','expired','cancelled')", function(msg){
+		if(callback){ callback(msg); }
+	});
+}
+
+/** Record one side's outcome vote */
+function updatePropOutcome(hashid, who, outcome, callback){
+	var col = (who === 'proposer') ? 'proposeroutcome' : 'takeroutcome';
+	MDS.sql("UPDATE props SET "+col+"='"+outcome+"', propstate='settling' WHERE hashid='"+hashid+"' AND propstate IN ('active','settling')", function(msg){
+		if(callback){ callback(msg); }
+	});
+}
+
+/** Record final agreed outcome */
+function updatePropAgreed(hashid, outcome, callback){
+	MDS.sql("UPDATE props SET finaloutcome='"+outcome+"', propstate='agreed' WHERE hashid='"+hashid+"'", function(msg){
+		if(callback){ callback(msg); }
+	});
+}
+
+/** Record dispute */
+function updatePropDisputed(hashid, callback){
+	MDS.sql("UPDATE props SET propstate='disputed' WHERE hashid='"+hashid+"'", function(msg){
+		if(callback){ callback(msg); }
+	});
+}
+
+/** Update channel with prop data (for MAST dispute) */
+function updateChannelPropActive(hashid, proposition, proposer, mystake, wantstake, side, callback){
+	var sql = "UPDATE channels SET "
+		+"gamephase=2,"                                    // 2 = prop active
+		+"gametype='prop',"
+		+"betamount='"+mystake+"',"
+		+"bettor="+proposer+","
+		+"prebetamt1=user1amount,"
+		+"prebetamt2=user2amount"
+		+" WHERE hashid='"+hashid+"'";
+	MDS.sql(sql, function(msg){
+		// Also store prop-specific data
+		MDS.sql("UPDATE channels SET "
+			+"playercommit='"+encodeStringForDB(proposition)+"',"
+			+"housecommit='"+wantstake+"',"                   // Reuse housecommit for wantstake
+			+"playerpick="+((side==='TRUE')?1:0)+","
+			+"gamerange=0"
+			+" WHERE hashid='"+hashid+"'", function(msg2){
+				sqlSelectChannel(hashid, function(sel){
+					if(callback){ callback(sel.rows[0]); }
+				});
+			});
+	});
+}
