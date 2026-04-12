@@ -42,7 +42,6 @@ MDS.load("./js/messages.js");
 MDS.load("./js/maxima.js");
 MDS.load("./js/mast-txns.js");
 MDS.load("./js/casino.js");
-MDS.load("./js/props.js");
 MDS.load("./js/channelfunction.js");
 
 

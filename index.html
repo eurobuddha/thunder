@@ -1940,25 +1940,18 @@ function acceptChannel(hashid, maximaid){
 			// Set our public key on the channel
 			updateMyPublicKey(hashid, userdets.publickey, function(){
 
-				// Set state BEFORE sending acceptance — prevents race condition
-				// where CHANNEL_CREATE_1 arrives before state is updated
-				updateChannelState(hashid, 'STATE_REQUEST_ACCEPTED', function(){
+				// Send acceptance via Maxima
+				acceptStartChannel(maximaid, hashid, function(delivered){
+					if(delivered){
+						insertLog(hashid, 'YOU_ACCEPT_CHANNEL',
+							'Channel accepted for '+decodeStringFromDB(sqlrow.USER1NAME));
 
-					insertLog(hashid, 'YOU_ACCEPT_CHANNEL',
-						'Channel accepted for '+decodeStringFromDB(sqlrow.USER1NAME));
-
-					// Now send acceptance via Maxima
-					acceptStartChannel(maximaid, hashid, function(delivered){
-						if(delivered){
+						updateChannelState(hashid, 'STATE_REQUEST_ACCEPTED', function(){
 							loadChannels();
-						}else{
-							// Revert state if we couldn't deliver
-							updateChannelState(hashid, 'STATE_REQUEST_START_CHANNEL', function(){
-								thunderAlert('Could not contact the other user.');
-								loadChannels();
-							});
-						}
-					});
+						});
+					}else{
+						thunderAlert('Could not contact the other user.');
+					}
 				});
 			});
 		});
@@ -2398,12 +2391,9 @@ function cleanupStaleChannels() {
 				MDS.cmd("coins address:" + ch.FUNDINGADDRESS, function(fcoins) {
 					if (fcoins.response.length === 0) {
 						MDS.log("STALE CHANNEL: " + ch.HASHID + " — funding gone, marking closed");
-						addNotice('warn', 'Stale channel closed: ' + (ch.USER2NAME || ch.USER1NAME || ch.HASHID.substring(0, 8)));
-						insertLog(ch.HASHID, 'STALE_CHANNEL', 'Funding coin missing — auto-closing');
-						// Actually close it so it disappears from the UI
-						updateChannelState(ch.HASHID, 'STATE_CHANNEL_CLOSED', function(){
-							loadChannels();
-						});
+						addNotice('warn', 'Stale channel detected: ' + (ch.USER2NAME || ch.USER1NAME || ch.HASHID.substring(0, 8)));
+						// Don't auto-close, just log it — user should handle
+						insertLog(ch.HASHID, 'STALE_CHANNEL', 'Funding coin missing — channel may need attention');
 					}
 				});
 			})(res.rows[i]);
@@ -3124,8 +3114,8 @@ MDS.init(function(msg){
  * ========================================================================= */
 
 var INCOMING_PROP = null;
-var PROP_SIDE = null;
 var PROP_CHANNEL = null;
+var PROP_SIDE = null;
 var PROP_MY_USERNUM = null;
 
 function loadPropsView(){
@@ -3172,12 +3162,9 @@ function onPropChannelSelect(){
 		PROP_CHANNEL = sel.value;
 		sqlSelectChannel(PROP_CHANNEL, function(sql){
 			if(sql.count > 0) PROP_MY_USERNUM = sql.rows[0].USERNUM;
-			updatePropButton(); // Must be inside callback — PROP_MY_USERNUM is async
 		});
-	}else{
-		PROP_CHANNEL = null;
-		updatePropButton();
 	}
+	updatePropButton();
 }
 
 function selectPropSide(side){
@@ -3226,14 +3213,16 @@ function proposeProp(){
 			return;
 		}
 
-		// Store in DB (createPropsTable already called on init)
-		insertProp(PROP_CHANNEL, text, proposer, PROP_SIDE, mystake, wantstake, function(){
-			updateChannelPropActive(PROP_CHANNEL, text, proposer, mystake, wantstake, PROP_SIDE, function(){
-				// Send to counterparty
-				var othermax = (sqlrow.USERNUM == '1') ? sqlrow.USER2MAXIMAID : sqlrow.USER1MAXIMAID;
-				sendMaximaMessage(othermax, propOfferMessage(PROP_CHANNEL, text, mystake, wantstake, PROP_SIDE));
-				addNotice('info', 'Prop sent: "'+text+'" — '+mystake+' on '+PROP_SIDE);
-				loadPropsView();
+		// Store in DB
+		createPropsTable(function(){
+			insertProp(PROP_CHANNEL, text, proposer, PROP_SIDE, mystake, wantstake, function(){
+				updateChannelPropActive(PROP_CHANNEL, text, proposer, mystake, wantstake, PROP_SIDE, function(){
+					// Send to counterparty
+					var othermax = (sqlrow.USERNUM == '1') ? sqlrow.USER2MAXIMAID : sqlrow.USER1MAXIMAID;
+					sendMaximaMessage(othermax, propOfferMessage(PROP_CHANNEL, text, mystake, wantstake, PROP_SIDE));
+					addNotice('info', 'Prop sent: "'+text+'" — '+mystake+' on '+PROP_SIDE);
+					loadPropsView();
+				});
 			});
 		});
 	});
@@ -3287,23 +3276,27 @@ function acceptProp(){
 	var hashid = INCOMING_PROP.hashid;
 	addNotice('info', 'Accepting prop...');
 
-	// Store in our DB (createPropsTable already called on init)
-	sqlSelectChannel(hashid, function(sql){
-		if(sql.count == 0) return;
-		var sqlrow = sql.rows[0];
-		var proposer = (sqlrow.USERNUM == '1') ? 2 : 1; // Proposer is the other user
-		insertProp(hashid, INCOMING_PROP.proposition, proposer, INCOMING_PROP.side,
-			INCOMING_PROP.mystake, INCOMING_PROP.wantstake, function(){
-				updatePropState(hashid, 'active');
-				updateChannelPropActive(hashid, INCOMING_PROP.proposition, proposer,
-					INCOMING_PROP.mystake, INCOMING_PROP.wantstake, INCOMING_PROP.side, function(){
-						sendMaximaMessage(INCOMING_PROP.from, propAcceptMessage(hashid));
-						INCOMING_PROP = null;
-						document.getElementById('prop-incoming').classList.add('hidden');
-						addNotice('info', 'Prop accepted! Waiting for balance signing...');
-						loadPropsView();
-					});
-			});
+	// Store in our DB
+	createPropsTable(function(){
+		sqlSelectChannel(hashid, function(sql){
+			if(sql.count == 0) return;
+			var sqlrow = sql.rows[0];
+			var proposer = (sqlrow.USERNUM == '1') ? 2 : 1; // Proposer is the other user
+			var takerSide = (INCOMING_PROP.side === 'TRUE') ? 'FALSE' : 'TRUE';
+			insertProp(hashid, INCOMING_PROP.proposition, proposer, INCOMING_PROP.side,
+				INCOMING_PROP.mystake, INCOMING_PROP.wantstake, function(){
+					updatePropState(hashid, 'active');
+					updateChannelPropActive(hashid, INCOMING_PROP.proposition, proposer,
+						INCOMING_PROP.mystake, INCOMING_PROP.wantstake, INCOMING_PROP.side, function(){
+							// Send acceptance
+							sendMaximaMessage(INCOMING_PROP.from, propAcceptMessage(hashid));
+							INCOMING_PROP = null;
+							document.getElementById('prop-incoming').classList.add('hidden');
+							addNotice('info', 'Prop accepted! Waiting for balance signing...');
+							loadPropsView();
+						});
+				});
+		});
 	});
 }
 
