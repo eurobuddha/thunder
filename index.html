@@ -2960,8 +2960,8 @@ MDS.init(function(msg){
 							var newseq = new Decimal(sqlrow.SEQUENCE).plus(1);
 							var u1 = new Decimal(sqlrow.USER1AMOUNT);
 							var u2 = new Decimal(sqlrow.USER2AMOUNT);
-							var n1 = (proposer==1) ? u1.sub(mystake).toString() : u1.toString();
-							var n2 = (proposer==2) ? u2.sub(mystake).toString() : u2.toString();
+							var n1 = (proposer==1) ? u1.sub(mystake).toString() : u1.plus(mystake).toString();
+							var n2 = (proposer==2) ? u2.sub(mystake).toString() : u2.plus(mystake).toString();
 							createSettlementTxn(sqlrow.HASHID, newseq, sqlrow.ELTOOADDRESS, sqlrow.TOTALAMOUNT,
 								n1, sqlrow.USER1ADDRESS, n2, sqlrow.USER2ADDRESS, sqlrow.TOKENID, null,
 								function(st){
@@ -3115,6 +3115,7 @@ MDS.init(function(msg){
 
 var INCOMING_PROP = null;
 var PROP_SIDE = null;
+var PROP_CHANNEL = null;
 var PROP_MY_USERNUM = null;
 
 function loadPropsView(){
@@ -3161,9 +3162,12 @@ function onPropChannelSelect(){
 		PROP_CHANNEL = sel.value;
 		sqlSelectChannel(PROP_CHANNEL, function(sql){
 			if(sql.count > 0) PROP_MY_USERNUM = sql.rows[0].USERNUM;
+			updatePropButton(); // Must be inside callback — PROP_MY_USERNUM is async
 		});
+	}else{
+		PROP_CHANNEL = null;
+		updatePropButton();
 	}
-	updatePropButton();
 }
 
 function selectPropSide(side){

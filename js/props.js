@@ -129,9 +129,9 @@ function validateProp(sqlrow, mystake, wantstake, proposition, proposer){
  */
 function calculatePropBalance(sqlrow, winner){
 
-	var mystake  = new Decimal(sqlrow.PROPSTAKE);
-	var wantstake = new Decimal(sqlrow.PROPWANT);
-	var proposer = parseInt(sqlrow.PROPOSER);
+	var mystake  = new Decimal(sqlrow.BETAMOUNT);    // stored via updateChannelPropActive
+	var wantstake = new Decimal(sqlrow.HOUSECOMMIT); // reused column for wantstake
+	var proposer = parseInt(sqlrow.BETTOR);           // reused column for proposer
 	var pre1     = new Decimal(sqlrow.PREBETAMT1);
 	var pre2     = new Decimal(sqlrow.PREBETAMT2);
 
