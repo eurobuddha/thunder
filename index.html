@@ -1940,18 +1940,25 @@ function acceptChannel(hashid, maximaid){
 			// Set our public key on the channel
 			updateMyPublicKey(hashid, userdets.publickey, function(){
 
-				// Send acceptance via Maxima
-				acceptStartChannel(maximaid, hashid, function(delivered){
-					if(delivered){
-						insertLog(hashid, 'YOU_ACCEPT_CHANNEL',
-							'Channel accepted for '+decodeStringFromDB(sqlrow.USER1NAME));
+				// Set state BEFORE sending acceptance — prevents race condition
+				// where CHANNEL_CREATE_1 arrives before state is updated
+				updateChannelState(hashid, 'STATE_REQUEST_ACCEPTED', function(){
 
-						updateChannelState(hashid, 'STATE_REQUEST_ACCEPTED', function(){
+					insertLog(hashid, 'YOU_ACCEPT_CHANNEL',
+						'Channel accepted for '+decodeStringFromDB(sqlrow.USER1NAME));
+
+					// Now send acceptance via Maxima
+					acceptStartChannel(maximaid, hashid, function(delivered){
+						if(delivered){
 							loadChannels();
-						});
-					}else{
-						thunderAlert('Could not contact the other user.');
-					}
+						}else{
+							// Revert state if we couldn't deliver
+							updateChannelState(hashid, 'STATE_REQUEST_START_CHANNEL', function(){
+								thunderAlert('Could not contact the other user.');
+								loadChannels();
+							});
+						}
+					});
 				});
 			});
 		});
