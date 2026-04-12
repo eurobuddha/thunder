@@ -2996,8 +2996,8 @@ MDS.init(function(msg){
 									var mystake = new Decimal(prop.MYSTAKE);
 									var u1 = new Decimal(sqlrow.USER1AMOUNT);
 									var u2 = new Decimal(sqlrow.USER2AMOUNT);
-									var n1 = (proposer==1) ? u1.sub(mystake).toString() : u1.plus(mystake).toString();
-									var n2 = (proposer==2) ? u2.sub(mystake).toString() : u2.plus(mystake).toString();
+									var n1 = (proposer==1) ? u1.sub(mystake).toString() : u1.toString();
+									var n2 = (proposer==2) ? u2.sub(mystake).toString() : u2.toString();
 									updateNewSequenceTxn(maxmsg.hashid, maxmsg.sequence, n1, n2, cs, cu, function(){
 										updatePropState(maxmsg.hashid, 'active');
 										addNotice('info', 'Prop ACTIVE! Bet is locked.');
@@ -3114,8 +3114,8 @@ MDS.init(function(msg){
  * ========================================================================= */
 
 var INCOMING_PROP = null;
-var PROP_CHANNEL = null;
 var PROP_SIDE = null;
+var PROP_CHANNEL = null;
 var PROP_MY_USERNUM = null;
 
 function loadPropsView(){
@@ -3162,9 +3162,12 @@ function onPropChannelSelect(){
 		PROP_CHANNEL = sel.value;
 		sqlSelectChannel(PROP_CHANNEL, function(sql){
 			if(sql.count > 0) PROP_MY_USERNUM = sql.rows[0].USERNUM;
+			updatePropButton(); // Must be inside callback — PROP_MY_USERNUM is async
 		});
+	}else{
+		PROP_CHANNEL = null;
+		updatePropButton();
 	}
-	updatePropButton();
 }
 
 function selectPropSide(side){
