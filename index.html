@@ -1701,12 +1701,7 @@ function setGamePhase(phase, data){
 			ANIM.floatAmount('+' + payout.toFixed(2), true);
 			ANIM.flashBalance(true);
 
-			// Update stats
-			GAME_WINS++;
-			GAME_PROFIT = GAME_PROFIT.plus(new Decimal(betval).mul(game.payout - 1));
-			GAME_ROUNDS++;
-			updateStats();
-			addRoundPip(true, resultLabel);
+			// Stats updated in GAME_RESULT_SIGNED handler only (prevents double-counting)
 			addGameLog('win', game.name+': Result='+resultLabel+' Pick='+getPickLabel(gametype, PHASE_PICK)+' -- WIN +'+payout.toFixed(2));
 			addNotice('win', 'WIN! +' + payout.toFixed(2) + ' on ' + game.name);
 
@@ -1737,12 +1732,7 @@ function setGamePhase(phase, data){
 			ANIM.floatAmount('-' + parseFloat(betval).toFixed(2), false);
 			ANIM.flashBalance(false);
 
-			// Update stats
-			GAME_LOSSES++;
-			GAME_PROFIT = GAME_PROFIT.sub(new Decimal(betval));
-			GAME_ROUNDS++;
-			updateStats();
-			addRoundPip(false, resultLabel);
+			// Stats updated in GAME_RESULT_SIGNED handler only (prevents double-counting)
 			addGameLog('loss', game.name+': Result='+resultLabel+' Pick='+getPickLabel(gametype, PHASE_PICK)+' -- LOSS');
 			addNotice('loss', 'LOSS -' + parseFloat(betval).toFixed(2) + ' on ' + game.name);
 
@@ -2497,22 +2487,8 @@ MDS.init(function(msg){
 						labelEl.textContent = isWin ? 'YOU WIN!' : 'YOU LOSE';
 						labelEl.className = 'result-label ' + (isWin ? 'win' : 'lose');
 
-						if(isWin){
-							SFX.win_fanfare();
-							ANIM.screenFlash('win');
-							ANIM.confetti(35);
-							ANIM.flashBalance(true);
-							GAME_WINS++;
-						} else {
-							SFX.lose_wah();
-							ANIM.screenFlash('lose');
-							ANIM.flashBalance(false);
-							GAME_LOSSES++;
-						}
-						GAME_ROUNDS++;
-						updateStats();
-						addRoundPip(isWin, isWin ? 'W' : 'L');
-						addNotice(isWin ? 'win' : 'loss', (isWin ? 'WIN' : 'LOSS') + ' (fallback)');
+						// Stats updated in GAME_RESULT_SIGNED handler only
+						addNotice(isWin ? 'win' : 'loss', (isWin ? 'WIN' : 'LOSS') + ' (complete)');
 						resetPlayButton();
 						GAME_BUSY = false;
 						GAME_PHASE = 'IDLE';
@@ -2665,10 +2641,10 @@ MDS.init(function(msg){
 											labelEl.textContent = 'YOU WIN!';
 											labelEl.className = 'result-label win';
 											ANIM.flashBalance(true);
-											GAME_WINS++;
+											// GAME_WINS++; // stats in GAME_RESULT_SIGNED only
 											var bv = new Decimal(PHASE_BETAMT || document.getElementById('bet-amount').value);
 											var gm = GAME_TYPES[gametype];
-											GAME_PROFIT = GAME_PROFIT.plus(bv.mul(gm.payout - 1));
+											// GAME_PROFIT = GAME_PROFIT.plus(bv.mul(gm.payout - 1));
 											ANIM.floatAmount('+' + bv.mul(gm.payout - 1).toFixed(2), true);
 										} else {
 											SFX.lose_wah();
@@ -2679,14 +2655,14 @@ MDS.init(function(msg){
 											labelEl.textContent = 'YOU LOSE';
 											labelEl.className = 'result-label lose';
 											ANIM.flashBalance(false);
-											GAME_LOSSES++;
+											// GAME_LOSSES++; // stats in GAME_RESULT_SIGNED only
 											var bv = new Decimal(PHASE_BETAMT || document.getElementById('bet-amount').value);
-											GAME_PROFIT = GAME_PROFIT.sub(bv);
+											// GAME_PROFIT = GAME_PROFIT.sub(bv);
 											ANIM.floatAmount('-' + bv.toFixed(2), false);
 										}
-										GAME_ROUNDS++;
-										updateStats();
-										addRoundPip(isWin, isWin ? 'W' : 'L');
+										// GAME_ROUNDS++; // stats in GAME_RESULT_SIGNED only
+										// updateStats(); // stats in GAME_RESULT_SIGNED only
+										// addRoundPip(isWin, isWin ? 'W' : 'L');
 										addGameLog(isWin ? 'win' : 'loss', 'Round result: ' + (isWin ? 'WIN' : 'LOSS'));
 										addNotice(isWin ? 'win' : 'loss', (isWin ? 'WIN' : 'LOSS') + ' (reveal fallback)');
 
@@ -2902,7 +2878,17 @@ MDS.init(function(msg){
 										ANIM.floatAmount('-LOSE', false);
 									}
 
-									if(isWin){ GAME_WINS++; }else{ GAME_LOSSES++; }
+									// THE ONE AND ONLY place stats are updated (prevents double-counting)
+									if(isWin){
+										GAME_WINS++;
+										var bval = new Decimal(PHASE_BETAMT || '0');
+										var gtype = GAME_TYPES[PHASE_GAMETYPE || CURRENT_GAME];
+										if(gtype) GAME_PROFIT = GAME_PROFIT.plus(bval.mul(gtype.payout - 1));
+									}else{
+										GAME_LOSSES++;
+										var bval = new Decimal(PHASE_BETAMT || '0');
+										GAME_PROFIT = GAME_PROFIT.sub(bval);
+									}
 									GAME_ROUNDS++;
 									updateStats();
 									addRoundPip(isWin, isWin ? 'W' : 'L');
@@ -2996,8 +2982,8 @@ MDS.init(function(msg){
 									var mystake = new Decimal(prop.MYSTAKE);
 									var u1 = new Decimal(sqlrow.USER1AMOUNT);
 									var u2 = new Decimal(sqlrow.USER2AMOUNT);
-									var n1 = (proposer==1) ? u1.sub(mystake).toString() : u1.toString();
-									var n2 = (proposer==2) ? u2.sub(mystake).toString() : u2.toString();
+									var n1 = (proposer==1) ? u1.sub(mystake).toString() : u1.plus(mystake).toString();
+									var n2 = (proposer==2) ? u2.sub(mystake).toString() : u2.plus(mystake).toString();
 									updateNewSequenceTxn(maxmsg.hashid, maxmsg.sequence, n1, n2, cs, cu, function(){
 										updatePropState(maxmsg.hashid, 'active');
 										addNotice('info', 'Prop ACTIVE! Bet is locked.');
@@ -3114,8 +3100,8 @@ MDS.init(function(msg){
  * ========================================================================= */
 
 var INCOMING_PROP = null;
-var PROP_SIDE = null;
 var PROP_CHANNEL = null;
+var PROP_SIDE = null;
 var PROP_MY_USERNUM = null;
 
 function loadPropsView(){
@@ -3162,12 +3148,9 @@ function onPropChannelSelect(){
 		PROP_CHANNEL = sel.value;
 		sqlSelectChannel(PROP_CHANNEL, function(sql){
 			if(sql.count > 0) PROP_MY_USERNUM = sql.rows[0].USERNUM;
-			updatePropButton(); // Must be inside callback — PROP_MY_USERNUM is async
 		});
-	}else{
-		PROP_CHANNEL = null;
-		updatePropButton();
 	}
+	updatePropButton();
 }
 
 function selectPropSide(side){
