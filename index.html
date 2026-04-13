@@ -1010,8 +1010,15 @@ function addNotice(type, message){
 	var time = new Date().toLocaleTimeString();
 	var entry = document.createElement('div');
 	entry.className = 'notice-entry';
-	entry.innerHTML = '<span class="notice-time">' + time + '</span>'
-		+ '<span class="notice-msg notice-' + type + '">' + message + '</span>';
+	// Use textContent to prevent XSS from user-supplied content (contact names, propositions)
+	var timeSpan = document.createElement('span');
+	timeSpan.className = 'notice-time';
+	timeSpan.textContent = time;
+	var msgSpan = document.createElement('span');
+	msgSpan.className = 'notice-msg notice-' + type;
+	msgSpan.textContent = message;
+	entry.appendChild(timeSpan);
+	entry.appendChild(msgSpan);
 	container.insertBefore(entry, container.firstChild);
 
 	while(container.children.length > 30){
@@ -1550,6 +1557,8 @@ function abortAndReset(){
 	GAME_BUSY = false;
 	if(CURRENT_CHANNEL){
 		MDS.keypair.set("casino_pending_" + CURRENT_CHANNEL, "");
+		// FIX: Clear DB gamephase so channel isn't stuck at gamephase=1
+		updateGameCleared(CURRENT_CHANNEL, function(){});
 	}
 	setGamePhase('IDLE');
 }
@@ -1660,11 +1669,7 @@ function setGamePhase(phase, data){
 			ANIM.flashBalance(true);
 
 			// Game log added by onGameResult — not here (prevents duplicates)
-
-			setTimeout(function(){
-				SFX.ready_chime();
-				setGamePhase('IDLE');
-			}, 2000);
+			// Reset handled by onGameResult — not here (prevents double chime)
 			break;
 
 		case 'LOSE':
@@ -1688,11 +1693,7 @@ function setGamePhase(phase, data){
 
 			var game = GAME_TYPES[gametype];
 			// Game log added by onGameResult — not here (prevents duplicates)
-
-			setTimeout(function(){
-				SFX.ready_chime();
-				setGamePhase('IDLE');
-			}, 1000);
+			// Reset handled by onGameResult — not here (prevents double chime)
 			break;
 	}
 }
@@ -2288,7 +2289,7 @@ function onGameResult(data){
 
 	// 5. Reset after delay
 	GAME_BUSY = false;
-	setTimeout(function(){ setGamePhase('IDLE'); }, isWin ? 2000 : 1000);
+	setTimeout(function(){ SFX.ready_chime(); setGamePhase('IDLE'); }, isWin ? 2000 : 1000);
 }
 
 

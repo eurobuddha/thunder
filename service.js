@@ -565,14 +565,24 @@ MDS.init(function(msg){
 			}else if(maxmsg.type == "GAME_REQUEST"){
 				/* ---- STEP 0: Someone wants to play against us (we're the house) ----
 				 * Auto-house: validate bet, generate secret, commit, send GAME_OFFER
+				 * GUARD: reject if a game is already active on this channel
 				 */
-				insertLog(maxmsg.hashid, "GAME_REQUEST_RECEIVED",
-					"Game request: "+maxmsg.gametype+" bet:"+maxmsg.betamt
-					+" pick:"+maxmsg.pick);
-
 				sqlSelectChannel(maxmsg.hashid, function(sql){
 					if(sql.count == 0){ return; }
 					var sqlrow = sql.rows[0];
+
+					// GAMEPHASE GUARD — reject if game/prop already active
+					if(parseInt(sqlrow.GAMEPHASE) != 0){
+						MDS.log("GAME_REQUEST rejected — game already active (phase="+sqlrow.GAMEPHASE+")");
+						sendMaximaMessage(maximapubkey,
+							gameAbandonedMessage(maxmsg.hashid, "Game already in progress"));
+						notify({type:"GAME_ABANDONED", hashid:maxmsg.hashid, reason:"Game already active"});
+						return;
+					}
+
+					insertLog(maxmsg.hashid, "GAME_REQUEST_RECEIVED",
+						"Game request: "+maxmsg.gametype+" bet:"+maxmsg.betamt
+						+" pick:"+maxmsg.pick);
 
 					// Validate the game type
 					var game = GAME_TYPES[maxmsg.gametype];
@@ -632,12 +642,13 @@ MDS.init(function(msg){
 			}else if(maxmsg.type == "GAME_OFFER"){
 				/* ---- STEP 1: We requested a game, house sent us their commit ----
 				 * Auto-commit: retrieve pending game data, generate our secret, send GAME_ACCEPT
+				 * GUARD: only process if we have a pending game request
 				 */
 				insertLog(maxmsg.hashid, "GAME_OFFER_RECEIVED",
 					"House commit received: "+maxmsg.housecommit.substring(0,16)+".."
 					+" for "+maxmsg.gametype);
 
-				// Retrieve our stored pick and bet from the pending game request
+				// Retrieve our stored pick and bet — if missing, ignore (no pending game)
 				MDS.keypair.get("casino_pending_"+maxmsg.hashid, function(pendingres){
 					if(!pendingres.status || !pendingres.value){
 						MDS.log("No pending game request found for "+maxmsg.hashid);
@@ -679,14 +690,21 @@ MDS.init(function(msg){
 				/* ---- STEP 2: Player accepted our game offer (we're the house) ----
 				 * Validate bet, sign pessimistic balance, send GAME_BET_SIGNED,
 				 * then auto-reveal our secret.
+				 * GUARD: only process once per game (check housecommit exists)
 				 */
-				insertLog(maxmsg.hashid, "GAME_ACCEPT_RECEIVED",
-					"Player accepted! Pick:"+maxmsg.pick+" Bet:"+maxmsg.betamt
-					+" Commit:"+maxmsg.playercommit.substring(0,16)+"..");
-
 				sqlSelectChannel(maxmsg.hashid, function(sql){
 					if(sql.count == 0){ return; }
 					var sqlrow = sql.rows[0];
+
+					// Guard: must have a housecommit (set during GAME_REQUEST handling)
+					if(!sqlrow.HOUSECOMMIT || sqlrow.HOUSECOMMIT.length < 4){
+						MDS.log("GAME_ACCEPT ignored — no active house commitment");
+						return;
+					}
+
+					insertLog(maxmsg.hashid, "GAME_ACCEPT_RECEIVED",
+						"Player accepted! Pick:"+maxmsg.pick+" Bet:"+maxmsg.betamt
+						+" Commit:"+maxmsg.playercommit.substring(0,16)+"..");
 
 					var game = GAME_TYPES[maxmsg.gametype];
 					if(!game){
@@ -716,13 +734,27 @@ MDS.init(function(msg){
 						sqlrow.HOUSECOMMIT, maxmsg.gametype, maxmsg.pick, maxmsg.betamt, bettor,
 						function(settletxn, updatetxn){
 
-							// Get the new sequence
+							// FIX: signGameBet built txns at SEQUENCE+1 but didn't update DB.
+							// Read current sequence, compute the new one, and store the bet-phase
+							// txns in the DB so unilateral close during bet phase works correctly.
 							sqlSelectChannel(maxmsg.hashid, function(sql2){
-								var newseq = sql2.rows[0].SEQUENCE;
+								var oldseq = parseInt(sql2.rows[0].SEQUENCE);
+								var newseq = oldseq + 1;
 
-								// Send the signed pessimistic balance to the player
-								sendMaximaMessage(maximapubkey,
-									gameBetSignedMessage(maxmsg.hashid, newseq, settletxn, updatetxn),
+								// Compute pessimistic balances (same as newGameBetTxn)
+								var ba = new Decimal(maxmsg.betamt);
+								var pu1 = new Decimal(sql2.rows[0].USER1AMOUNT);
+								var pu2 = new Decimal(sql2.rows[0].USER2AMOUNT);
+								var nu1 = (bettor==1) ? pu1.sub(ba) : pu1.plus(ba);
+								var nu2 = (bettor==2) ? pu2.sub(ba) : pu2.plus(ba);
+
+								// Store the bet-phase txns with correct sequence
+								updateNewSequenceTxn(maxmsg.hashid, newseq,
+									nu1.toString(), nu2.toString(), settletxn, updatetxn, function(){
+
+									// Send the signed pessimistic balance to the player
+									sendMaximaMessage(maximapubkey,
+										gameBetSignedMessage(maxmsg.hashid, newseq, settletxn, updatetxn),
 									function(){
 										insertLog(maxmsg.hashid, "GAME_BET_SENT",
 											"Pessimistic balance signed and sent to player");
@@ -740,6 +772,7 @@ MDS.init(function(msg){
 											}
 										});
 									});
+								}); // close updateNewSequenceTxn
 							});
 						});
 				});
@@ -789,7 +822,19 @@ MDS.init(function(msg){
 				/* ---- STEP 4: House revealed their secret (we're the player) ----
 				 * Store the secret, auto-resolve the round, send GAME_RESULT + GAME_RESULT_SIGNED.
 				 * DO NOT notify yet — wait for counterparty's co-signed GAME_RESULT_SIGNED.
+				 * GUARD: only process if we have an active game with a player commit
 				 */
+				sqlSelectChannel(maxmsg.hashid, function(sqlcheck){
+					if(sqlcheck.count == 0){ return; }
+					if(!sqlcheck.rows[0].PLAYERCOMMIT || sqlcheck.rows[0].PLAYERCOMMIT.length < 4){
+						MDS.log("GAME_REVEAL ignored — no active player commitment");
+						return;
+					}
+					if(sqlcheck.rows[0].HOUSESECRET && sqlcheck.rows[0].HOUSESECRET.length > 4){
+						MDS.log("GAME_REVEAL ignored — already have house secret (duplicate)");
+						return;
+					}
+
 				insertLog(maxmsg.hashid, "GAME_REVEAL_RECEIVED",
 					"House secret received! Computing outcome...");
 
@@ -811,6 +856,7 @@ MDS.init(function(msg){
 						}
 					});
 				});
+				}); // close sqlSelectChannel guard for GAME_REVEAL
 
 			}else if(maxmsg.type == "GAME_RESULT"){
 				/* ---- STEP 5: Player sent us the outcome and their secret (we're the house) ----
@@ -940,19 +986,27 @@ MDS.init(function(msg){
 								isMyWin = (winner === "house");
 							}
 
-							// THE ONE NOTIFICATION — contains the definitive result
-							notify({
-								type:        "GAME_RESULT",
-								hashid:      maxmsg.hashid,
-								gametype:    sqlrow.GAMETYPE,
-								winner:      winner,
-								result:      sqlrow.GAMERESULT,
-								pick:        parseInt(sqlrow.PLAYERPICK),
-								betamt:      sqlrow.BETAMOUNT,
-								user1amount: newbalance.user1amount,
-								user2amount: newbalance.user2amount,
-								sequence:    maxmsg.sequence,
-								isMyWin:     isMyWin
+							// Get the numeric result from the gamerounds table
+							MDS.sql("SELECT result FROM gamerounds WHERE hashid='"+maxmsg.hashid+"' ORDER BY id DESC LIMIT 1", function(grres){
+								var numericResult = -1;
+								if(grres.count > 0 && grres.rows[0].RESULT !== null){
+									numericResult = parseInt(grres.rows[0].RESULT);
+								}
+
+								// THE ONE NOTIFICATION — contains the definitive result
+								notify({
+									type:        "GAME_RESULT",
+									hashid:      maxmsg.hashid,
+									gametype:    sqlrow.GAMETYPE,
+									winner:      winner,
+									result:      numericResult,  // numeric (0-35), not "WIN"/"LOSS"
+									pick:        parseInt(sqlrow.PLAYERPICK),
+									betamt:      sqlrow.BETAMOUNT,
+									user1amount: newbalance.user1amount,
+									user2amount: newbalance.user2amount,
+									sequence:    maxmsg.sequence,
+									isMyWin:     isMyWin
+								});
 							});
 						});
 				});
@@ -1096,8 +1150,12 @@ MDS.init(function(msg){
 								var prop = propres.rows[0];
 								var proposer = parseInt(prop.PROPOSER);
 								var mystake = new Decimal(prop.MYSTAKE);
-								var u1 = new Decimal(sqlrow.PREBETAMT1 || sqlrow.USER1AMOUNT);
-								var u2 = new Decimal(sqlrow.PREBETAMT2 || sqlrow.USER2AMOUNT);
+								// FIX: Use gamephase to determine which amounts to use
+								// When prop is active (gamephase=2), PREBETAMT has the pre-bet amounts
+								// When idle (gamephase=0), use current USER amounts
+								var isPropActive = (parseInt(sqlrow.GAMEPHASE) == 2);
+								var u1 = new Decimal(isPropActive ? sqlrow.PREBETAMT1 : sqlrow.USER1AMOUNT);
+								var u2 = new Decimal(isPropActive ? sqlrow.PREBETAMT2 : sqlrow.USER2AMOUNT);
 								var newu1, newu2;
 								if(proposer == 1){
 									newu1 = u1.sub(mystake).toString();
