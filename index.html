@@ -1659,7 +1659,7 @@ function setGamePhase(phase, data){
 			ANIM.floatAmount('+' + payout.toFixed(2), true);
 			ANIM.flashBalance(true);
 
-			addGameLog('win', game.name+': Result='+resultLabel+' Pick='+getPickLabel(gametype, PHASE_PICK)+' -- WIN +'+payout.toFixed(2));
+			// Game log added by onGameResult — not here (prevents duplicates)
 
 			setTimeout(function(){
 				SFX.ready_chime();
@@ -1687,7 +1687,7 @@ function setGamePhase(phase, data){
 			ANIM.flashBalance(false);
 
 			var game = GAME_TYPES[gametype];
-			addGameLog('loss', game.name+': Result='+resultLabel+' Pick='+getPickLabel(gametype, PHASE_PICK)+' -- LOSS');
+			// Game log added by onGameResult — not here (prevents duplicates)
 
 			setTimeout(function(){
 				SFX.ready_chime();
@@ -2273,9 +2273,22 @@ function onGameResult(data){
 		});
 	}
 
-	// 4. Noticeboard
-	addNotice(isWin ? 'win' : 'loss',
-		gametype + ': ' + (isWin ? 'WIN +' : 'LOSS -') + betamt);
+	// 4. Noticeboard + Game Log — ONE entry each, here only
+	var resultLabel = (result !== undefined && result >= 0) ? getPickLabel(gametype, result) : '?';
+	var gm = GAME_TYPES[gametype];
+	var gmName = gm ? gm.name : gametype;
+	if(isWin){
+		var payout = new Decimal(betamt).mul(gm ? gm.payout - 1 : 1);
+		addNotice('win', gmName + ': WIN +' + payout.toFixed(2));
+		addGameLog('win', gmName + ' Result:' + resultLabel + ' — WIN +' + payout.toFixed(2));
+	}else{
+		addNotice('loss', gmName + ': LOSS -' + betamt);
+		addGameLog('loss', gmName + ' Result:' + resultLabel + ' — LOSS -' + betamt);
+	}
+
+	// 5. Reset after delay
+	GAME_BUSY = false;
+	setTimeout(function(){ setGamePhase('IDLE'); }, isWin ? 2000 : 1000);
 }
 
 
@@ -2529,9 +2542,7 @@ MDS.init(function(msg){
 				}
 
 			} else if(comms.type === 'GAME_RESULT'){
-				/* THE ONE AND ONLY handler that shows game results */
-				addNotice(comms.isMyWin ? 'win' : 'loss',
-					comms.gametype + ': ' + (comms.isMyWin ? 'WIN +' : 'LOSS -') + comms.betamt);
+				/* THE ONE AND ONLY handler — onGameResult adds its own notice */
 				onGameResult(comms);
 
 			} else if(comms.type === 'GAME_ABANDONED'){
