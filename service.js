@@ -38,7 +38,7 @@ MDS.load("./js/messages.js");
 MDS.load("./js/maxima.js");
 MDS.load("./js/mast-txns.js");
 MDS.load("./js/casino.js");
-// props.js removed — saved in thunder-props-tba/
+MDS.load("./js/routing.js");
 MDS.load("./js/channelfunction.js");
 
 
