@@ -1,7 +1,7 @@
 <html>
 <head>
 	<title>Thunder Casino</title>
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 	<meta charset="UTF-8">
 
 	<!-- MDS Library -->
@@ -1169,21 +1169,25 @@ var ANIM = (function(){
 
 	function clearPickResults(){
 		document.querySelectorAll('.pick-btn').forEach(function(btn){
-			btn.classList.remove('dimmed','result-match','result-miss','selected');
+			btn.classList.remove('dimmed','result-match','result-miss');
+			// Keep 'selected' class — picks should stay visible during the round
 		});
 	}
 
-	// Highlight the winning pick on the grid: user's choice in yellow (selected),
-	// actual outcome in green (match/win) or red (miss/loss), flashing
+	// Highlight result on the grid: selected picks stay gold,
+	// result number gets green (hit) or red (miss), non-selected dim
 	function highlightPickResult(result, isWin){
 		document.querySelectorAll('.pick-btn').forEach(function(btn){
-			btn.classList.remove('dimmed');
+			btn.classList.remove('dimmed','result-match','result-miss');
 			var pick = parseInt(btn.dataset.pick);
 			if(pick === result){
+				// THE result number — green if it was one of our picks, red if not
 				btn.classList.add(isWin ? 'result-match' : 'result-miss');
 			} else if(!btn.classList.contains('selected')){
+				// Not selected, not the result — dim it
 				btn.classList.add('dimmed');
 			}
+			// Selected picks that aren't the result: stay gold (no change)
 		});
 	}
 

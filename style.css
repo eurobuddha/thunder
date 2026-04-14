@@ -13,13 +13,20 @@
    ========================================================================== */
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { font-size: 15px; -webkit-font-smoothing: antialiased; }
+html {
+	font-size: 15px;
+	-webkit-font-smoothing: antialiased;
+	/* Android/iOS safe area support */
+	padding-top: env(safe-area-inset-top, 0px);
+	padding-bottom: env(safe-area-inset-bottom, 0px);
+}
 
 body {
 	font-family: 'Chakra Petch', sans-serif;
 	background: linear-gradient(170deg, #080c18 0%, #0a1020 40%, #0e1630 100%);
 	color: #e6f1ff;
 	height: 100vh;
+	height: 100dvh; /* Dynamic viewport height — excludes mobile browser chrome */
 	overflow: hidden;
 }
 
@@ -42,6 +49,7 @@ body::before {
 	display: flex;
 	flex-direction: column;
 	height: 100vh;
+	height: 100dvh;
 	max-width: 900px;
 	margin: 0 auto;
 }
@@ -519,26 +527,31 @@ body::before {
 	font-weight: 700;
 	min-height: 34px;
 }
+/* "Red" = warm tone (gold/amber tint) */
 .rt-red {
-	background: rgba(200,30,30,0.7) !important;
-	border-color: #cc2222 !important;
-	color: #fff !important;
+	background: rgba(245,166,35,0.12) !important;
+	border-color: rgba(245,166,35,0.35) !important;
+	color: #f5a623 !important;
 }
-.rt-red:hover { background: rgba(220,40,40,0.9) !important; }
+.rt-red:hover { background: rgba(245,166,35,0.22) !important; }
 .rt-red.selected {
-	background: rgba(255,50,50,0.9) !important;
-	box-shadow: 0 0 10px rgba(255,50,50,0.5) !important;
-}
-.rt-black {
-	background: rgba(20,20,30,0.9) !important;
-	border-color: #333 !important;
-	color: #fff !important;
-}
-.rt-black:hover { background: rgba(40,40,50,0.9) !important; }
-.rt-black.selected {
-	background: rgba(60,60,80,0.9) !important;
-	box-shadow: 0 0 10px rgba(100,100,140,0.5) !important;
+	background: rgba(245,166,35,0.3) !important;
+	box-shadow: 0 0 10px rgba(245,166,35,0.4) !important;
 	border-color: #ffd700 !important;
+	color: #ffd700 !important;
+}
+/* "Black" = cool tone (steel/slate tint) */
+.rt-black {
+	background: rgba(26,33,64,0.6) !important;
+	border-color: rgba(26,33,64,0.8) !important;
+	color: #8892b0 !important;
+}
+.rt-black:hover { background: rgba(26,33,64,0.9) !important; color: #e6f1ff !important; }
+.rt-black.selected {
+	background: rgba(0,229,255,0.12) !important;
+	box-shadow: 0 0 10px rgba(0,229,255,0.3) !important;
+	border-color: #00e5ff !important;
+	color: #00e5ff !important;
 }
 .rt-columns {
 	display: grid;
@@ -560,13 +573,14 @@ body::before {
 .rt-group {
 	font-size: 10px !important;
 	padding: 6px 2px !important;
-	background: rgba(0,80,40,0.6) !important;
-	border-color: rgba(0,120,60,0.5) !important;
-	color: #e6f1ff !important;
+	background: rgba(17,26,50,0.5) !important;
+	border-color: rgba(26,33,64,0.8) !important;
+	color: #8892b0 !important;
 }
-.rt-group:hover { background: rgba(0,100,50,0.8) !important; }
-.rt-red-btn { background: rgba(200,30,30,0.7) !important; border-color: #cc2222 !important; }
-.rt-black-btn { background: rgba(20,20,30,0.9) !important; border-color: #333 !important; }
+.rt-group:hover { background: rgba(26,33,64,0.8) !important; color: #e6f1ff !important; }
+.rt-group.selected { background: rgba(245,166,35,0.2) !important; border-color: #f5a623 !important; color: #ffd700 !important; }
+.rt-red-btn { color: #f5a623 !important; }
+.rt-black-btn { color: #8892b0 !important; }
 
 .pick-btn {
 	font-family: 'Orbitron', sans-serif;
@@ -582,25 +596,30 @@ body::before {
 	text-align: center;
 }
 .pick-btn:hover { border-color: #00e5ff; color: #00e5ff; }
+/* These use !important to override roulette .rt-red/.rt-black !important styles */
 .pick-btn.selected {
-	border-color: #ffd700;
-	color: #ffd700;
-	background: rgba(255,215,0,0.12);
-	box-shadow: 0 0 12px rgba(255,215,0,0.2);
+	border-color: #ffd700 !important;
+	color: #ffd700 !important;
+	background: rgba(255,215,0,0.12) !important;
+	box-shadow: 0 0 12px rgba(255,215,0,0.2) !important;
 }
 .pick-btn.result-match {
-	border-color: #00e676;
-	background: rgba(0,230,118,0.2);
-	color: #00e676;
-	box-shadow: 0 0 15px rgba(0,230,118,0.4);
+	border-color: #00e676 !important;
+	background: rgba(0,230,118,0.2) !important;
+	color: #00e676 !important;
+	box-shadow: 0 0 15px rgba(0,230,118,0.4) !important;
 	animation: pickFlashGreen 0.5s ease-in-out 3;
 }
 .pick-btn.result-miss {
-	border-color: #ff2d78;
-	background: rgba(255,45,120,0.15);
-	color: #ff2d78;
-	box-shadow: 0 0 15px rgba(255,45,120,0.4);
+	border-color: #ff2d78 !important;
+	background: rgba(255,45,120,0.15) !important;
+	color: #ff2d78 !important;
+	box-shadow: 0 0 15px rgba(255,45,120,0.4) !important;
 	animation: pickFlashRed 0.4s ease-in-out 4;
+}
+.pick-btn.dimmed {
+	opacity: 0.3 !important;
+	pointer-events: none;
 }
 @keyframes pickFlashGreen {
 	0%, 100% { box-shadow: 0 0 15px rgba(0,230,118,0.4); }
@@ -610,7 +629,7 @@ body::before {
 	0%, 100% { box-shadow: 0 0 15px rgba(255,45,120,0.4); }
 	50% { box-shadow: 0 0 30px rgba(255,45,120,0.8); background: rgba(255,45,120,0.25); }
 }
-.pick-btn.dimmed { opacity: 0.3; pointer-events: none; }
+/* old .pick-btn.dimmed moved up with !important */
 
 /* Bet input — compact */
 .bet-area {
@@ -843,26 +862,72 @@ body::before {
    RESPONSIVE — Mobile
    ========================================================================== */
 
-@media (max-width: 600px) {
-	.app-header { padding: 0 10px; }
-	.header-logo { font-size: 14px; margin-right: 8px; }
+/* --- TABLET (max 768px) --- */
+@media (max-width: 768px) {
 	.header-info { font-size: 9px; gap: 6px; }
-	.tab-btn { font-size: 9px; padding: 5px 10px; }
+	.tab-btn { font-size: 9px; padding: 5px 12px; }
+	.header-logo { font-size: 14px; margin-right: 10px; }
+}
+
+/* --- PHONE (max 600px) --- */
+@media (max-width: 600px) {
+	/* Header: stack logo+tabs on one row, hide node info */
+	.app-header {
+		height: auto;
+		min-height: 40px;
+		flex-wrap: wrap;
+		padding: 6px 10px;
+		gap: 4px;
+	}
+	.header-logo { font-size: 13px; margin-right: auto; }
+	.header-info { display: none; } /* Hidden on phone — block/balance in game view */
+	.tab-nav { order: 2; width: 100%; justify-content: center; }
+	.tab-btn { font-size: 9px; padding: 4px 12px; flex: 1; text-align: center; }
+	.btn-snd { order: 1; font-size: 9px; padding: 3px 8px; }
+
+	/* Content */
+	.app-content { padding: 8px 10px; }
 	.balance-amount { font-size: 16px; }
 	.channel-balance { font-size: 16px; }
-	.result-number { font-size: 32px; }
-	.pick-btn { font-size: 12px; padding: 10px 4px; }
-	.bet-input { font-size: 18px; width: 130px; }
-	.game-area { padding: 12px; }
+	.balance-bar { padding: 8px 12px; margin-bottom: 6px; }
+	.balance-label { font-size: 9px; }
+
+	/* Game area */
+	.result-number { font-size: 28px; }
+	.result-label { font-size: 10px; }
+	.game-area { padding: 10px; }
+	.game-selector { gap: 4px; margin-bottom: 8px; }
+	.game-type-btn { font-size: 9px; padding: 6px 10px; }
+	.pick-btn { font-size: 11px; padding: 8px 3px; }
 	.pick-grid.roulette { grid-template-columns: repeat(4, 1fr); }
+	.bet-input { font-size: 16px; width: 120px; padding: 8px 10px; }
+	.bet-area { margin: 6px 0; }
+	.result-display { padding: 4px 0; }
+
+	/* Roulette table */
+	.rt-num { font-size: 10px !important; padding: 5px 2px !important; min-height: 26px; }
+	.rt-group { font-size: 8px !important; padding: 4px 1px !important; }
 	.rt-outside { grid-template-columns: repeat(3, 1fr); }
-	.rt-num { font-size: 11px !important; padding: 6px 2px !important; min-height: 28px; }
-	.rt-group { font-size: 9px !important; }
-	.game-type-btn { font-size: 10px; padding: 6px 14px; }
-	.stat-value { font-size: 14px; }
-	.round-pip { width: 20px; height: 20px; font-size: 8px; }
-	.app-footer { height: 60px; min-height: 60px; }
-	.log-panel { max-height: 80px; }
+
+	/* Stats + pips */
+	.stats-bar { gap: 10px; margin: 4px 0; }
+	.stat-value { font-size: 13px; }
+	.stat-label { font-size: 8px; }
+	.round-pip { width: 18px; height: 18px; font-size: 7px; }
+	.round-history { gap: 3px; margin: 4px 0; }
+
+	/* Footer — compact on phone */
+	.app-footer { height: 48px; min-height: 48px; padding: 4px 10px; }
+	.noticeboard-title { font-size: 8px; margin-bottom: 2px; }
+	.notice-entry { font-size: 9px; line-height: 1.3; }
+
+	/* Log */
+	.log-panel { max-height: 70px; padding: 6px; font-size: 9px; }
+
+	/* Cards + channels */
+	.card { padding: 12px; margin-bottom: 8px; }
+	.channel-row { padding: 10px 12px; }
+	.channel-name { font-size: 13px; }
 }
 
 /* Scrollbar */
