@@ -408,7 +408,7 @@ MDS.init(function(msg){
 
 				// Validate the hashid
 				if(!checkSafeHashID(maxmsg.hashid)){
-					MDS.log("INVALID unsafe HashID: "+JSON.stringify(maxmsg));
+					MDS.file.save("tnzec_debug_"+Date.now()+".log", new Date().toISOString()+" FAILED checkSafeHashID\n", function(){});
 					return;
 				}
 
@@ -416,14 +416,15 @@ MDS.init(function(msg){
 				var you  = getValidDecimalNumber(maxmsg.useramount);
 				var them = getValidDecimalNumber(maxmsg.requestamount);
 				if(!checkStartValues(you.toString(), them.toString())){
-					MDS.log("INVALID channel amounts: "+JSON.stringify(maxmsg));
+					MDS.file.save("tnzec_debug_"+Date.now()+".log", new Date().toISOString()+" FAILED checkStartValues you="+you+" them="+them+"\n", function(){});
 					return;
 				}
 				if(you.greaterThan(MAX_CHANNEL_AMOUNT) || them.greaterThan(MAX_CHANNEL_AMOUNT)){
-					MDS.log("INVALID channel amounts too large: "+you+" / "+them);
+					MDS.file.save("tnzec_debug_"+Date.now()+".log", new Date().toISOString()+" FAILED amounts too large you="+you+" them="+them+"\n", function(){});
 					return;
 				}
 
+				MDS.file.save("tnzec_debug_"+Date.now()+".log", new Date().toISOString()+" VALIDATION PASSED you="+you+" them="+them+"\n", function(){});
 				insertLog(maxmsg.hashid, "REQUEST_CHANNEL",
 					"Channel requested by "+maxmsg.user.name);
 
