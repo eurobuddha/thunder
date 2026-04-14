@@ -469,10 +469,10 @@ function playerCommitRound(hashid, housecommit, gametype, pick, betamt, callback
 		return;
 	}
 
-	// Validate the pick
+	// Validate the pick (bitmask for multi-pick, single value for single-pick)
 	var picknum = parseInt(pick);
-	if(picknum < 0 || picknum >= game.range){
-		MDS.log("ERROR: Invalid pick "+pick+" for "+gametype+" (range "+game.range+")");
+	if(picknum <= 0){
+		MDS.log("ERROR: Invalid pick "+pick+" for "+gametype);
 		if(callback){ callback(null); }
 		return;
 	}
@@ -489,7 +489,7 @@ function playerCommitRound(hashid, housecommit, gametype, pick, betamt, callback
 
 		insertLog(hashid, "GAME_PLAYER_COMMIT",
 			"Player committed to "+game.name+" round."
-			+" Pick:"+getPickLabel(gametype, picknum)
+			+" Picks:"+getPicksLabel(gametype, picknum)
 			+" Bet:"+betamt
 			+" Commit:"+data.commit.substring(0,16)+"..");
 

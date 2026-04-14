@@ -312,32 +312,48 @@ function _offerGameRound(details){
  */
 function acceptGameRound(hashid, housecommit, gametype, pick, numpicks, betamt, callback){
 
+	insertLog(hashid, "ACCEPT_GAME_DEBUG", "acceptGameRound called: pick="+pick+" numpicks="+numpicks+" betamt="+betamt+" gametype="+gametype);
+
 	sqlSelectChannel(hashid, function(sql){
-		var sqlrow = sql.rows[0];
-
-		// Validate the bet before committing
-		var game = GAME_TYPES[gametype];
-		var bettor = sqlrow.USERNUM;
-		var validation = validateBet(sqlrow, betamt, game.range, pick, numpicks, bettor);
-
-		if(!validation.valid){
-			MDS.log("BET VALIDATION FAILED: "+validation.error);
-			insertLog(hashid, "GAME_BET_INVALID", validation.error);
+		if(!sql || sql.count == 0){
+			insertLog(hashid, "ACCEPT_GAME_FAIL", "Channel not found");
 			if(callback){ callback(false); }
 			return;
 		}
+		var sqlrow = sql.rows[0];
+
+		var game = GAME_TYPES[gametype];
+		if(!game){
+			insertLog(hashid, "ACCEPT_GAME_FAIL", "Unknown gametype: "+gametype);
+			if(callback){ callback(false); }
+			return;
+		}
+		var bettor = sqlrow.USERNUM;
+		insertLog(hashid, "ACCEPT_GAME_DEBUG", "bettor="+bettor+" range="+game.range+" u1="+sqlrow.USER1AMOUNT+" u2="+sqlrow.USER2AMOUNT);
+
+		var validation = validateBet(sqlrow, betamt, game.range, pick, numpicks, bettor);
+
+		if(!validation.valid){
+			insertLog(hashid, "GAME_BET_INVALID", "Validation failed: "+validation.error);
+			if(callback){ callback(false); }
+			return;
+		}
+		insertLog(hashid, "ACCEPT_GAME_DEBUG", "Validation passed");
 
 		var othermaximaid = (sqlrow.USERNUM == 1) ? sqlrow.USER2MAXIMAID : sqlrow.USER1MAXIMAID;
 
 		playerCommitRound(hashid, housecommit, gametype, pick, betamt, function(data){
 			if(!data){
+				insertLog(hashid, "ACCEPT_GAME_FAIL", "playerCommitRound returned null");
 				if(callback){ callback(false); }
 				return;
 			}
+			insertLog(hashid, "ACCEPT_GAME_DEBUG", "playerCommit generated: "+data.playercommit.substring(0,16));
 
 			updateGameBetActive(hashid, gametype, game.range, betamt, bettor, pick, numpicks,
 				data.playercommit, housecommit, sqlrow.USER1AMOUNT, sqlrow.USER2AMOUNT,
 				function(){
+					insertLog(hashid, "ACCEPT_GAME_DEBUG", "DB updated, sending ACK...");
 
 					var details           = {};
 					details.hashid        = hashid;
