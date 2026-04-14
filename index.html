@@ -2371,7 +2371,7 @@ function onGameResult(data){
 	var pipLabel = (result !== undefined && result >= 0)
 		? getPickLabel(gametype, result)
 		: (isWin ? 'W' : 'L');
-	addRoundPip(isWin, pipLabel);
+	addRoundPip(isWin, pipLabel, gametype);
 
 	// 3. Update balance display -- THE ONLY PLACE
 	if(data.user1amount !== undefined && CURRENT_CHANNEL){
@@ -2412,11 +2412,11 @@ function onGameResult(data){
 		loseAmt = gm ? bv.mul(gm.payout - 1) : bv;
 	}
 	if(isWin){
-		addNotice('win', role + gmName + ': Chose ' + pickLabel + ', Result ' + resultLabel + ' — WIN +' + winAmt.toFixed(2));
-		addGameLog('win', role + gmName + ' Chose:' + pickLabel + ' Result:' + resultLabel + ' — WIN +' + winAmt.toFixed(2));
+		addNotice('win', role + gmName + ': Chose ' + pickLabel + ', Result ' + resultLabel + ' — WIN +' + winAmt.toFixed(2) + ' (risked ' + betamt + ')');
+		addGameLog('win', role + gmName + ' Chose:' + pickLabel + ' Result:' + resultLabel + ' — WIN +' + winAmt.toFixed(2) + ' (risked ' + betamt + ')');
 	}else{
-		addNotice('loss', role + gmName + ': Chose ' + pickLabel + ', Result ' + resultLabel + ' — LOSS -' + loseAmt.toFixed(2));
-		addGameLog('loss', role + gmName + ' Chose:' + pickLabel + ' Result:' + resultLabel + ' — LOSS -' + loseAmt.toFixed(2));
+		addNotice('loss', role + gmName + ': Chose ' + pickLabel + ', Result ' + resultLabel + ' — LOSS -' + loseAmt.toFixed(2) + ' (risked ' + betamt + ')');
+		addGameLog('loss', role + gmName + ' Chose:' + pickLabel + ' Result:' + resultLabel + ' — LOSS -' + loseAmt.toFixed(2) + ' (risked ' + betamt + ')');
 	}
 
 	// 5. Reset after delay — linger so player can absorb the result
@@ -2524,9 +2524,10 @@ function updateStats(){
 	profitEl.className = 'stat-value ' + (GAME_PROFIT.greaterThanOrEqualTo(0) ? 'profit-up' : 'profit-down');
 }
 
-function addRoundPip(isWin, label){
+function addRoundPip(isWin, label, gametype){
 	var pip = document.createElement('div');
-	pip.className = 'round-pip ' + (isWin ? 'win' : 'loss');
+	var shape = (gametype === 'dice') ? 'pip-square' : 'pip-round';
+	pip.className = 'round-pip ' + (isWin ? 'win' : 'loss') + ' ' + shape;
 	pip.textContent = label.substring(0, 2);
 	document.getElementById('round-pips').appendChild(pip);
 }

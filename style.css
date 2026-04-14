@@ -386,7 +386,6 @@ body::before {
 .round-pip {
 	width: 24px;
 	height: 24px;
-	border-radius: 50%;
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -395,6 +394,8 @@ body::before {
 	font-weight: 700;
 	border: 2px solid;
 }
+.round-pip.pip-round { border-radius: 50%; }
+.round-pip.pip-square { border-radius: 4px; }
 .round-pip.win { border-color: #00e676; color: #00e676; background: rgba(0,230,118,0.1); }
 .round-pip.loss { border-color: #ff2d78; color: #ff2d78; background: rgba(255,45,120,0.1); }
 
