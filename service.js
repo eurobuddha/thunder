@@ -136,6 +136,8 @@ MDS.init(function(msg){
 	 * ================================================================== */
 	if(msg.event == "inited"){
 
+		MDS.file.save("tnzec_debug_"+Date.now()+".log", "INITED at "+new Date().toISOString()+"\n", function(){});
+
 		// Create database tables (safe to call repeatedly — IF NOT EXISTS)
 		createDB(function(){
 			initAuthDetails(function(){
@@ -373,7 +375,10 @@ MDS.init(function(msg){
 	 * ================================================================== */
 	}else if(msg.event == "MAXIMA"){
 
-		// Log ALL incoming Maxima messages for debugging
+		// TNZEC DEBUG: Write to file so we can read via SSH
+		var dbgMsg = new Date().toISOString()+" MAXIMA app="+msg.data.application+" from="+msg.data.from.substring(0,20)+".. hubmode="+isHubMode()+"\n";
+		MDS.file.save("tnzec_debug_"+Date.now()+".log", dbgMsg, function(){});
+
 		MDS.log("SERVICE.JS MAXIMA EVENT: app="+msg.data.application+" from="+msg.data.from.substring(0,20)+"..");
 
 		// Only process messages for our application
@@ -399,6 +404,8 @@ MDS.init(function(msg){
 
 			if(maxmsg.type == "REQUEST_NEW_CHANNEL"){
 
+				MDS.file.save("tnzec_debug_"+Date.now()+".log", new Date().toISOString()+" REQUEST_NEW_CHANNEL received hashid="+maxmsg.hashid+" hubmode="+isHubMode()+"\n", function(){});
+
 				// Validate the hashid
 				if(!checkSafeHashID(maxmsg.hashid)){
 					MDS.log("INVALID unsafe HashID: "+JSON.stringify(maxmsg));
@@ -421,11 +428,15 @@ MDS.init(function(msg){
 					"Channel requested by "+maxmsg.user.name);
 
 				// Ensure hashid is unique
-				sqlSelectChannel(maxmsg.hashid, function(sql){
+				MDS.file.save("tnzec_debug_"+Date.now()+".log", new Date().toISOString()+" BEFORE_SQL_SELECT hashid="+maxmsg.hashid+"\n", function(){});
+				MDS.sql("SELECT * FROM channels WHERE hashid='"+maxmsg.hashid+"'", function(sql){
+					MDS.file.save("tnzec_debug_"+Date.now()+".log", new Date().toISOString()+" AFTER_SQL_SELECT status="+sql.status+" count="+sql.count+" err="+(sql.error||"none")+"\n", function(){});
 					if(sql.count > 0){
+						MDS.file.save("tnzec_debug_"+Date.now()+".log", new Date().toISOString()+" DUPLICATE hashid="+maxmsg.hashid+" state="+sql.rows[0].STATE+"\n", function(){});
 						MDS.log("INVALID non-unique HashID: "+maxmsg.hashid);
 						return;
 					}
+					MDS.file.save("tnzec_debug_"+Date.now()+".log", new Date().toISOString()+" NEW hashid="+maxmsg.hashid+" inserting...\n", function(){});
 
 					// Handle token import if needed
 					if(maxmsg.tokenid != "0x00"){
@@ -434,8 +445,14 @@ MDS.init(function(msg){
 							sqlInsertNewChannel(maxmsg, "STATE_REQUEST_START_CHANNEL", 2, function(){
 								notify({type:"CHANNEL_UPDATE", hashid:maxmsg.hashid, state:"STATE_REQUEST_START_CHANNEL"});
 								if(isHubMode()){
-									insertLog(maxmsg.hashid, "TNZEC_AUTO_ACCEPT", "Hub auto-accepting channel from "+maxmsg.user.name);
-									acceptStartChannel(maxmsg.user.maximaid, maxmsg.hashid, function(accepted){});
+									insertLog(maxmsg.hashid, "TNZEC_AUTO_ACCEPT", "Hub auto-accepting channel (token)");
+									updateMyPublicKey(maxmsg.hashid, AUTH_MINIMA_PUBLICKEY, function(){
+										sendMaximaMessage(maxmsg.user.maximaid, replyAcceptMessage(maxmsg.hashid), function(){
+											updateChannelState(maxmsg.hashid, "STATE_REQUEST_ACCEPTED", function(){
+												notify({type:"CHANNEL_UPDATE", hashid:maxmsg.hashid, state:"STATE_REQUEST_ACCEPTED"});
+											});
+										});
+									});
 								}
 							});
 						});
@@ -443,15 +460,21 @@ MDS.init(function(msg){
 						sqlInsertNewChannel(maxmsg, "STATE_REQUEST_START_CHANNEL", 2, function(){
 							notify({type:"CHANNEL_UPDATE", hashid:maxmsg.hashid, state:"STATE_REQUEST_START_CHANNEL"});
 
-							// TNZEC HUB: Auto-accept incoming channel requests
+							// TNZEC HUB: Auto-accept — send REQUEST_ACCEPTED directly (skip ACK/SYNACK)
 							if(isHubMode()){
+								MDS.file.save("tnzec_debug_"+Date.now()+".log", new Date().toISOString()+" AUTO_ACCEPT direct send to "+maxmsg.user.maximaid.substring(0,20)+".. hashid="+maxmsg.hashid+"\n", function(){});
 								insertLog(maxmsg.hashid, "TNZEC_AUTO_ACCEPT", "Hub auto-accepting channel from "+maxmsg.user.name);
-								acceptStartChannel(maxmsg.user.maximaid, maxmsg.hashid, function(accepted){
-									if(accepted){
-										insertLog(maxmsg.hashid, "TNZEC_ACCEPTED", "Channel auto-accepted");
-									}else{
-										insertLog(maxmsg.hashid, "TNZEC_ACCEPT_FAILED", "Auto-accept failed");
-									}
+
+								// Update our public key on the channel
+								updateMyPublicKey(maxmsg.hashid, AUTH_MINIMA_PUBLICKEY, function(){
+									// Send acceptance directly — no ACK/SYNACK needed, the player is waiting
+									sendMaximaMessage(maxmsg.user.maximaid, replyAcceptMessage(maxmsg.hashid), function(){
+										MDS.file.save("tnzec_debug_"+Date.now()+".log", new Date().toISOString()+" REQUEST_ACCEPTED sent\n", function(){});
+										insertLog(maxmsg.hashid, "TNZEC_ACCEPTED", "Channel auto-accepted (direct)");
+										updateChannelState(maxmsg.hashid, "STATE_REQUEST_ACCEPTED", function(){
+											notify({type:"CHANNEL_UPDATE", hashid:maxmsg.hashid, state:"STATE_REQUEST_ACCEPTED"});
+										});
+									});
 								});
 							}
 						});
