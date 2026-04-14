@@ -536,16 +536,22 @@ MDS.init(function(msg){
 				checkValidMaximaUserState(maximapubkey, maxmsg.hashid, "STATE_REQUEST_ACCEPTED", function(valid){
 					MDS.file.save("tnzec_debug_"+Date.now()+".log", new Date().toISOString()+" CHANNEL_CREATE_1 valid="+valid+"\n", function(){});
 					if(valid){
+						MDS.file.save("tnzec_debug_"+Date.now()+".log", new Date().toISOString()+" CC1: createDefaultTxnAndAddresses starting\n", function(){});
 						createDefaultTxnAndAddresses(maxmsg.hashid, false, function(alldata){
+							MDS.file.save("tnzec_debug_"+Date.now()+".log", new Date().toISOString()+" CC1: createDefaultTxnAndAddresses done, alldata="+(alldata?"OK":"NULL")+"\n", function(){});
 							checkDefaultTransactions(maxmsg.hashid, maxmsg.txndata, alldata, function(checkresp){
+								MDS.file.save("tnzec_debug_"+Date.now()+".log", new Date().toISOString()+" CC1: checkDefaultTransactions resp="+checkresp+"\n", function(){});
 								if(!checkresp){
 									insertLog(maxmsg.hashid, "INVALID_START_TXNS", "Invalid initial txns!");
 									return;
 								}
 								addDefaultScripts(alldata, function(){
+									MDS.file.save("tnzec_debug_"+Date.now()+".log", new Date().toISOString()+" CC1: addDefaultScripts done\n", function(){});
 									updateChannelAddresses(maxmsg.hashid, alldata, function(sqlrow){
+										MDS.file.save("tnzec_debug_"+Date.now()+".log", new Date().toISOString()+" CC1: updateChannelAddresses done, user2amt="+sqlrow.USER2AMOUNT+"\n", function(){});
 										addToFundingTxn(maxmsg.txndata.transactions.fundingtxn,
 											sqlrow.USER2AMOUNT, sqlrow.TOKENID, function(newfundingtxn){
+												MDS.file.save("tnzec_debug_"+Date.now()+".log", new Date().toISOString()+" CC1: addToFundingTxn result="+(newfundingtxn?"OK":"NULL")+"\n", function(){});
 												if(!newfundingtxn){
 													insertLog(maxmsg.hashid, "CHANNEL_CREATE_ERROR",
 														"addToFundingTxn failed in CREATE_1. Insufficient funds or corrupt data.");
