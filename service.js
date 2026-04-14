@@ -38,8 +38,7 @@ MDS.load("./js/messages.js");
 MDS.load("./js/maxima.js");
 MDS.load("./js/mast-txns.js");
 MDS.load("./js/casino.js");
-// props.js removed — saved in thunder-props-tba/ for future Thunder Props dapp
-MDS.load("./js/routing.js");
+MDS.load("./js/props.js");
 MDS.load("./js/channelfunction.js");
 
 
@@ -87,44 +86,6 @@ function update(hashid, callback){
 
 
 /* =========================================================================
- * TNZEC: GAME REQUEST HANDLER (extracted for reuse)
- * =========================================================================
- * The original auto-house logic, extracted so it can be called from:
- *   1. Standard mode (always)
- *   2. Hub mode fallback (when no house is available to route to)
- * ========================================================================= */
-
-function _handleGameRequestAsHouse(maxmsg, sqlrow, game, bettor, senderMaximaid){
-	houseStartRound(maxmsg.hashid, maxmsg.gametype, function(data){
-		if(!data){
-			sendMaximaMessage(senderMaximaid,
-				gameAbandonedMessage(maxmsg.hashid, "House secret generation failed"));
-			notify({type:"GAME_ABANDONED", hashid:maxmsg.hashid, reason:"House secret generation failed"});
-			return;
-		}
-
-		MDS.sql("UPDATE channels SET housecommit='"+data.commit+"' WHERE hashid='"+maxmsg.hashid+"'", function(){
-
-			insertLog(maxmsg.hashid, "GAME_AUTO_HOUSE",
-				"Auto-housing "+game.name+". House commit:"+data.commit.substring(0,16)+"..");
-
-			sendMaximaMessage(senderMaximaid,
-				gameOfferMessage(maxmsg.hashid, data.commit, maxmsg.gametype, game.range));
-
-			notify({
-				type:     "GAME_STARTED",
-				hashid:   maxmsg.hashid,
-				gametype: maxmsg.gametype,
-				betamt:   maxmsg.betamt,
-				pick:     maxmsg.pick,
-				role:     "house"
-			});
-		});
-	});
-}
-
-
-/* =========================================================================
  * MAIN EVENT HANDLER
  * =========================================================================
  * MDS.init is called once with "inited", then continuously with events.
@@ -143,28 +104,7 @@ MDS.init(function(msg){
 			createPropsTable(function(){
 				// Load our Maxima identity and Minima address
 				initAuthDetails(function(){
-
-					// TNZEC: Check hub mode config and load active routes
-					MDS.keypair.get("tnzec_mode", function(moderes){
-						if(moderes.status && moderes.value === "hub"){
-							enableHubMode();
-							loadActiveRoutes(function(){
-								log("[TNZEC] Thunder Network Zero Edge Casino — Hub initialized");
-							});
-						}else{
-							// Spoke mode: auto-connect to the TNZEC hub
-							autoConnectToHub(function(connected, alreadyConnected){
-								if(connected && !alreadyConnected){
-									log("[TNZEC] Auto-connected to hub!");
-								}else if(connected){
-									log("[TNZEC] Hub already in contacts");
-								}else{
-									log("[TNZEC] Could not connect to hub — manual contact add may be needed");
-								}
-							});
-							log("[TNZEC] Thunder Network Zero Edge Casino — Spoke initialized");
-						}
-					});
+					log("Thunder Casino service.js initialized");
 				});
 			});
 		});
@@ -654,9 +594,8 @@ MDS.init(function(msg){
 			 * ============================================================== */
 
 			}else if(maxmsg.type == "GAME_REQUEST"){
-				/* ---- STEP 0: Someone wants to play against us ----
-				 * HUB MODE: Route to an online house player. Hub never generates secrets.
-				 * FALLBACK: Auto-house directly (original 2-party flow).
+				/* ---- STEP 0: Someone wants to play against us (we're the house) ----
+				 * Auto-house: validate bet, generate secret, commit, send GAME_OFFER
 				 * GUARD: reject if a game is already active on this channel
 				 */
 				sqlSelectChannel(maxmsg.hashid, function(sql){
@@ -699,236 +638,35 @@ MDS.init(function(msg){
 						return;
 					}
 
-					/* ---- TNZEC: Route to house if hub mode ---- */
-					if(isHubMode()){
-						selectHouse(maxmsg.hashid, maxmsg.betamt, game.range, function(house){
-							if(house){
-								// Route found — forward to house, don't generate our own secret
-								addRoute(maxmsg.hashid, house.hashid, maximapubkey,
-									house.maximaid, maxmsg.gametype, maxmsg.betamt, function(){
-
-									insertLog(maxmsg.hashid, "TNZEC_ROUTING",
-										"Routing "+game.name+" to house "+house.hashid.substring(0,12)
-										+".. bet:"+maxmsg.betamt);
-
-									// Send HOUSE_REQUEST to the selected house
-									sendMaximaMessage(house.maximaid,
-										houseRequestMessage(house.hashid, maxmsg.gametype,
-											game.range, maxmsg.betamt));
-
-									notify({
-										type:     "GAME_STARTED",
-										hashid:   maxmsg.hashid,
-										gametype: maxmsg.gametype,
-										betamt:   maxmsg.betamt,
-										pick:     maxmsg.pick,
-										role:     "routing"
-									});
-								});
-								return;
-							}
-
-							// No house available — fallback: hub IS the house
-							MDS.log("[TNZEC] No route available — hub is the house (fallback)");
-							insertLog(maxmsg.hashid, "TNZEC_FALLBACK",
-								"No house available — hub acting as house directly");
-							_handleGameRequestAsHouse(maxmsg, sqlrow, game, bettor, maximapubkey);
-						});
-						return;
-					}
-
-					/* ---- Standard mode: auto-house directly ---- */
-					_handleGameRequestAsHouse(maxmsg, sqlrow, game, bettor, maximapubkey);
-				});
-
-			/* ==============================================================
-			 * TNZEC ROUTING HANDLERS
-			 * ==============================================================
-			 * These handle messages specific to routed games. The hub
-			 * forwards secrets between player and house channels.
-			 * Spoke nodes handle HOUSE_REQUEST and PLAYER_ACCEPTED.
-			 * ============================================================== */
-
-			}else if(maxmsg.type == "HOUSE_REQUEST"){
-				/* ---- TNZEC: Hub asks us to be the house for a routed game ----
-				 * Same logic as GAME_REQUEST but from the hub, not a direct player.
-				 * Generate secret, commit, respond with HOUSE_OFFER.
-				 */
-				sqlSelectChannel(maxmsg.hashid, function(sql){
-					if(sql.count == 0){ return; }
-					var sqlrow = sql.rows[0];
-
-					if(parseInt(sqlrow.GAMEPHASE) != 0){
-						MDS.log("[TNZEC] HOUSE_REQUEST rejected — already in game");
-						sendMaximaMessage(maximapubkey,
-							gameAbandonedMessage(maxmsg.hashid, "Already in a game"));
-						return;
-					}
-
-					var game = GAME_TYPES[maxmsg.gametype];
-					if(!game){
-						MDS.log("[TNZEC] HOUSE_REQUEST invalid game type: "+maxmsg.gametype);
-						return;
-					}
-
-					insertLog(maxmsg.hashid, "TNZEC_HOUSE_REQUEST",
-						"Hub requests house duty: "+game.name+" bet:"+maxmsg.betamt);
-
-					// Generate our house secret and commit
+					// Auto-house: generate our secret and commit
 					houseStartRound(maxmsg.hashid, maxmsg.gametype, function(data){
 						if(!data){
-							MDS.log("[TNZEC] House secret generation failed");
 							sendMaximaMessage(maximapubkey,
-								gameAbandonedMessage(maxmsg.hashid, "House secret failed"));
+								gameAbandonedMessage(maxmsg.hashid, "House secret generation failed"));
+							notify({type:"GAME_ABANDONED", hashid:maxmsg.hashid, reason:"House secret generation failed"});
 							return;
 						}
 
-						// Store house commit on this channel
-						MDS.sql("UPDATE channels SET housecommit='"+data.commit
-							+"' WHERE hashid='"+maxmsg.hashid+"'", function(){
+						// Store house commit on channel DB
+						MDS.sql("UPDATE channels SET housecommit='"+data.commit+"' WHERE hashid='"+maxmsg.hashid+"'", function(){
 
-							insertLog(maxmsg.hashid, "TNZEC_HOUSE_COMMITTED",
-								"House commit ready: "+data.commit.substring(0,16)+"..");
+							insertLog(maxmsg.hashid, "GAME_AUTO_HOUSE",
+								"Auto-housing "+game.name+". House commit:"+data.commit.substring(0,16)+"..");
 
-							// Send HOUSE_OFFER back to hub (not GAME_OFFER — hub will forward)
+							// Send GAME_OFFER back to the player with our commit
 							sendMaximaMessage(maximapubkey,
-								houseOfferMessage(maxmsg.hashid, data.commit,
-									maxmsg.gametype, game.range));
-						});
-					});
-				});
+								gameOfferMessage(maxmsg.hashid, data.commit, maxmsg.gametype, game.range));
 
-			}else if(maxmsg.type == "HOUSE_OFFER"){
-				/* ---- TNZEC: House sent us their commit (we're the hub) ----
-				 * Forward the house's commit to the player as a standard GAME_OFFER.
-				 */
-				if(!isHubMode()){ return; }
-
-				var playerHashid = getPlayerByHouse(maxmsg.hashid);
-				if(!playerHashid){
-					MDS.log("[TNZEC] HOUSE_OFFER received but no route found for house channel");
-					return;
-				}
-
-				var route = getRouteByPlayer(playerHashid);
-				insertLog(playerHashid, "TNZEC_HOUSE_OFFER_FWD",
-					"Forwarding house commit to player. House:"+maxmsg.hashid.substring(0,12)+"..");
-
-				// Store the house commit on the PLAYER's channel (hub is house in that channel)
-				MDS.sql("UPDATE channels SET housecommit='"+maxmsg.housecommit
-					+"' WHERE hashid='"+playerHashid+"'", function(){
-
-					// Forward to player as standard GAME_OFFER
-					sqlSelectChannel(playerHashid, function(psql){
-						if(psql.count == 0){ return; }
-						var prow = psql.rows[0];
-						var playerMaximaid = (parseInt(prow.USERNUM) == 1)
-							? prow.USER2MAXIMAID : prow.USER1MAXIMAID;
-
-						sendMaximaMessage(playerMaximaid,
-							gameOfferMessage(playerHashid, maxmsg.housecommit,
-								maxmsg.gametype, maxmsg.range));
-					});
-				});
-
-			}else if(maxmsg.type == "PLAYER_ACCEPTED"){
-				/* ---- TNZEC: Hub forwarded the player's commit to us (we're the house) ----
-				 * Same logic as GAME_ACCEPT: validate, sign pessimistic, send GAME_BET_SIGNED.
-				 * The hub mirrors the player's pick — hub is bettor in our channel.
-				 */
-				sqlSelectChannel(maxmsg.hashid, function(sql){
-					if(sql.count == 0){ return; }
-					var sqlrow = sql.rows[0];
-
-					if(!sqlrow.HOUSECOMMIT || sqlrow.HOUSECOMMIT.length < 4){
-						MDS.log("[TNZEC] PLAYER_ACCEPTED ignored — no house commitment");
-						return;
-					}
-
-					var game = GAME_TYPES[maxmsg.gametype];
-					if(!game){ return; }
-
-					// In this channel, the hub is the bettor (mirrors the real player)
-					// We (the house) are the other side
-					var bettor = (sqlrow.USERNUM == 1) ? 2 : 1;
-
-					insertLog(maxmsg.hashid, "TNZEC_PLAYER_ACCEPTED",
-						"Player commit forwarded by hub. Pick:"+maxmsg.pick+" Bet:"+maxmsg.betamt);
-
-					// Sign the pessimistic balance (same as GAME_ACCEPT handler)
-					signGameBet(maxmsg.hashid, maxmsg.playercommit,
-						sqlrow.HOUSECOMMIT, maxmsg.gametype, maxmsg.pick, maxmsg.betamt, bettor,
-						function(settletxn, updatetxn){
-
-							sqlSelectChannel(maxmsg.hashid, function(sql2){
-								var oldseq = parseInt(sql2.rows[0].SEQUENCE);
-								var newseq = oldseq + 1;
-
-								var ba = new Decimal(maxmsg.betamt);
-								var pu1 = new Decimal(sql2.rows[0].USER1AMOUNT);
-								var pu2 = new Decimal(sql2.rows[0].USER2AMOUNT);
-								var nu1 = (bettor==1) ? pu1.sub(ba) : pu1.plus(ba);
-								var nu2 = (bettor==2) ? pu2.sub(ba) : pu2.plus(ba);
-
-								updateNewSequenceTxn(maxmsg.hashid, newseq,
-									nu1.toString(), nu2.toString(), settletxn, updatetxn, function(){
-
-									// Send GAME_BET_SIGNED to hub
-									sendMaximaMessage(maximapubkey,
-										gameBetSignedMessage(maxmsg.hashid, newseq, settletxn, updatetxn),
-									function(){
-										insertLog(maxmsg.hashid, "TNZEC_BET_SIGNED",
-											"Pessimistic balance signed for routed game");
-
-										// Reveal house secret — send as HOUSE_REVEAL (not GAME_REVEAL)
-									// so the hub knows to forward, not auto-resolve
-									houseRevealSecret(maxmsg.hashid,
-										sql2.rows[0].HOUSECOMMIT, function(secret){
-										if(secret){
-											updateGameHouseRevealed(maxmsg.hashid, secret, function(){
-												insertLog(maxmsg.hashid, "TNZEC_HOUSE_REVEALED",
-													"Secret revealed via HOUSE_REVEAL to hub");
-												sendMaximaMessage(maximapubkey,
-													houseRevealMessage(maxmsg.hashid, secret));
-											});
-										}else{
-											insertLog(maxmsg.hashid, "TNZEC_REVEAL_FAILED",
-												"Could not retrieve house secret for routed game");
-										}
-									});
-									});
-								});
+							// Notify: game started, we are the house
+							notify({
+								type:     "GAME_STARTED",
+								hashid:   maxmsg.hashid,
+								gametype: maxmsg.gametype,
+								betamt:   maxmsg.betamt,
+								pick:     maxmsg.pick,
+								role:     "house"
 							});
 						});
-				});
-
-			}else if(maxmsg.type == "HOUSE_REVEAL"){
-				/* ---- TNZEC: House revealed their secret to us (we're the hub) ----
-				 * Forward to the player as standard GAME_REVEAL.
-				 */
-				if(!isHubMode()){ return; }
-
-				var playerHashid2 = getPlayerByHouse(maxmsg.hashid);
-				if(!playerHashid2){
-					MDS.log("[TNZEC] HOUSE_REVEAL but no route for house channel");
-					return;
-				}
-
-				insertLog(playerHashid2, "TNZEC_REVEAL_FWD",
-					"Forwarding house secret to player");
-
-				// Store the house secret on the PLAYER's channel
-				updateGameHouseRevealed(playerHashid2, maxmsg.housesecret, function(){
-
-					// Forward to player as standard GAME_REVEAL
-					sqlSelectChannel(playerHashid2, function(psql){
-						if(psql.count == 0){ return; }
-						var prow = psql.rows[0];
-						var playerMaximaid = (parseInt(prow.USERNUM) == 1)
-							? prow.USER2MAXIMAID : prow.USER1MAXIMAID;
-
-						sendMaximaMessage(playerMaximaid,
-							gameRevealMessage(playerHashid2, maxmsg.housesecret));
 					});
 				});
 
@@ -983,23 +721,8 @@ MDS.init(function(msg){
 				/* ---- STEP 2: Player accepted our game offer (we're the house) ----
 				 * Validate bet, sign pessimistic balance, send GAME_BET_SIGNED,
 				 * then auto-reveal our secret.
-				 * TNZEC HUB: Also forward player's commit to the house channel.
 				 * GUARD: only process once per game (check housecommit exists)
 				 */
-
-				// TNZEC: If this is a routed game, forward player's commit to house
-				if(isHubMode()){
-					var routeGA = getRouteByPlayer(maxmsg.hashid);
-					if(routeGA){
-						insertLog(maxmsg.hashid, "TNZEC_ACCEPT_FWD",
-							"Forwarding player commit to house: "+routeGA.house_hashid.substring(0,12)+"..");
-						sendMaximaMessage(routeGA.house_maximaid,
-							playerAcceptedMessage(routeGA.house_hashid, maxmsg.playercommit,
-								maxmsg.pick, maxmsg.betamt, maxmsg.gametype));
-					}
-				}
-
-				// Continue with normal handler — hub signs as house in player's channel
 				sqlSelectChannel(maxmsg.hashid, function(sql){
 					if(sql.count == 0){ return; }
 					var sqlrow = sql.rows[0];
@@ -1171,22 +894,7 @@ MDS.init(function(msg){
 				 * Verify the player's secret matches their commit.
 				 * Independently compute outcome to verify.
 				 * Build resolved balance, sign, and send GAME_RESULT_SIGNED.
-				 * TNZEC HUB: Also forward player's secret to the house channel.
 				 */
-
-				// TNZEC: If routed, forward player's secret to house
-				if(isHubMode()){
-					var routeGR = getRouteByPlayer(maxmsg.hashid);
-					if(routeGR){
-						insertLog(maxmsg.hashid, "TNZEC_RESULT_FWD",
-							"Forwarding player secret to house for verification");
-						sendMaximaMessage(routeGR.house_maximaid,
-							gameResultMessage(routeGR.house_hashid, maxmsg.playersecret,
-								maxmsg.result, maxmsg.winner, maxmsg.gametype));
-					}
-				}
-
-				// Continue with normal handler — hub verifies and signs as house
 				insertLog(maxmsg.hashid, "GAME_RESULT_RECEIVED",
 					"Result: "+maxmsg.winner+" ("+maxmsg.gametype+") Player secret received");
 
@@ -1339,11 +1047,6 @@ MDS.init(function(msg){
 								MDS.log("GAME_RESULT_SIGNED: no secrets in channel, sending result=-1");
 								sendGameResultNotification(-1);
 							}
-
-							// TNZEC: Clear the route if this was a routed game
-							if(isHubMode() && isRoutedGame(maxmsg.hashid)){
-								clearRoute(maxmsg.hashid);
-							}
 						});
 				});
 
@@ -1356,9 +1059,333 @@ MDS.init(function(msg){
 				});
 
 
-			/* Props handlers removed — saved in thunder-props-tba/ for Thunder Props dapp */
+			/* ==============================================================
+			 * PROPS / WAGER MESSAGES
+			 * ==============================================================
+			 * Prediction betting on real-world events.
+			 * Same pessimistic-commit model as casino games.
+			 * ============================================================== */
 
-			/* Props removed — saved in thunder-props-tba/ for Thunder Props dapp */
+			}else if(maxmsg.type == "PROP_OFFER"){
+				/* ---- Someone proposed a bet to us ---- */
+				insertLog(maxmsg.hashid, "PROP_OFFER_RECEIVED",
+					"Prop offered: "+maxmsg.proposition+" Stake:"+maxmsg.mystake+" Wants:"+maxmsg.wantstake);
+
+				sqlSelectChannel(maxmsg.hashid, function(sql){
+					if(sql.count == 0){ return; }
+					var sqlrow = sql.rows[0];
+
+					// Validate the prop
+					var proposer = (sqlrow.USERNUM == 1) ? 2 : 1; // Sender is the proposer
+					var validation = validateProp(sqlrow, maxmsg.mystake, maxmsg.wantstake, maxmsg.proposition, proposer);
+					if(!validation.valid){
+						MDS.log("PROP VALIDATION FAILED: "+validation.error);
+						insertLog(maxmsg.hashid, "PROP_INVALID", validation.error);
+						return;
+					}
+
+					// Store the prop in our DB
+					insertProp(maxmsg.hashid, maxmsg.proposition, proposer, maxmsg.side,
+						maxmsg.mystake, maxmsg.wantstake, function(){
+
+							notify({
+								type:        "PROP_INCOMING",
+								hashid:      maxmsg.hashid,
+								proposition: maxmsg.proposition,
+								mystake:     maxmsg.mystake,
+								wantstake:   maxmsg.wantstake,
+								side:        maxmsg.side,
+								from:        maximapubkey
+							});
+						});
+				});
+
+			}else if(maxmsg.type == "PROP_ACCEPT"){
+				/* ---- Counterparty accepted our prop — sign pessimistic balance, send PROP_SIGNED ---- */
+				insertLog(maxmsg.hashid, "PROP_ACCEPT_RECEIVED",
+					"Prop accepted by counterparty");
+
+				sqlSelectChannel(maxmsg.hashid, function(sql){
+					if(sql.count == 0){ return; }
+					var sqlrow = sql.rows[0];
+
+					// Get the active prop
+					selectActiveProp(maxmsg.hashid, function(propres){
+						if(propres.count == 0){
+							MDS.log("No active prop found for "+maxmsg.hashid);
+							return;
+						}
+						var prop = propres.rows[0];
+
+						// Update channel with prop data for MAST dispute
+						updateChannelPropActive(maxmsg.hashid, prop.PROPOSITION, parseInt(prop.PROPOSER),
+							prop.MYSTAKE, prop.WANTSTAKE, prop.PROPOSERSIDE, function(updatedrow){
+
+								// Build pessimistic balance txns (proposer's stake deducted)
+								var proposer = parseInt(prop.PROPOSER);
+								var mystake = new Decimal(prop.MYSTAKE);
+								var u1 = new Decimal(sqlrow.USER1AMOUNT);
+								var u2 = new Decimal(sqlrow.USER2AMOUNT);
+								var newu1, newu2;
+								if(proposer == 1){
+									newu1 = u1.sub(mystake).toString();
+									newu2 = u2.plus(mystake).toString();
+								}else{
+									newu1 = u1.plus(mystake).toString();
+									newu2 = u2.sub(mystake).toString();
+								}
+
+								var newsequence = new Decimal(sqlrow.SEQUENCE).plus(1);
+
+								createSettlementTxn(
+									sqlrow.HASHID, newsequence, sqlrow.ELTOOADDRESS, sqlrow.TOTALAMOUNT,
+									newu1, sqlrow.USER1ADDRESS,
+									newu2, sqlrow.USER2ADDRESS,
+									sqlrow.TOKENID, null,
+									function(settletxn){
+										createUpdateTxn(
+											newsequence, sqlrow.ELTOOADDRESS, sqlrow.TOTALAMOUNT,
+											sqlrow.TOKENID, null,
+											function(updatetxn){
+												signTxn(settletxn, sqlrow.USERPUBLICKEY, function(signedsettletxn){
+													signTxn(updatetxn, sqlrow.USERPUBLICKEY, function(signedupdatetxn){
+
+														// Send signed pessimistic balance
+														sendMaximaMessage(maximapubkey,
+															propSignedMessage(maxmsg.hashid, newsequence.toString(),
+																signedsettletxn, signedupdatetxn));
+
+														// Update prop state to active
+														updatePropState(maxmsg.hashid, 'active', function(){
+															insertLog(maxmsg.hashid, "PROP_PESSIMISTIC_SENT",
+																"Pessimistic balance signed and sent for prop");
+															notify({type:"PROP_ACTIVE", hashid:maxmsg.hashid});
+														});
+													});
+												});
+											}
+										);
+									}
+								);
+							});
+					});
+				});
+
+			}else if(maxmsg.type == "PROP_SIGNED"){
+				/* ---- Counterparty sent signed pessimistic balance for our prop acceptance ---- */
+				insertLog(maxmsg.hashid, "PROP_SIGNED_RECEIVED",
+					"Prop pessimistic balance received. Co-signing. Sequence:"+maxmsg.sequence);
+
+				sqlSelectChannel(maxmsg.hashid, function(sql){
+					if(sql.count == 0){ return; }
+					var sqlrow = sql.rows[0];
+
+					signTxn(maxmsg.settletxn, sqlrow.USERPUBLICKEY, function(cosignedsettletxn){
+						signTxn(maxmsg.updatetxn, sqlrow.USERPUBLICKEY, function(cosignedupdatetxn){
+
+							// Calculate pessimistic amounts
+							selectActiveProp(maxmsg.hashid, function(propres){
+								if(propres.count == 0){ return; }
+								var prop = propres.rows[0];
+								var proposer = parseInt(prop.PROPOSER);
+								var mystake = new Decimal(prop.MYSTAKE);
+								// FIX: Use gamephase to determine which amounts to use
+								// When prop is active (gamephase=2), PREBETAMT has the pre-bet amounts
+								// When idle (gamephase=0), use current USER amounts
+								var isPropActive = (parseInt(sqlrow.GAMEPHASE) == 2);
+								var u1 = new Decimal(isPropActive ? sqlrow.PREBETAMT1 : sqlrow.USER1AMOUNT);
+								var u2 = new Decimal(isPropActive ? sqlrow.PREBETAMT2 : sqlrow.USER2AMOUNT);
+								var newu1, newu2;
+								if(proposer == 1){
+									newu1 = u1.sub(mystake).toString();
+									newu2 = u2.plus(mystake).toString();
+								}else{
+									newu1 = u1.plus(mystake).toString();
+									newu2 = u2.sub(mystake).toString();
+								}
+
+								updateNewSequenceTxn(maxmsg.hashid, maxmsg.sequence,
+									newu1, newu2, cosignedsettletxn, cosignedupdatetxn, function(){
+
+										updatePropState(maxmsg.hashid, 'active', function(){
+											insertLog(maxmsg.hashid, "PROP_BET_LOCKED",
+												"Prop bet LOCKED. Pessimistic balance co-signed.");
+											notify({type:"PROP_ACTIVE", hashid:maxmsg.hashid});
+										});
+									});
+							});
+						});
+					});
+				});
+
+			}else if(maxmsg.type == "PROP_SETTLE"){
+				/* ---- Counterparty submitted their verdict ----
+				 * Record their outcome. If both agree, build resolved balance.
+				 */
+				insertLog(maxmsg.hashid, "PROP_SETTLE_RECEIVED",
+					"Counterparty verdict: "+maxmsg.outcome);
+
+				sqlSelectChannel(maxmsg.hashid, function(sql){
+					if(sql.count == 0){ return; }
+					var sqlrow = sql.rows[0];
+
+					// Determine who sent this (proposer or taker)
+					var proposer = parseInt(sqlrow.BETTOR); // BETTOR stores proposer
+					var senderIsProposer = false;
+					if(sqlrow.USERNUM == 1){
+						// We are user1, sender is user2
+						senderIsProposer = (proposer == 2);
+					}else{
+						// We are user2, sender is user1
+						senderIsProposer = (proposer == 1);
+					}
+
+					var who = senderIsProposer ? 'proposer' : 'taker';
+
+					updatePropOutcome(maxmsg.hashid, who, maxmsg.outcome, function(){
+
+						// Check if we have also submitted our verdict
+						selectActiveProp(maxmsg.hashid, function(propres){
+							if(propres.count == 0){ return; }
+							var prop = propres.rows[0];
+
+							var proposerOutcome = prop.PROPOSEROUTCOME;
+							var takerOutcome = prop.TAKEROUTCOME;
+
+							// Check if both sides have submitted
+							if(proposerOutcome && proposerOutcome.length > 0 &&
+							   takerOutcome && takerOutcome.length > 0){
+
+								if(proposerOutcome === takerOutcome){
+									// AGREEMENT — build resolved balance
+									var agreedOutcome = proposerOutcome;
+
+									insertLog(maxmsg.hashid, "PROP_AGREEMENT",
+										"Both agree: "+agreedOutcome);
+
+									// Determine winner
+									var proposerSide = prop.PROPOSERSIDE;
+									var winner;
+									if(agreedOutcome === proposerSide){
+										winner = "proposer";
+									}else{
+										winner = "taker";
+									}
+
+									var newbalance = calculatePropBalance(sqlrow, winner);
+									var newsequence = new Decimal(sqlrow.SEQUENCE).plus(1);
+
+									createSettlementTxn(
+										sqlrow.HASHID, newsequence, sqlrow.ELTOOADDRESS, sqlrow.TOTALAMOUNT,
+										newbalance.user1amount, sqlrow.USER1ADDRESS,
+										newbalance.user2amount, sqlrow.USER2ADDRESS,
+										sqlrow.TOKENID, null,
+										function(settletxn){
+											createUpdateTxn(
+												newsequence, sqlrow.ELTOOADDRESS, sqlrow.TOTALAMOUNT,
+												sqlrow.TOKENID, null,
+												function(updatetxn){
+													signTxn(settletxn, sqlrow.USERPUBLICKEY, function(signedsettletxn){
+														signTxn(updatetxn, sqlrow.USERPUBLICKEY, function(signedupdatetxn){
+															sendMaximaMessage(maximapubkey,
+																propAgreedMessage(maxmsg.hashid, newsequence.toString(),
+																	signedsettletxn, signedupdatetxn, agreedOutcome));
+
+															insertLog(maxmsg.hashid, "PROP_AGREED_SENT",
+																"Agreement signed and sent. Winner:"+winner);
+														});
+													});
+												}
+											);
+										}
+									);
+								}else{
+									// DISPUTE — outcomes differ
+									insertLog(maxmsg.hashid, "PROP_DISPUTE",
+										"Outcomes differ! Proposer:"+proposerOutcome+" Taker:"+takerOutcome);
+									updatePropDisputed(maxmsg.hashid, function(){
+										notify({type:"PROP_DISPUTED", hashid:maxmsg.hashid});
+									});
+								}
+							}else{
+								// Still waiting for our side
+								notify({type:"PROP_SETTLING", hashid:maxmsg.hashid, theirOutcome:maxmsg.outcome});
+							}
+						});
+					});
+				});
+
+			}else if(maxmsg.type == "PROP_AGREED"){
+				/* ---- Both sides agree — co-sign the resolved balance ---- */
+				insertLog(maxmsg.hashid, "PROP_AGREED_RECEIVED",
+					"Agreement received. Co-signing. Outcome:"+maxmsg.outcome);
+
+				sqlSelectChannel(maxmsg.hashid, function(sql){
+					if(sql.count == 0){ return; }
+					var sqlrow = sql.rows[0];
+
+					// Determine winner from the agreed outcome
+					selectActiveProp(maxmsg.hashid, function(propres){
+						if(propres.count == 0){ return; }
+						var prop = propres.rows[0];
+
+						var winner;
+						if(maxmsg.outcome === prop.PROPOSERSIDE){
+							winner = "proposer";
+						}else{
+							winner = "taker";
+						}
+
+						var newbalance = calculatePropBalance(sqlrow, winner);
+
+						signTxn(maxmsg.settletxn, sqlrow.USERPUBLICKEY, function(cosignedsettletxn){
+							signTxn(maxmsg.updatetxn, sqlrow.USERPUBLICKEY, function(cosignedupdatetxn){
+
+								updateNewSequenceTxn(maxmsg.hashid, maxmsg.sequence,
+									newbalance.user1amount, newbalance.user2amount,
+									cosignedsettletxn, cosignedupdatetxn, function(){
+
+										// Update prop as agreed
+										updatePropAgreed(maxmsg.hashid, maxmsg.outcome, function(){
+
+											// Clear game state on channel
+											updateGameCleared(maxmsg.hashid, function(){
+
+												// Determine if the win is ours
+												var proposer = parseInt(prop.PROPOSER);
+												var amIProposer = (sqlrow.USERNUM == proposer);
+												var isMyWin = (amIProposer && winner === "proposer") ||
+												              (!amIProposer && winner === "taker");
+
+												insertLog(maxmsg.hashid, "PROP_COMPLETE",
+													"Prop settled! Outcome:"+maxmsg.outcome+" Winner:"+winner
+													+" User1:"+newbalance.user1amount+" User2:"+newbalance.user2amount);
+
+												notify({
+													type:        "PROP_SETTLED",
+													hashid:      maxmsg.hashid,
+													outcome:     maxmsg.outcome,
+													winner:      winner,
+													isMyWin:     isMyWin,
+													user1amount: newbalance.user1amount,
+													user2amount: newbalance.user2amount
+												});
+											});
+										});
+									});
+							});
+						});
+					});
+				});
+
+			}else if(maxmsg.type == "PROP_CANCELLED"){
+				/* ---- Proposer cancelled before we accepted ---- */
+				insertLog(maxmsg.hashid, "PROP_CANCELLED",
+					"Prop cancelled by proposer");
+
+				updatePropState(maxmsg.hashid, 'cancelled', function(){
+					notify({type:"PROP_CANCELLED", hashid:maxmsg.hashid});
+				});
 
 			}else if(maxmsg.type == "SYNACK_MESSAGE"){
 				/* ---- SYNACK received — trigger the queued function ---- */

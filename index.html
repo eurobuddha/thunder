@@ -27,8 +27,7 @@
 	<script type="text/javascript" src="./js/maxima.js"></script>
 	<script type="text/javascript" src="./js/mast-txns.js"></script>
 	<script type="text/javascript" src="./js/casino.js"></script>
-	<!-- props.js removed — saved in thunder-props-tba/ -->
-	<script type="text/javascript" src="./js/routing.js"></script>
+	<script type="text/javascript" src="./js/props.js"></script>
 	<script type="text/javascript" src="./js/channelfunction.js"></script>
 	<script type="text/javascript" src="./js/items.js"></script>
 
@@ -557,7 +556,6 @@
 		<div class="tab-nav">
 			<button class="tab-btn active" id="tab-casino" onclick="switchTab('casino')">CASINO</button>
 			<button class="tab-btn" id="tab-channels" onclick="switchTab('channels')">CHANNELS</button>
-			<button class="tab-btn" id="tab-network" onclick="switchTab('network')">NETWORK</button>
 		</div>
 		<button id="btn-snd" class="btn-snd active" onclick="SFX.toggle()" title="Toggle sound">SND ON</button>
 	</div>
@@ -745,49 +743,6 @@
 			</div>
 			<div id="channels-history" class="hidden">
 				<!-- Populated by JS -->
-			</div>
-		</div>
-	</div>
-
-	<!-- ============================================================ -->
-	<!-- TAB: NETWORK (TNZEC)                                          -->
-	<!-- ============================================================ -->
-	<div id="tab-view-network" class="hidden">
-
-		<!-- Hub mode toggle -->
-		<div class="card" style="margin-bottom:12px;">
-			<div class="card-header">
-				<div class="card-title">TNZEC — NETWORK MODE</div>
-			</div>
-			<div style="display:flex; gap:12px; align-items:center; padding:8px 0;">
-				<button class="btn btn-primary btn-sm" id="btn-hub-mode" onclick="toggleHubMode()">ENABLE HUB</button>
-				<span id="network-mode-label" style="opacity:0.7;">Mode: <strong>SPOKE</strong> (player)</span>
-			</div>
-		</div>
-
-		<!-- Network capacity (hub mode) -->
-		<div class="card" style="margin-bottom:12px;">
-			<div class="card-header">
-				<div class="card-title">NETWORK CAPACITY</div>
-				<button class="btn btn-secondary btn-sm" onclick="refreshNetworkCapacity()">REFRESH</button>
-			</div>
-			<div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; padding:8px 0;">
-				<div>Online Houses: <strong id="net-online">0</strong></div>
-				<div>Total Capacity: <strong id="net-total">0</strong></div>
-				<div>Max Flip Bet: <strong id="net-max-flip">0</strong></div>
-				<div>Max Dice Bet: <strong id="net-max-dice">0</strong></div>
-				<div>Max Roulette Bet: <strong id="net-max-roulette">0</strong></div>
-				<div>Largest House: <strong id="net-largest">0</strong></div>
-			</div>
-		</div>
-
-		<!-- Network members -->
-		<div class="card">
-			<div class="card-header">
-				<div class="card-title">NETWORK MEMBERS</div>
-			</div>
-			<div id="network-members-list">
-				<div style="opacity:0.5; padding:16px; text-align:center;">Enable hub mode to see network members</div>
 			</div>
 		</div>
 	</div>
@@ -1714,16 +1669,13 @@ function switchTab(tab){
 	CURRENT_TAB = tab;
 	document.getElementById('tab-view-casino').classList.add('hidden');
 	document.getElementById('tab-view-channels').classList.add('hidden');
-	document.getElementById('tab-view-network').classList.add('hidden');
 	document.getElementById('tab-view-' + tab).classList.remove('hidden');
 
 	document.getElementById('tab-casino').classList.toggle('active', tab === 'casino');
 	document.getElementById('tab-channels').classList.toggle('active', tab === 'channels');
-	document.getElementById('tab-network').classList.toggle('active', tab === 'network');
 
 	if(tab === 'casino') loadCasinoChannels();
 	if(tab === 'channels') loadChannelsTab();
-	if(tab === 'network') refreshNetworkCapacity();
 }
 
 
@@ -2193,70 +2145,6 @@ function doRequestChannel(pubkey, youAdd, theyAdd, tokName, tokId, tokData){
 		// Collapse the form
 		toggleNewChannelForm();
 		loadChannelsTab();
-	});
-}
-
-
-/* =========================================================================
- * TNZEC NETWORK TAB
- * ========================================================================= */
-
-function toggleHubMode(){
-	MDS.keypair.get("tnzec_mode", function(res){
-		if(res.status && res.value === "hub"){
-			MDS.keypair.set("tnzec_mode", "spoke", function(){
-				document.getElementById('network-mode-label').innerHTML = 'Mode: <strong>SPOKE</strong> (player)';
-				document.getElementById('btn-hub-mode').textContent = 'ENABLE HUB';
-				addNotice("TNZEC hub mode DISABLED. Restart for changes to take effect.", "system");
-			});
-		}else{
-			MDS.keypair.set("tnzec_mode", "hub", function(){
-				document.getElementById('network-mode-label').innerHTML = 'Mode: <strong>HUB</strong> (routing casino)';
-				document.getElementById('btn-hub-mode').textContent = 'DISABLE HUB';
-				addNotice("TNZEC hub mode ENABLED. Restart for changes to take effect.", "system");
-				refreshNetworkCapacity();
-			});
-		}
-	});
-}
-
-function refreshNetworkCapacity(){
-	// Check current mode
-	MDS.keypair.get("tnzec_mode", function(moderes){
-		var isHub = (moderes.status && moderes.value === "hub");
-		if(isHub){
-			document.getElementById('network-mode-label').innerHTML = 'Mode: <strong>HUB</strong> (routing casino)';
-			document.getElementById('btn-hub-mode').textContent = 'DISABLE HUB';
-		}
-	});
-
-	getNetworkCapacity(null, function(cap){
-		document.getElementById('net-online').textContent = cap.online;
-		document.getElementById('net-total').textContent = cap.total;
-		document.getElementById('net-max-flip').textContent = cap.maxFlip;
-		document.getElementById('net-max-dice').textContent = cap.maxDice;
-		document.getElementById('net-max-roulette').textContent = cap.maxRoulette;
-		document.getElementById('net-largest').textContent = cap.largestHouse;
-	});
-
-	getNetworkMembers(function(members){
-		var html = '';
-		if(members.length == 0){
-			html = '<div style="opacity:0.5; padding:16px; text-align:center;">No open channels</div>';
-		}else{
-			for(var i=0; i<members.length; i++){
-				var m = members[i];
-				var status = m.inGame ? '<span style="color:#ffd700;">IN GAME</span>'
-					: m.isRouting ? '<span style="color:#00e5ff;">ROUTING</span>'
-					: '<span style="color:#00e676;">AVAILABLE</span>';
-				html += '<div style="display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.05);">'
-					+'<span>'+(m.name || 'Unknown')+'</span>'
-					+'<span>'+m.balance+' Minima</span>'
-					+'<span>'+status+'</span>'
-					+'</div>';
-			}
-		}
-		document.getElementById('network-members-list').innerHTML = html;
 	});
 }
 

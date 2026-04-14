@@ -204,29 +204,7 @@ function createDB(callback){
 				+" )";
 
 			MDS.sql(logsSQL, function(msg){
-
-				/* ------------------------------------------------------------------
-				 * TABLE: routed_games (TNZEC)
-				 * ------------------------------------------------------------------
-				 * Tracks which player channel is linked to which house channel
-				 * for each routed game. The Casino hub creates one record per
-				 * routed game. Used to forward secrets between channels.
-				 * ------------------------------------------------------------------ */
-				var routedSQL = "CREATE TABLE IF NOT EXISTS `routed_games` ( "
-					+"  `id` bigint auto_increment, "
-					+"  `player_hashid` varchar(256) NOT NULL, "    // Player's channel with hub
-					+"  `house_hashid` varchar(256) NOT NULL, "     // House's channel with hub
-					+"  `player_maximaid` varchar(1024), "          // Player's Maxima ID
-					+"  `house_maximaid` varchar(1024), "           // House's Maxima ID
-					+"  `gametype` varchar(32), "                   // flip, dice, roulette
-					+"  `betamount` varchar(256), "                 // Bet amount routed
-					+"  `status` varchar(64) NOT NULL, "            // active, completed, failed
-					+"  `date` bigint NOT NULL "
-					+" )";
-
-				MDS.sql(routedSQL, function(msg){
-					if(callback){ callback(msg); }
-				});
+				if(callback){ callback(msg); }
 			});
 		});
 	});
