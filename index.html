@@ -695,37 +695,54 @@
 	<!-- TAB: CHANNELS                                                 -->
 	<!-- ============================================================ -->
 	<div id="tab-view-channels" class="hidden">
-		<div id="channels-list">
+
+		<!-- Active / pending channels -->
+		<div id="channels-active">
 			<!-- Populated by JS -->
 		</div>
 
-		<!-- New channel form -->
-		<div class="card mt-12">
-			<div class="card-header">
-				<div class="card-title">OPEN NEW CHANNEL</div>
-			</div>
-			<div class="form-group">
-				<label class="form-label">Maxima Contact</label>
-				<select id="contact-select" class="form-select"></select>
-			</div>
-			<div class="form-group">
-				<label class="form-label">Token</label>
-				<select id="token-select" class="form-select"></select>
-			</div>
-			<div style="display:flex; gap:16px;">
-				<div class="form-group" style="flex:1;">
-					<label class="form-label">You Add</label>
-					<input id="you-add" type="number" class="form-input" value="10" min="0">
+		<!-- New channel form (collapsible) -->
+		<div id="new-channel-section" class="mt-8">
+			<button class="btn btn-primary btn-sm" id="btn-show-new-channel" onclick="toggleNewChannelForm()" style="width:100%; margin-bottom:8px;">+ NEW CHANNEL</button>
+			<div id="new-channel-form" class="card hidden">
+				<div class="card-header">
+					<div class="card-title">OPEN NEW CHANNEL</div>
+					<button class="btn btn-secondary btn-sm" onclick="toggleNewChannelForm()">CLOSE</button>
 				</div>
-				<div class="form-group" style="flex:1;">
-					<label class="form-label">They Add</label>
-					<input id="they-add" type="number" class="form-input" value="10" min="0">
+				<div class="form-group">
+					<label class="form-label">Maxima Contact</label>
+					<select id="contact-select" class="form-select"></select>
+				</div>
+				<div class="form-group">
+					<label class="form-label">Token</label>
+					<select id="token-select" class="form-select"></select>
+				</div>
+				<div style="display:flex; gap:16px;">
+					<div class="form-group" style="flex:1;">
+						<label class="form-label">You Add</label>
+						<input id="you-add" type="number" class="form-input" value="10" min="0">
+					</div>
+					<div class="form-group" style="flex:1;">
+						<label class="form-label">They Add</label>
+						<input id="they-add" type="number" class="form-input" value="10" min="0">
+					</div>
+				</div>
+				<div class="text-center mt-8">
+					<button id="btn-request-channel" class="btn btn-primary btn-lg" onclick="requestChannel()">
+						REQUEST CHANNEL
+					</button>
 				</div>
 			</div>
-			<div class="text-center mt-12">
-				<button id="btn-request-channel" class="btn btn-primary btn-lg" onclick="requestChannel()">
-					REQUEST CHANNEL
-				</button>
+		</div>
+
+		<!-- History (closed channels, collapsible) -->
+		<div id="channels-history-section" class="mt-8">
+			<div class="flex-between" style="margin-bottom:6px;">
+				<button class="btn btn-secondary btn-sm" onclick="toggleChannelHistory()" id="btn-toggle-history" style="flex:1;">HISTORY (0)</button>
+				<button class="btn btn-danger btn-sm" onclick="cleanupChannels()" style="margin-left:6px;">CLEAN UP</button>
+			</div>
+			<div id="channels-history" class="hidden">
+				<!-- Populated by JS -->
 			</div>
 		</div>
 	</div>
@@ -1662,6 +1679,13 @@ function switchTab(tab){
 }
 
 
+/* ---- Auto-refresh channels every 10s to catch state transitions ---- */
+setInterval(function(){
+	if(CURRENT_TAB === 'channels') loadChannelsTab();
+	else if(CURRENT_TAB === 'casino' && !IN_GAME_SESSION) loadCasinoChannels();
+}, 10000);
+
+
 /* =========================================================================
  * HEADER INFO
  * ========================================================================= */
@@ -1727,7 +1751,7 @@ function loadCasinoChannels(){
 					+'</div>'
 					+'<div style="text-align:right; margin-right:16px;">'
 					+'<div class="channel-balance">' + (myamt || '0') + '</div>'
-					+'<div class="channel-state">OPEN</div>'
+					+'<div class="channel-state state-open">OPEN</div>'
 					+'</div>'
 					+'<div class="channel-actions">'
 					+'<button class="btn btn-primary btn-sm" onclick="enterGame(\'' + ch.HASHID + '\')">PLAY</button>'
@@ -1749,23 +1773,76 @@ function loadCasinoChannels(){
 
 
 /* =========================================================================
- * CHANNELS TAB -- Full channel list with state-dependent buttons
+ * CHANNELS TAB -- Full channel list with state-dependent actions
  * ========================================================================= */
 
+var CHANNEL_HISTORY_VISIBLE = false;
+
 function loadChannelsTab(){
-	loadNewChannelForm();
+	// Only reload contacts/balance when form is visible
+	if(!document.getElementById('new-channel-form').classList.contains('hidden')){
+		loadNewChannelForm();
+	}
 
 	sqlSelectAllOpenChannels(function(res){
-		var html = '';
+		var activeHtml = '';
+		var historyHtml = '';
+		var activeCount = 0;
+		var historyCount = 0;
+
 		if(res.rows.length === 0){
-			html = '<div class="text-center text-ghost" style="padding:30px;">No channels yet. Create one below.</div>';
+			activeHtml = '<div class="text-center text-ghost" style="padding:20px;">No channels. Create one below.</div>';
 		} else {
 			for(var i=0; i<res.rows.length; i++){
-				html += buildChannelRow(res.rows[i]);
+				var ch = res.rows[i];
+				var state = ch.STATE;
+				// Closed, denied, cancelled → history
+				if(state === 'STATE_CHANNEL_CLOSED' || state === 'STATE_REQUEST_DENIED' || state === 'STATE_REQUEST_CANCELLED'){
+					historyHtml += buildChannelRow(ch);
+					historyCount++;
+				} else {
+					activeHtml += buildChannelRow(ch);
+					activeCount++;
+				}
+			}
+			if(activeCount === 0){
+				activeHtml = '<div class="text-center text-ghost" style="padding:20px;">No active channels. Create one below.</div>';
 			}
 		}
-		document.getElementById('channels-list').innerHTML = html;
+
+		document.getElementById('channels-active').innerHTML = activeHtml;
+		document.getElementById('channels-history').innerHTML = historyHtml || '<div class="text-center text-ghost" style="padding:12px;">No history.</div>';
+		document.getElementById('btn-toggle-history').textContent = 'HISTORY (' + historyCount + ')';
 	});
+}
+
+function getChannelStateInfo(state){
+	// Returns {label, cssClass, step} for human-readable state display
+	switch(state){
+		case 'STATE_SENT_START_CHANNEL':
+			return {label: 'Waiting for acceptance', css: 'state-sent', step: ''};
+		case 'STATE_REQUEST_START_CHANNEL':
+			return {label: 'Incoming request', css: 'state-incoming', step: ''};
+		case 'STATE_REQUEST_ACCEPTED':
+			return {label: 'Setting up (1/3)', css: 'state-setup', step: '1'};
+		case 'STATE_CHANNEL_CREATE_1':
+			return {label: 'Setting up (2/3)', css: 'state-setup', step: '2'};
+		case 'STATE_CHANNEL_CREATE_2':
+			return {label: 'Setting up (3/3)', css: 'state-setup', step: '3'};
+		case 'STATE_CHANNEL_OPEN_1':
+		case 'STATE_CHANNEL_OPEN_2':
+			return {label: 'Open', css: 'state-open', step: ''};
+		case 'STATE_CHANNEL_START_CLOSE':
+			return {label: 'Closing...', css: 'state-closing', step: ''};
+		case 'STATE_CHANNEL_CLOSED':
+			return {label: 'Closed', css: 'state-closed', step: ''};
+		case 'STATE_REQUEST_DENIED':
+			return {label: 'Denied', css: 'state-failed', step: ''};
+		case 'STATE_REQUEST_CANCELLED':
+			return {label: 'Cancelled', css: 'state-failed', step: ''};
+		default:
+			return {label: state.replace('STATE_','').replace(/_/g,' '), css: 'state-sent', step: ''};
+	}
 }
 
 function buildChannelRow(ch){
@@ -1773,36 +1850,54 @@ function buildChannelRow(ch){
 		? decodeStringFromDB(ch.USER2NAME || 'Contact')
 		: decodeStringFromDB(ch.USER1NAME || 'Contact');
 	var myamt = (ch.USERNUM === '1') ? ch.USER1AMOUNT : ch.USER2AMOUNT;
+	var theiramt = (ch.USERNUM === '1') ? ch.USER2AMOUNT : ch.USER1AMOUNT;
 	var total = ch.TOTALAMOUNT;
 	var state = ch.STATE;
+	var info = getChannelStateInfo(state);
 	var canPlay = state.startsWith('STATE_CHANNEL_OPEN');
-	var stateLabel = state.replace('STATE_','').replace(/_/g,' ');
 	var otherMaximaId = (ch.USERNUM === '1') ? ch.USER2MAXIMAID : ch.USER1MAXIMAID;
 
 	var html = '<div class="channel-row' + (canPlay ? ' card-active' : '') + '">'
-		+'<div style="flex:1;">'
+		+'<div style="flex:1; min-width:0;">'
 		+'<div class="channel-name">' + name + '</div>'
-		+'<div class="channel-state">' + stateLabel + '</div>'
-		+'</div>'
-		+'<div style="text-align:right; margin-right:16px;">'
-		+'<div class="channel-balance">' + (myamt || '---') + '</div>'
-		+'<div class="channel-total">' + (total ? 'of ' + total + ' total' : '') + '</div>'
-		+'</div>'
-		+'<div class="channel-actions">';
+		+'<div class="channel-state ' + info.css + '">' + info.label + '</div>'
+		+'</div>';
 
+	// Balance column — show for channels that have amounts
+	if(canPlay || state === 'STATE_CHANNEL_START_CLOSE' || state === 'STATE_CHANNEL_CLOSED'){
+		html += '<div style="text-align:right; margin:0 12px;">'
+			+'<div class="channel-balance">' + (myamt || '0') + '</div>'
+			+'<div class="channel-total">' + (total ? 'of ' + total : '') + '</div>'
+			+'</div>';
+	} else if(total && total !== '0'){
+		html += '<div style="text-align:right; margin:0 12px;">'
+			+'<div class="channel-balance" style="font-size:14px;">' + (myamt || '0') + ' / ' + (theiramt || '0') + '</div>'
+			+'<div class="channel-total">total ' + total + '</div>'
+			+'</div>';
+	}
+
+	html += '<div class="channel-actions">';
+
+	// State-specific action buttons
 	if(state === 'STATE_SENT_START_CHANNEL'){
 		html += '<button class="btn btn-danger btn-sm" onclick="cancelChannel(\'' + ch.HASHID + '\',\'' + otherMaximaId + '\')">CANCEL</button>';
+
 	} else if(state === 'STATE_REQUEST_START_CHANNEL'){
-		html += '<button class="btn btn-danger btn-sm" onclick="denyChannel(\'' + ch.HASHID + '\',\'' + otherMaximaId + '\')">DENY</button> ';
-		html += '<button class="btn btn-success btn-sm" onclick="acceptChannel(\'' + ch.HASHID + '\',\'' + otherMaximaId + '\')">ACCEPT</button>';
+		html += '<button class="btn btn-danger btn-sm" onclick="denyChannel(\'' + ch.HASHID + '\',\'' + otherMaximaId + '\')">DENY</button>'
+			+'<button class="btn btn-success btn-sm" onclick="acceptChannel(\'' + ch.HASHID + '\',\'' + otherMaximaId + '\')">ACCEPT</button>';
+
 	} else if(state === 'STATE_REQUEST_ACCEPTED' || state === 'STATE_CHANNEL_CREATE_1' || state === 'STATE_CHANNEL_CREATE_2'){
-		html += '<span class="text-ghost" style="font-size:12px;">Setting up...</span>';
+		// No buttons during setup — just the pulsing state label
+
 	} else if(canPlay){
-		html += '<button class="btn btn-primary btn-sm" onclick="enterGame(\'' + ch.HASHID + '\')">PLAY</button>';
+		html += '<button class="btn btn-primary btn-sm" onclick="playFromChannels(\'' + ch.HASHID + '\')">PLAY</button>'
+			+'<button class="btn btn-danger btn-sm" onclick="closeChannelFromList(\'' + ch.HASHID + '\')">CLOSE</button>';
+
 	} else if(state === 'STATE_CHANNEL_START_CLOSE'){
-		html += '<span class="text-ghost" style="font-size:12px;">Closing...</span>';
-	} else if(state === 'STATE_REQUEST_DENIED' || state === 'STATE_REQUEST_CANCELLED'){
-		html += '<span class="text-pink" style="font-size:12px;">' + stateLabel + '</span>';
+		// No buttons during close — pulsing state label
+
+	} else if(state === 'STATE_CHANNEL_CLOSED' || state === 'STATE_REQUEST_DENIED' || state === 'STATE_REQUEST_CANCELLED'){
+		html += '<button class="btn btn-secondary btn-sm" onclick="deleteChannel(\'' + ch.HASHID + '\')">DELETE</button>';
 	}
 
 	html += '</div></div>';
@@ -1815,11 +1910,13 @@ function buildChannelRow(ch){
  * ========================================================================= */
 
 function acceptChannel(hashid, maximaid){
+	addNotice('info', 'Accepting channel...');
 	var userdets = getUserDetails();
 	updateChannelUser2(hashid, userdets, function(sqlrow){
 		checkBalance(sqlrow.USER2AMOUNT, sqlrow.TOKENID, function(valid){
 			if(!valid){
 				thunderAlert('Insufficient funds to join this channel!');
+				addNotice('warn', 'Insufficient funds for channel');
 				return;
 			}
 			updateMyPublicKey(hashid, userdets.publickey, function(){
@@ -1827,11 +1924,13 @@ function acceptChannel(hashid, maximaid){
 					if(delivered){
 						insertLog(hashid, 'YOU_ACCEPT_CHANNEL',
 							'Channel accepted for ' + decodeStringFromDB(sqlrow.USER1NAME));
+						addNotice('info', 'Channel accepted — setting up...');
 						updateChannelState(hashid, 'STATE_REQUEST_ACCEPTED', function(){
 							loadChannelsTab();
 						});
 					} else {
 						thunderAlert('Could not contact the other user.');
+						addNotice('warn', 'Accept failed — could not reach counterparty');
 					}
 				});
 			});
@@ -1840,8 +1939,10 @@ function acceptChannel(hashid, maximaid){
 }
 
 function denyChannel(hashid, maximaid){
+	addNotice('warn', 'Denying channel request...');
 	denyStartChannel(maximaid, hashid, function(delivered){
 		insertLog(hashid, 'YOU_DENY_CHANNEL', 'Channel denied');
+		addNotice('system', 'Channel request denied');
 		loadChannelsTab();
 		if(!delivered) thunderAlert('Channel denied but could not notify the other user.');
 	});
@@ -1849,9 +1950,85 @@ function denyChannel(hashid, maximaid){
 
 function cancelChannel(hashid, maximaid){
 	insertLog(hashid, 'YOU_CANCEL_REQUEST', 'Channel request cancelled');
+	addNotice('warn', 'Cancelling channel request...');
 	cancelNewChannel(hashid, maximaid, function(delivered){
+		addNotice('system', 'Channel request cancelled');
 		loadChannelsTab();
+		if(CURRENT_TAB === 'casino') loadCasinoChannels();
 	});
+}
+
+
+/* ---- Play from Channels tab — jump to Casino + enter game ---- */
+function playFromChannels(hashid){
+	switchTab('casino');
+	enterGame(hashid);
+}
+
+/* ---- Close channel from Channels list ---- */
+function closeChannelFromList(hashid){
+	thunderConfirm(
+		'Close this channel?\n\nCooperative close sends 1 transaction.\nUnilateral close posts the trigger on-chain.',
+		[
+			{ label: 'CANCEL', action: function(){} },
+			{ label: 'COOPERATIVE', action: function(){
+				CURRENT_CHANNEL = hashid;
+				doCooperativeClose();
+			}},
+			{ label: 'UNILATERAL', danger: true, action: function(){
+				CURRENT_CHANNEL = hashid;
+				doUnilateralClose();
+			}}
+		]
+	);
+}
+
+/* ---- Delete a closed/failed channel from DB ---- */
+function deleteChannel(hashid){
+	MDS.sql("DELETE FROM channels WHERE hashid='"+hashid
+		+"' AND (state='STATE_CHANNEL_CLOSED' OR state='STATE_REQUEST_DENIED' OR state='STATE_REQUEST_CANCELLED')",
+		function(res){
+			addNotice('system', 'Channel removed');
+			loadChannelsTab();
+		});
+}
+
+/* ---- Clean up all closed/denied/cancelled channels ---- */
+function cleanupChannels(){
+	thunderConfirm('Remove all closed and failed channels from history?', [
+		{ label: 'CANCEL', action: function(){} },
+		{ label: 'CLEAN UP', danger: true, action: function(){
+			MDS.sql("DELETE FROM channels WHERE state='STATE_CHANNEL_CLOSED' OR state='STATE_REQUEST_DENIED' OR state='STATE_REQUEST_CANCELLED'", function(res){
+				addNotice('system', 'Channel history cleaned up');
+				loadChannelsTab();
+			});
+		}}
+	]);
+}
+
+/* ---- Toggle new channel form visibility ---- */
+function toggleNewChannelForm(){
+	var form = document.getElementById('new-channel-form');
+	var btn = document.getElementById('btn-show-new-channel');
+	if(form.classList.contains('hidden')){
+		form.classList.remove('hidden');
+		btn.classList.add('hidden');
+		loadNewChannelForm();
+	} else {
+		form.classList.add('hidden');
+		btn.classList.remove('hidden');
+	}
+}
+
+/* ---- Toggle channel history visibility ---- */
+function toggleChannelHistory(){
+	CHANNEL_HISTORY_VISIBLE = !CHANNEL_HISTORY_VISIBLE;
+	var el = document.getElementById('channels-history');
+	if(CHANNEL_HISTORY_VISIBLE){
+		el.classList.remove('hidden');
+	} else {
+		el.classList.add('hidden');
+	}
 }
 
 
@@ -1914,10 +2091,13 @@ function doRequestChannel(pubkey, youAdd, theyAdd, tokName, tokId, tokData){
 	requestNewChannel(pubkey, youAdd, theyAdd, tokName, tokId, tokData, function(delivered, hashid){
 		if(!delivered){
 			thunderAlert('Could not contact user. Check Maxima connections.');
+			addNotice('warn', 'Channel request failed — delivery error');
 			return;
 		}
 		insertLog(hashid, 'YOU_REQUEST_CHANNEL', 'Channel requested');
-		thunderAlert('Channel request sent! Waiting for acceptance.');
+		addNotice('info', 'Channel request sent! Waiting for acceptance...');
+		// Collapse the form
+		toggleNewChannelForm();
 		loadChannelsTab();
 	});
 }
@@ -2460,17 +2640,20 @@ MDS.init(function(msg){
 		if(!msg.data.public){
 			var comms = JSON.parse(msg.data.message);
 
-			/* ---- Channel notifications ---- */
+			/* ---- Channel notifications — always refresh both tabs ---- */
 			if(comms.type === 'CHANNEL_UPDATE' || comms.type === 'CHANNEL_OPEN' ||
 			   comms.type === 'REFRESH_CHANNEL'){
-				if(CURRENT_TAB === 'channels') loadChannelsTab();
-				if(CURRENT_TAB === 'casino') loadCasinoChannels();
-				addNotice('system', 'Channel: ' + (comms.state || comms.type));
+				loadChannelsTab();
+				loadCasinoChannels();
+				// Human-readable state notification
+				var stateMsg = comms.state || comms.type;
+				var info = getChannelStateInfo(stateMsg);
+				addNotice('info', 'Channel: ' + info.label);
 
 			} else if(comms.type === 'CHANNEL_CLOSED' || comms.type === 'CLOSING_CHANNEL'){
-				addNotice('warn', 'Channel closed');
-				if(CURRENT_TAB === 'channels') loadChannelsTab();
-				if(CURRENT_TAB === 'casino') loadCasinoChannels();
+				addNotice('warn', 'Channel close initiated — waiting for confirmation');
+				loadChannelsTab();
+				loadCasinoChannels();
 
 			/* ---- Game notifications (from service.js — THE BRAIN) ---- */
 			} else if(comms.type === 'GAME_STARTED'){
