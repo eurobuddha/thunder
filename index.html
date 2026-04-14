@@ -1887,17 +1887,22 @@ function buildChannelRow(ch){
 			+'<button class="btn btn-success btn-sm" onclick="acceptChannel(\'' + ch.HASHID + '\',\'' + otherMaximaId + '\')">ACCEPT</button>';
 
 	} else if(state === 'STATE_REQUEST_ACCEPTED' || state === 'STATE_CHANNEL_CREATE_1' || state === 'STATE_CHANNEL_CREATE_2'){
-		// No buttons during setup — just the pulsing state label
+		// Setup in progress — show ABANDON button for stuck channels
+		html += '<button class="btn btn-danger btn-sm" onclick="abandonChannel(\'' + ch.HASHID + '\')">ABANDON</button>';
 
 	} else if(canPlay){
 		html += '<button class="btn btn-primary btn-sm" onclick="playFromChannels(\'' + ch.HASHID + '\')">PLAY</button>'
 			+'<button class="btn btn-danger btn-sm" onclick="closeChannelFromList(\'' + ch.HASHID + '\')">CLOSE</button>';
 
 	} else if(state === 'STATE_CHANNEL_START_CLOSE'){
-		// No buttons during close — pulsing state label
+		// Closing in progress — show ABANDON for stuck closes
+		html += '<button class="btn btn-secondary btn-sm" onclick="abandonChannel(\'' + ch.HASHID + '\')">ABANDON</button>';
 
 	} else if(state === 'STATE_CHANNEL_CLOSED' || state === 'STATE_REQUEST_DENIED' || state === 'STATE_REQUEST_CANCELLED'){
 		html += '<button class="btn btn-secondary btn-sm" onclick="deleteChannel(\'' + ch.HASHID + '\')">DELETE</button>';
+	} else {
+		// Unknown or unexpected state — always offer abandon
+		html += '<button class="btn btn-danger btn-sm" onclick="abandonChannel(\'' + ch.HASHID + '\')">ABANDON</button>';
 	}
 
 	html += '</div></div>';
@@ -1983,6 +1988,47 @@ function closeChannelFromList(hashid){
 	);
 }
 
+/* ---- Abandon a stuck setup channel ---- */
+function abandonChannel(hashid){
+	thunderConfirm('Abandon this channel?\n\nThis will check if any funds are locked and mark the channel as closed.', [
+		{ label: 'CANCEL', action: function(){} },
+		{ label: 'ABANDON', danger: true, action: function(){
+			sqlSelectChannel(hashid, function(sql){
+				if(sql.count == 0){
+					addNotice('warn', 'Channel not found');
+					return;
+				}
+				var ch = sql.rows[0];
+				var fundAddr = ch.FUNDINGADDRESS;
+				if(fundAddr){
+					MDS.cmd("coins address:" + fundAddr, function(coinresp){
+						var coins = coinresp.response || [];
+						if(coins.length > 0){
+							// Coins ARE locked — can't just abandon, need manual intervention
+							thunderAlert('Funds are locked at the funding address (' + coins[0].amount + ' Minima).\n\nUse CLOSE CHANNEL (cooperative or unilateral) to recover them.');
+							addNotice('warn', 'Cannot abandon — ' + coins[0].amount + ' locked at funding address');
+						} else {
+							// No coins locked — safe to mark closed
+							MDS.sql("UPDATE channels SET state='STATE_CHANNEL_CLOSED' WHERE hashid='" + hashid + "'", function(){
+								addNotice('system', 'Stuck channel abandoned — no funds were locked');
+								loadChannelsTab();
+								loadCasinoChannels();
+							});
+						}
+					});
+				} else {
+					// No funding address yet — definitely safe to close
+					MDS.sql("UPDATE channels SET state='STATE_CHANNEL_CLOSED' WHERE hashid='" + hashid + "'", function(){
+						addNotice('system', 'Channel abandoned');
+						loadChannelsTab();
+						loadCasinoChannels();
+					});
+				}
+			});
+		}}
+	]);
+}
+
 /* ---- Delete a closed/failed channel from DB ---- */
 function deleteChannel(hashid){
 	MDS.sql("DELETE FROM channels WHERE hashid='"+hashid
@@ -1995,7 +2041,7 @@ function deleteChannel(hashid){
 
 /* ---- Clean up all closed/denied/cancelled channels ---- */
 function cleanupChannels(){
-	thunderConfirm('Remove all closed and failed channels from history?', [
+	thunderConfirm('Remove all closed, failed, and abandoned channels from history?', [
 		{ label: 'CANCEL', action: function(){} },
 		{ label: 'CLEAN UP', danger: true, action: function(){
 			MDS.sql("DELETE FROM channels WHERE state='STATE_CHANNEL_CLOSED' OR state='STATE_REQUEST_DENIED' OR state='STATE_REQUEST_CANCELLED'", function(res){
