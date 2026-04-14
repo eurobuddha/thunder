@@ -164,6 +164,7 @@ body::before {
 	background: linear-gradient(180deg, rgba(13,20,37,0.95), rgba(8,12,24,0.98));
 	border-top: 1px solid #1a2140;
 	padding: 6px 16px;
+	padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px));
 	overflow-y: auto;
 	scrollbar-width: thin;
 	scrollbar-color: #1a2140 transparent;
@@ -916,8 +917,8 @@ body::before {
 	.round-pip { width: 18px; height: 18px; font-size: 7px; }
 	.round-history { gap: 3px; margin: 4px 0; }
 
-	/* Footer — compact on phone */
-	.app-footer { height: 48px; min-height: 48px; padding: 4px 10px; }
+	/* Footer — compact on phone, extra bottom padding for Android nav bar */
+	.app-footer { height: 48px; min-height: 48px; padding: 4px 10px; padding-bottom: calc(4px + env(safe-area-inset-bottom, 12px)); }
 	.noticeboard-title { font-size: 8px; margin-bottom: 2px; }
 	.notice-entry { font-size: 9px; line-height: 1.3; }
 

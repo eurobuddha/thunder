@@ -230,19 +230,20 @@
 		align-self: center;
 	}
 
-	/* ---- Roulette scroll strip ---- */
+	/* ---- Roulette horizontal scroll strip ---- */
 	.roulette-stage {
 		display: none;
 		justify-content: center;
-		margin: 20px auto;
+		margin: 12px auto;
 	}
 	.roulette-stage.visible { display: flex; }
 	.roulette-window {
-		width: 120px;
-		height: 260px;
+		width: 90%;
+		max-width: 500px;
+		height: 70px;
 		overflow: hidden;
 		border: 3px solid #f5a623;
-		border-radius: 16px;
+		border-radius: 12px;
 		position: relative;
 		background: rgba(10,16,32,0.9);
 		box-shadow: 0 0 25px rgba(245,166,35,0.3);
@@ -251,41 +252,45 @@
 	.roulette-window::after {
 		content: '';
 		position: absolute;
-		left: 0; right: 0;
-		height: 80px;
+		top: 0; bottom: 0;
+		width: 60px;
 		z-index: 2;
 		pointer-events: none;
 	}
 	.roulette-window::before {
-		top: 0;
-		background: linear-gradient(to bottom, rgba(10,16,32,0.95), transparent);
+		left: 0;
+		background: linear-gradient(to right, rgba(10,16,32,0.95), transparent);
 	}
 	.roulette-window::after {
-		bottom: 0;
-		background: linear-gradient(to top, rgba(10,16,32,0.95), transparent);
+		right: 0;
+		background: linear-gradient(to left, rgba(10,16,32,0.95), transparent);
 	}
 	.roulette-pointer {
 		position: absolute;
-		top: 50%;
-		left: -8px;
-		right: -8px;
-		height: 3px;
+		left: 50%;
+		top: -8px;
+		bottom: -8px;
+		width: 3px;
 		background: #ffd700;
 		z-index: 3;
 		box-shadow: 0 0 12px #ffd700;
 	}
 	.roulette-strip {
 		position: absolute;
-		left: 0; right: 0;
+		top: 0; bottom: 0;
+		display: flex;
+		flex-direction: row;
 		transition: none;
 	}
 	.roulette-num {
-		height: 60px;
+		width: 60px;
+		min-width: 60px;
+		height: 100%;
 		display: flex;
 		align-items: center;
 		justify-content: center;
 		font-family: 'Orbitron', sans-serif;
-		font-size: 32px;
+		font-size: 28px;
 		font-weight: 700;
 		color: #8892b0;
 	}
@@ -294,7 +299,7 @@
 	.roulette-num.highlight {
 		color: #00e676;
 		text-shadow: 0 0 20px #00e676;
-		font-size: 40px;
+		font-size: 34px;
 	}
 
 	/* ---- Confetti particles ---- */
@@ -1305,13 +1310,15 @@ var ANIM = (function(){
 		var pos = 0;
 		var speed = 35;
 		var tickCounter = 0;
+		var numW = 60; // width of each number cell
+		var cycleW = 36 * numW; // 36 numbers per cycle = 2160px
 
 		function frame(){
 			pos -= speed;
-			strip.style.top = pos + 'px';
+			strip.style.left = pos + 'px';
 			tickCounter++;
 			if(tickCounter % 3 === 0) SFX.spin_tick();
-			if(pos < -2160) pos += 2160;
+			if(pos < -cycleW) pos += cycleW;
 			rouletteAnimId = requestAnimationFrame(frame);
 		}
 		rouletteAnimId = requestAnimationFrame(frame);
@@ -1322,13 +1329,13 @@ var ANIM = (function(){
 		var displayVal = result + 1;
 		var strip = document.getElementById('roulette-strip');
 		var windowEl = document.getElementById('roulette-window');
-		var windowH = windowEl.clientHeight;
-		var numH = 60;
+		var windowW = windowEl.clientWidth;
+		var numW = 60;
 		var targetIdx = 36 + result;
-		var targetTop = -(targetIdx * numH) + (windowH/2) - (numH/2);
+		var targetLeft = -(targetIdx * numW) + (windowW/2) - (numW/2);
 
-		strip.style.transition = 'top 2.5s cubic-bezier(0.17, 0.67, 0.21, 0.99)';
-		strip.style.top = targetTop + 'px';
+		strip.style.transition = 'left 2.5s cubic-bezier(0.17, 0.67, 0.21, 0.99)';
+		strip.style.left = targetLeft + 'px';
 
 		var ticks = 0;
 		var tickDelay = 80;
@@ -1852,8 +1859,19 @@ function getChannelStateInfo(state){
 
 function buildChannelRow(ch){
 	var name = (ch.USERNUM === '1')
-		? decodeStringFromDB(ch.USER2NAME || 'Contact')
-		: decodeStringFromDB(ch.USER1NAME || 'Contact');
+		? decodeStringFromDB(ch.USER2NAME || '')
+		: decodeStringFromDB(ch.USER1NAME || '');
+	// If name is empty (sent request not yet accepted), look up from Maxima contacts
+	if(!name || name === ''){
+		var lookupKey = (ch.USERNUM === '1') ? ch.USER2MAXIMAID : ch.USER1MAXIMAID;
+		for(var c=0; c<MAXIMA_CONTACTS.length; c++){
+			if(MAXIMA_CONTACTS[c].publickey === lookupKey){
+				name = MAXIMA_CONTACTS[c].extradata.name;
+				break;
+			}
+		}
+		if(!name) name = 'Contact';
+	}
 	var myamt = (ch.USERNUM === '1') ? ch.USER1AMOUNT : ch.USER2AMOUNT;
 	var theiramt = (ch.USERNUM === '1') ? ch.USER2AMOUNT : ch.USER1AMOUNT;
 	var total = ch.TOTALAMOUNT;
