@@ -1285,15 +1285,19 @@ var ANIM = (function(){
 	// ---- ROULETTE ----
 	var rouletteAnimId = null;
 
+	// European roulette wheel sequence (display values, no zero)
+	var WHEEL_SEQUENCE = [32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26];
+
 	function buildRouletteStrip(){
 		var strip = document.getElementById('roulette-strip');
 		strip.innerHTML = '';
 		for(var s=0; s<4; s++){
-			for(var i=1; i<=36; i++){
+			for(var i=0; i<WHEEL_SEQUENCE.length; i++){
+				var displayNum = WHEEL_SEQUENCE[i];
 				var num = document.createElement('div');
 				num.className = 'roulette-num';
-				num.textContent = i;
-				num.setAttribute('data-num', i);
+				num.textContent = displayNum;
+				num.setAttribute('data-num', displayNum);
 				strip.appendChild(num);
 			}
 		}
@@ -1331,7 +1335,10 @@ var ANIM = (function(){
 		var windowEl = document.getElementById('roulette-window');
 		var windowW = windowEl.clientWidth;
 		var numW = 60;
-		var targetIdx = 36 + result;
+		// Find position of displayVal in the wheel sequence (second cycle for smooth landing)
+		var seqIdx = WHEEL_SEQUENCE.indexOf(displayVal);
+		if(seqIdx < 0) seqIdx = 0;
+		var targetIdx = 36 + seqIdx; // Land in the second cycle
 		var targetLeft = -(targetIdx * numW) + (windowW/2) - (numW/2);
 
 		strip.style.transition = 'left 2.5s cubic-bezier(0.17, 0.67, 0.21, 0.99)';
