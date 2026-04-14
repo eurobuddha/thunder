@@ -124,7 +124,8 @@ function createDB(callback){
 		+"  `gamerange` int default 0,"                 // 2, 6, or 36
 		+"  `betamount` varchar(256) default '0',"      // How much is wagered
 		+"  `bettor` int default 0,"                    // Who is the player (1 or 2)
-		+"  `playerpick` int default 0,"                // Player's chosen number
+		+"  `playerpick` bigint default 0,"             // Bitmask of selected numbers
+		+"  `numpicks` int default 1,"                  // Count of selected numbers
 		+"  `playercommit` varchar(256) default '',"    // SHA3(player_secret)
 		+"  `housecommit` varchar(256) default '',"     // SHA3(house_secret)
 		+"  `housesecret` varchar(256) default '',"     // Revealed house secret (after reveal)
@@ -165,7 +166,8 @@ function createDB(callback){
 			+"  `gamerange` int NOT NULL, "              // 2, 6, 36
 			+"  `betamount` varchar(256) NOT NULL, "     // How much was wagered
 			+"  `bettor` int NOT NULL, "                 // Who was the player (1 or 2)
-			+"  `playerpick` int NOT NULL, "             // What the player chose (0 to range-1)
+			+"  `playerpick` bigint NOT NULL, "          // Bitmask of selected numbers
+			+"  `numpicks` int NOT NULL default 1, "     // Count of selected numbers
 
 			/* ---- Commit-reveal data ---- */
 			+"  `playercommit` varchar(256), "           // SHA3(player_secret)
@@ -448,7 +450,7 @@ function updateClosedChannels(callback){
  * @param prebetamt2   — User 2 balance before the bet
  * @param callback     — Returns updated channel row
  */
-function updateGameBetActive(hashid, gametype, range, betamt, bettor, pick,
+function updateGameBetActive(hashid, gametype, range, betamt, bettor, pick, numpicks,
 	playercommit, housecommit, prebetamt1, prebetamt2, callback){
 
 	var sql = "UPDATE channels SET "
@@ -458,6 +460,7 @@ function updateGameBetActive(hashid, gametype, range, betamt, bettor, pick,
 		+"betamount='"+betamt+"',"
 		+"bettor="+bettor+","
 		+"playerpick="+pick+","
+		+"numpicks="+(numpicks || 1)+","
 		+"playercommit='"+playercommit+"',"
 		+"housecommit='"+housecommit+"',"
 		+"prebetamt1='"+prebetamt1+"',"
@@ -509,6 +512,7 @@ function updateGameCleared(hashid, callback){
 		+"betamount='0',"
 		+"bettor=0,"
 		+"playerpick=0,"
+		+"numpicks=1,"
 		+"playercommit='',"
 		+"housecommit='',"
 		+"housesecret='',"
@@ -535,13 +539,13 @@ function updateGameCleared(hashid, callback){
  * Insert a new game round when a bet is committed.
  * Returns the auto-generated round ID for linking to the channel row.
  */
-function insertGameRound(hashid, round, gametype, range, betamt, bettor, pick,
+function insertGameRound(hashid, round, gametype, range, betamt, bettor, pick, numpicks,
 	playercommit, housecommit, callback){
 
 	var sql = "INSERT INTO gamerounds(hashid, round, gametype, gamerange, betamount, bettor, "
-		+"playerpick, playercommit, housecommit, roundstate, date) "
+		+"playerpick, numpicks, playercommit, housecommit, roundstate, date) "
 		+"VALUES ('"+hashid+"',"+round+",'"+gametype+"',"+range+",'"
-		+betamt+"',"+bettor+","+pick+",'"
+		+betamt+"',"+bettor+","+pick+","+(numpicks||1)+",'"
 		+playercommit+"','"+housecommit+"','committed',"+getTimeMilli()+")";
 
 	MDS.sql(sql, function(msg){

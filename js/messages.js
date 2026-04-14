@@ -237,12 +237,13 @@ function replySendChannelMessage(hashid, sequence, amount, settletxn, updatetxn)
  * @param pick      — Player's chosen number (0 to range-1)
  * @param betamt    — How much the player is wagering
  */
-function gameRequestMessage(hashid, gametype, pick, betamt){
+function gameRequestMessage(hashid, gametype, pick, numpicks, betamt){
 	var msg          = {};
 	msg.type         = "GAME_REQUEST";
 	msg.hashid       = hashid;
 	msg.gametype     = gametype;
-	msg.pick         = pick;
+	msg.pick         = pick;       // bitmask of selected numbers
+	msg.numpicks     = numpicks;   // count of selected numbers
 	msg.betamt       = betamt;
 	return msg;
 }
@@ -288,12 +289,13 @@ function gameOfferMessage(hashid, housecommit, gametype, range){
  * @param betamt        — How much the player is wagering
  * @param gametype      — "flip", "dice", or "roulette"
  */
-function gameAcceptMessage(hashid, playercommit, pick, betamt, gametype){
+function gameAcceptMessage(hashid, playercommit, pick, numpicks, betamt, gametype){
 	var msg           = {};
 	msg.type          = "GAME_ACCEPT";
 	msg.hashid        = hashid;
 	msg.playercommit  = playercommit;
-	msg.pick          = pick;
+	msg.pick          = pick;       // bitmask
+	msg.numpicks      = numpicks;
 	msg.betamt        = betamt;
 	msg.gametype      = gametype;
 	return msg;

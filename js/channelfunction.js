@@ -310,15 +310,15 @@ function _offerGameRound(details){
  * @param betamt       — How much the player bets
  * @param callback     — Returns (delivered: boolean)
  */
-function acceptGameRound(hashid, housecommit, gametype, pick, betamt, callback){
+function acceptGameRound(hashid, housecommit, gametype, pick, numpicks, betamt, callback){
 
 	sqlSelectChannel(hashid, function(sql){
 		var sqlrow = sql.rows[0];
 
 		// Validate the bet before committing
 		var game = GAME_TYPES[gametype];
-		var bettor = sqlrow.USERNUM; // The player is always the acceptor
-		var validation = validateBet(sqlrow, betamt, game.range, pick, bettor);
+		var bettor = sqlrow.USERNUM;
+		var validation = validateBet(sqlrow, betamt, game.range, pick, numpicks, bettor);
 
 		if(!validation.valid){
 			MDS.log("BET VALIDATION FAILED: "+validation.error);
@@ -327,31 +327,24 @@ function acceptGameRound(hashid, housecommit, gametype, pick, betamt, callback){
 			return;
 		}
 
-		// Get the counterparty's Maxima ID (the house)
 		var othermaximaid = (sqlrow.USERNUM == 1) ? sqlrow.USER2MAXIMAID : sqlrow.USER1MAXIMAID;
 
-		// Generate the player's secret and commitment
 		playerCommitRound(hashid, housecommit, gametype, pick, betamt, function(data){
 			if(!data){
 				if(callback){ callback(false); }
 				return;
 			}
 
-			// FIX: Store game state on the channel NOW — before sending GAME_ACCEPT.
-			// The GAME_BET_SIGNED handler (received later from the house) reads
-			// sqlrow.BETAMOUNT, sqlrow.BETTOR, sqlrow.PREBETAMT1/2 from the DB.
-			// Without this write, those fields are empty and the pessimistic
-			// balance calculation would be wrong.
-			updateGameBetActive(hashid, gametype, game.range, betamt, bettor, pick,
+			updateGameBetActive(hashid, gametype, game.range, betamt, bettor, pick, numpicks,
 				data.playercommit, housecommit, sqlrow.USER1AMOUNT, sqlrow.USER2AMOUNT,
 				function(){
 
-					// Send the acceptance via ACK/SYNACK
 					var details           = {};
 					details.hashid        = hashid;
 					details.maximaid      = othermaximaid;
 					details.playercommit  = data.playercommit;
 					details.pick          = data.pick;
+					details.numpicks      = numpicks;
 					details.betamt        = data.betamt;
 					details.gametype      = gametype;
 
@@ -365,7 +358,7 @@ function acceptGameRound(hashid, housecommit, gametype, pick, betamt, callback){
 
 function _acceptGameRound(details){
 	sendMaximaMessage(details.maximaid,
-		gameAcceptMessage(details.hashid, details.playercommit, details.pick, details.betamt, details.gametype));
+		gameAcceptMessage(details.hashid, details.playercommit, details.pick, details.numpicks, details.betamt, details.gametype));
 }
 
 
@@ -392,7 +385,7 @@ function _acceptGameRound(details){
  * @param bettor        — Who is the player/bettor (1 or 2) — computed by caller
  * @param callback      — Returns (settletxn, updatetxn) hex data
  */
-function signGameBet(hashid, playercommit, housecommit, gametype, pick, betamt, bettor, callback){
+function signGameBet(hashid, playercommit, housecommit, gametype, pick, numpicks, betamt, bettor, callback){
 
 	var game = GAME_TYPES[gametype];
 
@@ -409,6 +402,7 @@ function signGameBet(hashid, playercommit, housecommit, gametype, pick, betamt, 
 			betamt:       betamt,
 			range:        game.range,
 			pick:         pick,
+			numpicks:     numpicks || 1,
 			bettor:       bettor,
 			playercommit: playercommit,
 			housecommit:  housecommit
@@ -418,16 +412,15 @@ function signGameBet(hashid, playercommit, housecommit, gametype, pick, betamt, 
 		newGameBetTxn(details, function(settletxn, updatetxn){
 
 			// Store the active game state in the database
-			updateGameBetActive(hashid, gametype, game.range, betamt, bettor, pick,
+			updateGameBetActive(hashid, gametype, game.range, betamt, bettor, pick, numpicks,
 				playercommit, housecommit, sqlrow.USER1AMOUNT, sqlrow.USER2AMOUNT,
 				function(updatedrow){
 
-					// Record the round in the audit trail
 					selectLatestRoundNumber(hashid, function(maxround){
 						var nextround = maxround + 1;
 
 						insertGameRound(hashid, nextround, gametype, game.range, betamt,
-							bettor, pick, playercommit, housecommit,
+							bettor, pick, numpicks, playercommit, housecommit,
 							function(roundid){
 
 								// Link the round to the channel

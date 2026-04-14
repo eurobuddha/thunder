@@ -375,7 +375,8 @@ function mastPlayerDispute(hashid, housesecret, playersecret, callback){
 		var pre1   = new Decimal(sqlrow.PREBETAMT1);
 		var pre2   = new Decimal(sqlrow.PREBETAMT2);
 
-		var winnings = betamt.mul(range);  // Total winnings (includes bet return)
+		var numpicks = new Decimal(sqlrow.NUMPICKS || 1);
+		var winnings = betamt.mul(range).div(numpicks);  // Multi-pick: scaled payout
 		var pay1, pay2;
 
 		if(bettor == 1){

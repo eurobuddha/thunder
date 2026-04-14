@@ -502,6 +502,72 @@ body::before {
 .pick-grid.dice { grid-template-columns: repeat(3, 1fr); max-width: 320px; margin: 10px auto; }
 .pick-grid.roulette { grid-template-columns: repeat(6, 1fr); max-width: 500px; margin: 10px auto; }
 
+/* Authentic roulette table */
+.roulette-table {
+	max-width: 520px;
+	margin: 10px auto;
+}
+.rt-grid {
+	display: grid;
+	grid-template-columns: repeat(3, 1fr);
+	gap: 3px;
+	margin-bottom: 4px;
+}
+.rt-num {
+	font-size: 13px !important;
+	padding: 8px 4px !important;
+	font-weight: 700;
+	min-height: 34px;
+}
+.rt-red {
+	background: rgba(200,30,30,0.7) !important;
+	border-color: #cc2222 !important;
+	color: #fff !important;
+}
+.rt-red:hover { background: rgba(220,40,40,0.9) !important; }
+.rt-red.selected {
+	background: rgba(255,50,50,0.9) !important;
+	box-shadow: 0 0 10px rgba(255,50,50,0.5) !important;
+}
+.rt-black {
+	background: rgba(20,20,30,0.9) !important;
+	border-color: #333 !important;
+	color: #fff !important;
+}
+.rt-black:hover { background: rgba(40,40,50,0.9) !important; }
+.rt-black.selected {
+	background: rgba(60,60,80,0.9) !important;
+	box-shadow: 0 0 10px rgba(100,100,140,0.5) !important;
+	border-color: #ffd700 !important;
+}
+.rt-columns {
+	display: grid;
+	grid-template-columns: repeat(3, 1fr);
+	gap: 3px;
+	margin-bottom: 4px;
+}
+.rt-dozens {
+	display: grid;
+	grid-template-columns: repeat(3, 1fr);
+	gap: 3px;
+	margin-bottom: 4px;
+}
+.rt-outside {
+	display: grid;
+	grid-template-columns: repeat(6, 1fr);
+	gap: 3px;
+}
+.rt-group {
+	font-size: 10px !important;
+	padding: 6px 2px !important;
+	background: rgba(0,80,40,0.6) !important;
+	border-color: rgba(0,120,60,0.5) !important;
+	color: #e6f1ff !important;
+}
+.rt-group:hover { background: rgba(0,100,50,0.8) !important; }
+.rt-red-btn { background: rgba(200,30,30,0.7) !important; border-color: #cc2222 !important; }
+.rt-black-btn { background: rgba(20,20,30,0.9) !important; border-color: #333 !important; }
+
 .pick-btn {
 	font-family: 'Orbitron', sans-serif;
 	font-size: 14px;
@@ -789,6 +855,9 @@ body::before {
 	.bet-input { font-size: 18px; width: 130px; }
 	.game-area { padding: 12px; }
 	.pick-grid.roulette { grid-template-columns: repeat(4, 1fr); }
+	.rt-outside { grid-template-columns: repeat(3, 1fr); }
+	.rt-num { font-size: 11px !important; padding: 6px 2px !important; min-height: 28px; }
+	.rt-group { font-size: 9px !important; }
 	.game-type-btn { font-size: 10px; padding: 6px 14px; }
 	.stat-value { font-size: 14px; }
 	.round-pip { width: 20px; height: 20px; font-size: 8px; }

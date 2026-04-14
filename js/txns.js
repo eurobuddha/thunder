@@ -578,15 +578,16 @@ function createSettlementTxn(hashid, sequence, eltooaddress, eltooamount,
 			+"txnstate id:"+txid+" port:104 value:"+gamestate.range+";"             // Game range
 			+"txnstate id:"+txid+" port:105 value:"+gamestate.playercommit+";"      // Player's SHA3(secret)
 			+"txnstate id:"+txid+" port:106 value:"+gamestate.housecommit+";"       // House's SHA3(secret)
-			+"txnstate id:"+txid+" port:107 value:"+gamestate.pick+";"              // Player's chosen number
+			+"txnstate id:"+txid+" port:107 value:"+gamestate.pick+";"              // Bitmask of selected numbers
 			+"txnstate id:"+txid+" port:108 value:"+gamestate.bettor+";"            // Who is the player (1 or 2)
 			+"txnstate id:"+txid+" port:109 value:"+user1address+";"                // User 1 payout addr (LOCKED)
 			+"txnstate id:"+txid+" port:110 value:"+user2address+";"                // User 2 payout addr (LOCKED)
 			+"txnstate id:"+txid+" port:111 value:"+gamestate.prebetamt1+";"        // User 1 pre-bet balance
 			+"txnstate id:"+txid+" port:112 value:"+gamestate.prebetamt2+";"        // User 2 pre-bet balance
 			+"txnstate id:"+txid+" port:115 value:"+gamestate.user1pubkey+";"       // User 1 pubkey (for MAST SIGNEDBY)
-			+"txnstate id:"+txid+" port:116 value:"+gamestate.user2pubkey+";";      // User 2 pubkey (for MAST SIGNEDBY)
-		cmdnum += 13; // 13 extra txnstate commands: ports 102-112(11) + 115,116(2) = 13
+			+"txnstate id:"+txid+" port:116 value:"+gamestate.user2pubkey+";"       // User 2 pubkey (for MAST SIGNEDBY)
+			+"txnstate id:"+txid+" port:121 value:"+(gamestate.numpicks||1)+";";    // Number of picks (multi-pick)
+		cmdnum += 14; // 14 extra txnstate commands: ports 102-112(11) + 115,116(2) + 121(1) = 14
 	}else{
 		// No active game — set phase=0 and zero out game ports
 		// This is the normal case for channel opens, sends, and cooperative closes
@@ -664,12 +665,13 @@ function createUpdateTxn(sequence, eltooaddress, eltooamount, tokenid, gamestate
 			+"txnstate id:"+txid+" port:106 value:"+gamestate.housecommit+";"
 			+"txnstate id:"+txid+" port:107 value:"+gamestate.pick+";"
 			+"txnstate id:"+txid+" port:108 value:"+gamestate.bettor+";"
-			+"txnstate id:"+txid+" port:109 value:"+gamestate.user1address+";"   // FIX: was user1addr, now consistent
-			+"txnstate id:"+txid+" port:110 value:"+gamestate.user2address+";"  // FIX: was user2addr, now consistent
+			+"txnstate id:"+txid+" port:109 value:"+gamestate.user1address+";"
+			+"txnstate id:"+txid+" port:110 value:"+gamestate.user2address+";"
 			+"txnstate id:"+txid+" port:111 value:"+gamestate.prebetamt1+";"
 			+"txnstate id:"+txid+" port:112 value:"+gamestate.prebetamt2+";"
 			+"txnstate id:"+txid+" port:115 value:"+gamestate.user1pubkey+";"
-			+"txnstate id:"+txid+" port:116 value:"+gamestate.user2pubkey+";";
+			+"txnstate id:"+txid+" port:116 value:"+gamestate.user2pubkey+";"
+			+"txnstate id:"+txid+" port:121 value:"+(gamestate.numpicks||1)+";";
 	}else{
 		create +="txnstate id:"+txid+" port:102 value:0;";
 	}
@@ -681,8 +683,8 @@ function createUpdateTxn(sequence, eltooaddress, eltooamount, tokenid, gamestate
 		// Response index: txncreate(0), txninput(1), txnoutput(2),
 		// txnstate(3..N), txnexport(N+1), txndelete(N+2)
 		// For phase=0: 3 txnstates → export at index 6
-		// For phase=1: 15 txnstates → export at index 18
-		var exportIdx = (gamestate && gamestate.phase == 1) ? 18 : 6;
+		// For phase=1: 16 txnstates → export at index 19 (added port 121 for numpicks)
+		var exportIdx = (gamestate && gamestate.phase == 1) ? 19 : 6;
 		callback(fundresp[exportIdx].response.data);
 	});
 }
@@ -796,15 +798,16 @@ function newGameBetTxn(details, callback){
 		var gamestate = {
 			phase:        1,                          // Bet is active
 			betamt:       details.betamt,              // How much is wagered
-			range:        details.range,               // 2=flip, 6=dice, 36=roulette
+			range:        details.range,               // 2=flip, 6=dice, 37=roulette
 			playercommit: details.playercommit,        // SHA3(player_secret)
 			housecommit:  details.housecommit,         // SHA3(house_secret)
-			pick:         details.pick,                // Player's chosen number
+			pick:         details.pick,                // Bitmask of selected numbers
+			numpicks:     details.numpicks || 1,       // Count of selected numbers
 			bettor:       details.bettor,              // Who is the player (1 or 2)
 			user1pubkey:  sqlrow.USER1PUBLICKEY,        // For MAST SIGNEDBY
 			user2pubkey:  sqlrow.USER2PUBLICKEY,        // For MAST SIGNEDBY
-			user1address: sqlrow.USER1ADDRESS,          // For MAST VERIFYOUT (consistent name)
-			user2address: sqlrow.USER2ADDRESS,          // For MAST VERIFYOUT (consistent name)
+			user1address: sqlrow.USER1ADDRESS,          // For MAST VERIFYOUT
+			user2address: sqlrow.USER2ADDRESS,          // For MAST VERIFYOUT
 			prebetamt1:   sqlrow.USER1AMOUNT,           // Balance BEFORE the bet
 			prebetamt2:   sqlrow.USER2AMOUNT            // Balance BEFORE the bet
 		};

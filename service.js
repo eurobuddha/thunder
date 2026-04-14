@@ -100,11 +100,13 @@ MDS.init(function(msg){
 
 		// Create database tables (safe to call repeatedly — IF NOT EXISTS)
 		createDB(function(){
-			// Create props table
 			createPropsTable(function(){
+				// Multi-pick migration: add numpicks column if missing
+				MDS.sql("ALTER TABLE channels ADD COLUMN IF NOT EXISTS numpicks int default 1");
+				MDS.sql("ALTER TABLE gamerounds ADD COLUMN IF NOT EXISTS numpicks int default 1");
 				// Load our Maxima identity and Minima address
 				initAuthDetails(function(){
-					log("Thunder Casino service.js initialized");
+					log("Thunder Casino service.js initialized (multi-pick enabled)");
 				});
 			});
 		});
@@ -628,7 +630,8 @@ MDS.init(function(msg){
 					// Bettor is the sender (the player requesting the game)
 					var bettor = (sqlrow.USERNUM == 1) ? 2 : 1;
 
-					var validation = validateBet(sqlrow, maxmsg.betamt, game.range, maxmsg.pick, bettor);
+					var numpicks = parseInt(maxmsg.numpicks) || 1;
+					var validation = validateBet(sqlrow, maxmsg.betamt, game.range, maxmsg.pick, numpicks, bettor);
 					if(!validation.valid){
 						MDS.log("BET VALIDATION FAILED: "+validation.error);
 						insertLog(maxmsg.hashid, "GAME_BET_INVALID", validation.error);
@@ -664,6 +667,7 @@ MDS.init(function(msg){
 								gametype: maxmsg.gametype,
 								betamt:   maxmsg.betamt,
 								pick:     maxmsg.pick,
+								numpicks: numpicks,
 								role:     "house"
 							});
 						});
@@ -691,7 +695,7 @@ MDS.init(function(msg){
 
 					// Auto-accept: generate our secret, commit with pick and bet
 					acceptGameRound(maxmsg.hashid, maxmsg.housecommit,
-						pending.gametype, pending.pick, pending.betamt,
+						pending.gametype, pending.pick, pending.numpicks || 1, pending.betamt,
 						function(delivered){
 							if(delivered){
 								insertLog(maxmsg.hashid, "GAME_AUTO_COMMIT",
@@ -704,6 +708,7 @@ MDS.init(function(msg){
 									gametype: pending.gametype,
 									betamt:   pending.betamt,
 									pick:     pending.pick,
+									numpicks: pending.numpicks || 1,
 									role:     "player"
 								});
 							}else{
@@ -750,7 +755,8 @@ MDS.init(function(msg){
 					// We (receiver) are the house
 					var bettor = (sqlrow.USERNUM == 1) ? 2 : 1;
 
-					var validation = validateBet(sqlrow, maxmsg.betamt, game.range, maxmsg.pick, bettor);
+					var numpicks = parseInt(maxmsg.numpicks) || 1;
+					var validation = validateBet(sqlrow, maxmsg.betamt, game.range, maxmsg.pick, numpicks, bettor);
 					if(!validation.valid){
 						MDS.log("BET VALIDATION FAILED: "+validation.error);
 						insertLog(maxmsg.hashid, "GAME_BET_INVALID", validation.error);
@@ -760,9 +766,8 @@ MDS.init(function(msg){
 						return;
 					}
 
-					// Sign the pessimistic balance
 					signGameBet(maxmsg.hashid, maxmsg.playercommit,
-						sqlrow.HOUSECOMMIT, maxmsg.gametype, maxmsg.pick, maxmsg.betamt, bettor,
+						sqlrow.HOUSECOMMIT, maxmsg.gametype, maxmsg.pick, numpicks, maxmsg.betamt, bettor,
 						function(settletxn, updatetxn){
 
 							// FIX: signGameBet built txns at SEQUENCE+1 but didn't update DB.
@@ -917,7 +922,9 @@ MDS.init(function(msg){
 						computeOutcome(sqlrow.HOUSESECRET, maxmsg.playersecret,
 							parseInt(sqlrow.GAMERANGE), function(outcome){
 
-								var expectedWinner = (outcome.result == parseInt(sqlrow.PLAYERPICK))
+								// Multi-pick: PLAYERPICK is a bitmask. Check if result bit is set.
+							var pickmask = parseInt(sqlrow.PLAYERPICK);
+							var expectedWinner = (Math.floor(pickmask / Math.pow(2, outcome.result)) % 2 === 1)
 									? "player" : "house";
 
 								if(expectedWinner !== maxmsg.winner){
@@ -1029,6 +1036,7 @@ MDS.init(function(msg){
 									winner:      winner,
 									result:      numericResult,
 									pick:        parseInt(sqlrow.PLAYERPICK),
+									numpicks:    parseInt(sqlrow.NUMPICKS) || 1,
 									betamt:      sqlrow.BETAMOUNT,
 									user1amount: newbalance.user1amount,
 									user2amount: newbalance.user2amount,

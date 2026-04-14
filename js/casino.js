@@ -70,21 +70,75 @@ var GAME_TYPES = {
 		name:    "Coin Flip",
 		range:   2,
 		payout:  2,
+		maxPicks: 1,
 		labels:  ["Heads", "Tails"]
 	},
 	dice: {
 		name:    "Dice",
 		range:   6,
 		payout:  6,
+		maxPicks: 5,
 		labels:  ["1", "2", "3", "4", "5", "6"]
 	},
 	roulette: {
 		name:    "Roulette",
-		range:   36,
+		range:   36,   // 1-36 (no zero — zero edge)
 		payout:  36,
+		maxPicks: 35,
 		labels:  null  // Generated dynamically: 1-36
 	}
 };
+
+/* ---- Roulette color map (standard casino red/black, DISPLAY values 1-36) ---- */
+var ROULETTE_RED = [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36];
+
+/* Internal (0-indexed) versions for pick grid rendering */
+var ROULETTE_RED_INTERNAL = ROULETTE_RED.map(function(n){ return n - 1; });
+var ROULETTE_BLACK_INTERNAL = [];
+for(var _i=0; _i<36; _i++){
+	if(ROULETTE_RED_INTERNAL.indexOf(_i) < 0) ROULETTE_BLACK_INTERNAL.push(_i);
+}
+
+/* ---- Bitmask helpers for multi-pick ---- */
+
+function picksToBitmask(picksArray){
+	var mask = 0;
+	for(var i=0; i<picksArray.length; i++){
+		mask += Math.pow(2, picksArray[i]);
+	}
+	return mask;
+}
+
+function bitmaskToPicks(mask, range){
+	var picks = [];
+	for(var i=0; i<range; i++){
+		if(Math.floor(mask / Math.pow(2, i)) % 2 === 1) picks.push(i);
+	}
+	return picks;
+}
+
+function countBits(mask){
+	var count = 0;
+	while(mask > 0){
+		count += mask % 2;
+		mask = Math.floor(mask / 2);
+	}
+	return count;
+}
+
+function effectivePayout(range, numpicks){
+	return range / numpicks;
+}
+
+/* Convert a bitmask of picks to a human-readable label string */
+function getPicksLabel(gametype, pickmask){
+	var game = GAME_TYPES[gametype];
+	if(!game) return "?";
+	var picks = bitmaskToPicks(pickmask, game.range);
+	if(picks.length === 0) return "?";
+	if(picks.length === 1) return getPickLabel(gametype, picks[0]);
+	return picks.map(function(p){ return getPickLabel(gametype, p); }).join(', ');
+}
 
 /**
  * Get the display label for a game result.
@@ -273,19 +327,28 @@ function computeOutcome(housesecret, playersecret, range, callback){
  * @param bettor   — Who is the player (1=user1, 2=user2)
  * @returns        — {valid: boolean, error: string|null}
  */
-function validateBet(sqlrow, betamt, range, pick, bettor){
+function validateBet(sqlrow, betamt, range, pickmask, numpicks, bettor){
 
 	var bet = new Decimal(betamt);
+	numpicks = parseInt(numpicks) || 1;
 
 	// Check 1: Bet amount must be positive
 	if(bet.lessThanOrEqualTo(DECIMAL_ZERO)){
 		return {valid: false, error: "Bet amount must be positive"};
 	}
 
-	// Check 2: Pick must be within range
-	var picknum = parseInt(pick);
-	if(picknum < 0 || picknum >= range){
-		return {valid: false, error: "Pick must be 0 to "+(range-1)+", got "+pick};
+	// Check 2: Picks must be valid
+	if(numpicks < 1 || numpicks >= range){
+		return {valid: false, error: "Must pick 1 to "+(range-1)+" numbers, got "+numpicks};
+	}
+	// Verify bitmask only has bits in range [0, range-1]
+	var mask = parseInt(pickmask);
+	if(mask <= 0){
+		return {valid: false, error: "No numbers selected"};
+	}
+	// Verify numpicks matches actual bits set
+	if(countBits(mask) !== numpicks){
+		return {valid: false, error: "Pick count mismatch: mask has "+countBits(mask)+" bits, expected "+numpicks};
 	}
 
 	// Check 3: Player must have enough balance to cover the bet
@@ -298,8 +361,9 @@ function validateBet(sqlrow, betamt, range, pick, bettor){
 	}
 
 	// Check 4: House must have enough balance to cover maximum possible loss
-	// If player wins: house pays bet * (payout - 1) = bet * (range - 1)
-	var maxhouseLoss = bet.mul(new Decimal(range - 1));
+	// Multi-pick: house max loss = bet * (range/numpicks - 1)
+	var effPayout = new Decimal(range).div(new Decimal(numpicks));
+	var maxhouseLoss = bet.mul(effPayout.sub(1));
 	var housebalance = (bettor == 1)
 		? new Decimal(sqlrow.USER2AMOUNT)
 		: new Decimal(sqlrow.USER1AMOUNT);
@@ -533,12 +597,13 @@ function resolveRound(hashid, housesecret, housecommit, playercommit, pick, game
 
 				var picknum  = parseInt(pick);
 				var result   = outcome.result;
-				var winner   = (result === picknum) ? "player" : "house";
+				// Multi-pick: picknum is a bitmask. Check if result bit is set.
+				var winner = (Math.floor(picknum / Math.pow(2, result)) % 2 === 1) ? "player" : "house";
 
 				insertLog(hashid, "GAME_RESOLVED",
 					game.name+" resolved!"
 					+" Result:"+getPickLabel(gametype, result)
-					+" Pick:"+getPickLabel(gametype, picknum)
+					+" Picks:"+getPicksLabel(gametype, picknum)
 					+" Winner:"+winner
 					+" Hash:"+outcome.hash.substring(0,16)+"..");
 
@@ -583,11 +648,12 @@ function resolveRound(hashid, housesecret, housecommit, playercommit, pick, game
  */
 function calculateGameBalance(sqlrow, winner){
 
-	var betamt = new Decimal(sqlrow.BETAMOUNT);
-	var range  = new Decimal(sqlrow.GAMERANGE);
-	var pre1   = new Decimal(sqlrow.PREBETAMT1);
-	var pre2   = new Decimal(sqlrow.PREBETAMT2);
-	var bettor = parseInt(sqlrow.BETTOR);
+	var betamt  = new Decimal(sqlrow.BETAMOUNT);
+	var range   = new Decimal(sqlrow.GAMERANGE);
+	var numpicks = new Decimal(sqlrow.NUMPICKS || 1);
+	var pre1    = new Decimal(sqlrow.PREBETAMT1);
+	var pre2    = new Decimal(sqlrow.PREBETAMT2);
+	var bettor  = parseInt(sqlrow.BETTOR);
 
 	if(winner === "house"){
 		// Player lost — pessimistic balance is already correct
@@ -605,7 +671,8 @@ function calculateGameBalance(sqlrow, winner){
 		}
 	}else{
 		// Player won — compute winning balance
-		var winnings = betamt.mul(range);
+		// Multi-pick: winnings = betamt * (range / numpicks)
+		var winnings = betamt.mul(range).div(numpicks);
 
 		if(bettor == 1){
 			return {

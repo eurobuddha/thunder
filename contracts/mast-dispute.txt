@@ -2,6 +2,8 @@
 /* Player won but house refuses to sign winning settlement. Available at 32 blocks */
 /* Security: Verifies BOTH secrets via SHA3, computes outcome on-chain, VERIFYOUT enforces winning payout */
 /* Addresses from PREVSTATE only — never getaddress. Lesson: minArmyKnife incident */
+/* Multi-pick: Port 107 is a bitmask of selected numbers. Port 121 is the number of picks. */
+/* Payout = betamt * (range / numpicks). Bit extraction: FLOOR(mask/POW(r 2)) mod 2 == 1 */
 
 ASSERT PREVSTATE(102) EQ 1
 ASSERT @COINAGE GTE 32
@@ -11,11 +13,11 @@ ELSE ASSERT SIGNEDBY(PREVSTATE(116)) ENDIF
 LET hs=STATE(113) ASSERT SHA3(hs) EQ PREVSTATE(106)
 LET sc=STATE(114) ASSERT SHA3(sc) EQ PREVSTATE(105)
 LET h=SHA3(CONCAT(hs sc)) LET r=NUMBER(SUBSET(0 4 h))%PREVSTATE(104)
-ASSERT r EQ PREVSTATE(107)
-LET ba=PREVSTATE(103) LET rn=PREVSTATE(104)
+LET mask=PREVSTATE(107) LET p=POW(r 2) LET d=FLOOR(mask/p) LET bit=d-2*FLOOR(d/2) ASSERT bit EQ 1
+LET ba=PREVSTATE(103) LET rn=PREVSTATE(104) LET np=PREVSTATE(121)
 LET a1=PREVSTATE(109) LET a2=PREVSTATE(110)
 LET v1=PREVSTATE(111) LET v2=PREVSTATE(112)
-LET wn=ba*rn
+LET wn=ba*(rn/np)
 IF bt EQ 1 THEN LET p1=v1+wn-ba LET p2=v2-wn+ba
 ELSE LET p1=v1-wn+ba LET p2=v2+wn-ba ENDIF
 IF p1 GT 0 THEN ASSERT VERIFYOUT(@INPUT a1 p1 @TOKENID FALSE) ENDIF
