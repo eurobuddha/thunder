@@ -204,7 +204,23 @@ function createDB(callback){
 				+" )";
 
 			MDS.sql(logsSQL, function(msg){
-				if(callback){ callback(msg); }
+
+				/* TABLE: routed_games (TNZEC) */
+				var routedSQL = "CREATE TABLE IF NOT EXISTS `routed_games` ( "
+					+"  `id` bigint auto_increment, "
+					+"  `player_hashid` varchar(256) NOT NULL, "
+					+"  `house_hashid` varchar(256) NOT NULL, "
+					+"  `player_maximaid` varchar(1024), "
+					+"  `house_maximaid` varchar(1024), "
+					+"  `gametype` varchar(32), "
+					+"  `betamount` varchar(256), "
+					+"  `status` varchar(64) NOT NULL, "
+					+"  `date` bigint NOT NULL "
+					+" )";
+
+				MDS.sql(routedSQL, function(msg){
+					if(callback){ callback(msg); }
+				});
 			});
 		});
 	});

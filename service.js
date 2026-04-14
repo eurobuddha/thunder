@@ -86,6 +86,44 @@ function update(hashid, callback){
 
 
 /* =========================================================================
+ * TNZEC: GAME REQUEST HANDLER (extracted for reuse)
+ * =========================================================================
+ * The original auto-house logic, extracted so it can be called from:
+ *   1. Standard spoke mode (always)
+ *   2. Hub mode fallback (when no house is available to route to)
+ * ========================================================================= */
+
+function _handleGameRequestAsHouse(maxmsg, sqlrow, game, bettor, senderMaximaid){
+	houseStartRound(maxmsg.hashid, maxmsg.gametype, function(data){
+		if(!data){
+			sendMaximaMessage(senderMaximaid,
+				gameAbandonedMessage(maxmsg.hashid, "House secret generation failed"));
+			notify({type:"GAME_ABANDONED", hashid:maxmsg.hashid, reason:"House secret generation failed"});
+			return;
+		}
+
+		MDS.sql("UPDATE channels SET housecommit='"+data.commit+"' WHERE hashid='"+maxmsg.hashid+"'", function(){
+
+			insertLog(maxmsg.hashid, "GAME_AUTO_HOUSE",
+				"Auto-housing "+game.name+". House commit:"+data.commit.substring(0,16)+"..");
+
+			sendMaximaMessage(senderMaximaid,
+				gameOfferMessage(maxmsg.hashid, data.commit, maxmsg.gametype, game.range));
+
+			notify({
+				type:     "GAME_STARTED",
+				hashid:   maxmsg.hashid,
+				gametype: maxmsg.gametype,
+				betamt:   maxmsg.betamt,
+				pick:     maxmsg.pick,
+				role:     "house"
+			});
+		});
+	});
+}
+
+
+/* =========================================================================
  * MAIN EVENT HANDLER
  * =========================================================================
  * MDS.init is called once with "inited", then continuously with events.
@@ -140,8 +178,9 @@ MDS.init(function(msg){
 	 * ================================================================== */
 	}else if(msg.event == "NEWBLOCK"){
 
-		// TNZEC: Retry hub connection if not yet connected (spoke mode)
-		if(!isHubMode() && !TNZEC_HUB_CONNECTED){
+		// TNZEC: Retry hub connection every 10 blocks if not yet connected
+		var bnk = +msg.data.txpow.header.block;
+		if(!isHubMode() && !TNZEC_HUB_CONNECTED && bnk % 10 == 0){
 			autoConnectToHub(function(connected){
 				if(connected) log("[TNZEC] Hub connected on NEWBLOCK retry");
 			});
@@ -618,17 +657,16 @@ MDS.init(function(msg){
 			 * ============================================================== */
 
 			}else if(maxmsg.type == "GAME_REQUEST"){
-				/* ---- STEP 0: Someone wants to play against us (we're the house) ----
-				 * Auto-house: validate bet, generate secret, commit, send GAME_OFFER
-				 * GUARD: reject if a game is already active on this channel
+				/* ---- STEP 0: Someone wants to play ----
+				 * HUB MODE: Route to an online house. Hub never generates secrets.
+				 * FALLBACK/SPOKE: Auto-house directly (original 2-party flow).
 				 */
 				sqlSelectChannel(maxmsg.hashid, function(sql){
 					if(sql.count == 0){ return; }
 					var sqlrow = sql.rows[0];
 
-					// GAMEPHASE GUARD — reject if game/prop already active
 					if(parseInt(sqlrow.GAMEPHASE) != 0){
-						MDS.log("GAME_REQUEST rejected — game already active (phase="+sqlrow.GAMEPHASE+")");
+						MDS.log("GAME_REQUEST rejected — game already active");
 						sendMaximaMessage(maximapubkey,
 							gameAbandonedMessage(maxmsg.hashid, "Game already in progress"));
 						notify({type:"GAME_ABANDONED", hashid:maxmsg.hashid, reason:"Game already active"});
@@ -636,25 +674,18 @@ MDS.init(function(msg){
 					}
 
 					insertLog(maxmsg.hashid, "GAME_REQUEST_RECEIVED",
-						"Game request: "+maxmsg.gametype+" bet:"+maxmsg.betamt
-						+" pick:"+maxmsg.pick);
+						"Game request: "+maxmsg.gametype+" bet:"+maxmsg.betamt+" pick:"+maxmsg.pick);
 
-					// Validate the game type
 					var game = GAME_TYPES[maxmsg.gametype];
 					if(!game){
-						MDS.log("INVALID game type: "+maxmsg.gametype);
 						sendMaximaMessage(maximapubkey,
 							gameAbandonedMessage(maxmsg.hashid, "Invalid game type"));
-						notify({type:"GAME_ABANDONED", hashid:maxmsg.hashid, reason:"Invalid game type"});
 						return;
 					}
 
-					// Bettor is the sender (the player requesting the game)
 					var bettor = (sqlrow.USERNUM == 1) ? 2 : 1;
-
 					var validation = validateBet(sqlrow, maxmsg.betamt, game.range, maxmsg.pick, bettor);
 					if(!validation.valid){
-						MDS.log("BET VALIDATION FAILED: "+validation.error);
 						insertLog(maxmsg.hashid, "GAME_BET_INVALID", validation.error);
 						sendMaximaMessage(maximapubkey,
 							gameAbandonedMessage(maxmsg.hashid, "Bet invalid: "+validation.error));
@@ -662,35 +693,134 @@ MDS.init(function(msg){
 						return;
 					}
 
-					// Auto-house: generate our secret and commit
+					/* ---- TNZEC HUB: Route to online house ---- */
+					if(isHubMode()){
+						selectHouse(maxmsg.hashid, maxmsg.betamt, game.range, function(house){
+							if(house){
+								addRoute(maxmsg.hashid, house.hashid, maximapubkey,
+									house.maximaid, maxmsg.gametype, maxmsg.betamt, function(){
+									insertLog(maxmsg.hashid, "TNZEC_ROUTING",
+										"Routing "+game.name+" to house "+house.hashid.substring(0,12)+".. bet:"+maxmsg.betamt);
+									sendMaximaMessage(house.maximaid,
+										houseRequestMessage(house.hashid, maxmsg.gametype, game.range, maxmsg.betamt));
+									notify({type:"GAME_STARTED", hashid:maxmsg.hashid,
+										gametype:maxmsg.gametype, betamt:maxmsg.betamt, pick:maxmsg.pick, role:"routing"});
+								});
+								return;
+							}
+							// No house — hub IS the house (fallback)
+							insertLog(maxmsg.hashid, "TNZEC_FALLBACK", "No house available — hub is house");
+							_handleGameRequestAsHouse(maxmsg, sqlrow, game, bettor, maximapubkey);
+						});
+						return;
+					}
+
+					/* ---- SPOKE: auto-house directly ---- */
+					_handleGameRequestAsHouse(maxmsg, sqlrow, game, bettor, maximapubkey);
+				});
+
+			/* ==============================================================
+			 * TNZEC ROUTING HANDLERS
+			 * ============================================================== */
+
+			}else if(maxmsg.type == "HOUSE_REQUEST"){
+				/* ---- Hub asks us to be the house for a routed game ---- */
+				sqlSelectChannel(maxmsg.hashid, function(sql){
+					if(sql.count == 0){ return; }
+					var sqlrow = sql.rows[0];
+					if(parseInt(sqlrow.GAMEPHASE) != 0){ return; }
+					var game = GAME_TYPES[maxmsg.gametype];
+					if(!game){ return; }
+
+					insertLog(maxmsg.hashid, "TNZEC_HOUSE_REQUEST",
+						"Hub requests house duty: "+game.name+" bet:"+maxmsg.betamt);
+
 					houseStartRound(maxmsg.hashid, maxmsg.gametype, function(data){
-						if(!data){
+						if(!data){ return; }
+						MDS.sql("UPDATE channels SET housecommit='"+data.commit
+							+"' WHERE hashid='"+maxmsg.hashid+"'", function(){
 							sendMaximaMessage(maximapubkey,
-								gameAbandonedMessage(maxmsg.hashid, "House secret generation failed"));
-							notify({type:"GAME_ABANDONED", hashid:maxmsg.hashid, reason:"House secret generation failed"});
-							return;
-						}
+								houseOfferMessage(maxmsg.hashid, data.commit, maxmsg.gametype, game.range));
+						});
+					});
+				});
 
-						// Store house commit on channel DB
-						MDS.sql("UPDATE channels SET housecommit='"+data.commit+"' WHERE hashid='"+maxmsg.hashid+"'", function(){
+			}else if(maxmsg.type == "HOUSE_OFFER"){
+				/* ---- House sent commit to hub — forward to player as GAME_OFFER ---- */
+				if(!isHubMode()){ return; }
+				var playerHashid = getPlayerByHouse(maxmsg.hashid);
+				if(!playerHashid){ return; }
 
-							insertLog(maxmsg.hashid, "GAME_AUTO_HOUSE",
-								"Auto-housing "+game.name+". House commit:"+data.commit.substring(0,16)+"..");
+				MDS.sql("UPDATE channels SET housecommit='"+maxmsg.housecommit
+					+"' WHERE hashid='"+playerHashid+"'", function(){
+					sqlSelectChannel(playerHashid, function(psql){
+						if(psql.count == 0){ return; }
+						var prow = psql.rows[0];
+						var playerMaximaid = (parseInt(prow.USERNUM)==1) ? prow.USER2MAXIMAID : prow.USER1MAXIMAID;
+						sendMaximaMessage(playerMaximaid,
+							gameOfferMessage(playerHashid, maxmsg.housecommit, maxmsg.gametype, maxmsg.range));
+					});
+				});
 
-							// Send GAME_OFFER back to the player with our commit
-							sendMaximaMessage(maximapubkey,
-								gameOfferMessage(maxmsg.hashid, data.commit, maxmsg.gametype, game.range));
+			}else if(maxmsg.type == "PLAYER_ACCEPTED"){
+				/* ---- Hub forwarded player's commit to us (house) — sign pessimistic ---- */
+				sqlSelectChannel(maxmsg.hashid, function(sql){
+					if(sql.count == 0){ return; }
+					var sqlrow = sql.rows[0];
+					if(!sqlrow.HOUSECOMMIT || sqlrow.HOUSECOMMIT.length < 4){ return; }
+					var game = GAME_TYPES[maxmsg.gametype];
+					if(!game){ return; }
 
-							// Notify: game started, we are the house
-							notify({
-								type:     "GAME_STARTED",
-								hashid:   maxmsg.hashid,
-								gametype: maxmsg.gametype,
-								betamt:   maxmsg.betamt,
-								pick:     maxmsg.pick,
-								role:     "house"
+					var bettor = (sqlrow.USERNUM == 1) ? 2 : 1;
+					insertLog(maxmsg.hashid, "TNZEC_PLAYER_ACCEPTED",
+						"Player commit forwarded. Pick:"+maxmsg.pick+" Bet:"+maxmsg.betamt);
+
+					signGameBet(maxmsg.hashid, maxmsg.playercommit,
+						sqlrow.HOUSECOMMIT, maxmsg.gametype, maxmsg.pick, maxmsg.betamt, bettor,
+						function(settletxn, updatetxn){
+							sqlSelectChannel(maxmsg.hashid, function(sql2){
+								var oldseq = parseInt(sql2.rows[0].SEQUENCE);
+								var newseq = oldseq + 1;
+								var ba = new Decimal(maxmsg.betamt);
+								var pu1 = new Decimal(sql2.rows[0].USER1AMOUNT);
+								var pu2 = new Decimal(sql2.rows[0].USER2AMOUNT);
+								var nu1 = (bettor==1) ? pu1.sub(ba) : pu1.plus(ba);
+								var nu2 = (bettor==2) ? pu2.sub(ba) : pu2.plus(ba);
+
+								updateNewSequenceTxn(maxmsg.hashid, newseq,
+									nu1.toString(), nu2.toString(), settletxn, updatetxn, function(){
+									sendMaximaMessage(maximapubkey,
+										gameBetSignedMessage(maxmsg.hashid, newseq, settletxn, updatetxn),
+									function(){
+										// Reveal house secret as HOUSE_REVEAL (not GAME_REVEAL)
+										houseRevealSecret(maxmsg.hashid,
+											sql2.rows[0].HOUSECOMMIT, function(secret){
+											if(secret){
+												updateGameHouseRevealed(maxmsg.hashid, secret, function(){
+													sendMaximaMessage(maximapubkey,
+														houseRevealMessage(maxmsg.hashid, secret));
+												});
+											}
+										});
+									});
+								});
 							});
 						});
+				});
+
+			}else if(maxmsg.type == "HOUSE_REVEAL"){
+				/* ---- House revealed secret to hub — forward to player as GAME_REVEAL ---- */
+				if(!isHubMode()){ return; }
+				var playerHashid2 = getPlayerByHouse(maxmsg.hashid);
+				if(!playerHashid2){ return; }
+
+				updateGameHouseRevealed(playerHashid2, maxmsg.housesecret, function(){
+					sqlSelectChannel(playerHashid2, function(psql){
+						if(psql.count == 0){ return; }
+						var prow = psql.rows[0];
+						var playerMaximaid = (parseInt(prow.USERNUM)==1) ? prow.USER2MAXIMAID : prow.USER1MAXIMAID;
+						sendMaximaMessage(playerMaximaid,
+							gameRevealMessage(playerHashid2, maxmsg.housesecret));
 					});
 				});
 
@@ -743,10 +873,16 @@ MDS.init(function(msg){
 
 			}else if(maxmsg.type == "GAME_ACCEPT"){
 				/* ---- STEP 2: Player accepted our game offer (we're the house) ----
-				 * Validate bet, sign pessimistic balance, send GAME_BET_SIGNED,
-				 * then auto-reveal our secret.
-				 * GUARD: only process once per game (check housecommit exists)
+				 * TNZEC HUB: Also forward player's commit to the house channel.
 				 */
+				if(isHubMode()){
+					var routeGA = getRouteByPlayer(maxmsg.hashid);
+					if(routeGA){
+						sendMaximaMessage(routeGA.house_maximaid,
+							playerAcceptedMessage(routeGA.house_hashid, maxmsg.playercommit,
+								maxmsg.pick, maxmsg.betamt, maxmsg.gametype));
+					}
+				}
 				sqlSelectChannel(maxmsg.hashid, function(sql){
 					if(sql.count == 0){ return; }
 					var sqlrow = sql.rows[0];
@@ -914,11 +1050,17 @@ MDS.init(function(msg){
 				}); // close sqlSelectChannel guard for GAME_REVEAL
 
 			}else if(maxmsg.type == "GAME_RESULT"){
-				/* ---- STEP 5: Player sent us the outcome and their secret (we're the house) ----
-				 * Verify the player's secret matches their commit.
-				 * Independently compute outcome to verify.
-				 * Build resolved balance, sign, and send GAME_RESULT_SIGNED.
+				/* ---- STEP 5: Player sent outcome + secret (we're the house) ----
+				 * TNZEC HUB: Also forward player's secret to the house channel.
 				 */
+				if(isHubMode()){
+					var routeGR = getRouteByPlayer(maxmsg.hashid);
+					if(routeGR){
+						sendMaximaMessage(routeGR.house_maximaid,
+							gameResultMessage(routeGR.house_hashid, maxmsg.playersecret,
+								maxmsg.result, maxmsg.winner, maxmsg.gametype));
+					}
+				}
 				insertLog(maxmsg.hashid, "GAME_RESULT_RECEIVED",
 					"Result: "+maxmsg.winner+" ("+maxmsg.gametype+") Player secret received");
 
@@ -1070,6 +1212,11 @@ MDS.init(function(msg){
 								// Fallback: no secrets available, send with -1
 								MDS.log("GAME_RESULT_SIGNED: no secrets in channel, sending result=-1");
 								sendGameResultNotification(-1);
+							}
+
+							// TNZEC: Clear the route if this was a routed game
+							if(isHubMode() && isRoutedGame(maxmsg.hashid)){
+								clearRoute(maxmsg.hashid);
 							}
 						});
 				});
