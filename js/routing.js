@@ -81,14 +81,14 @@ function autoConnectToHub(callback){
 				return;
 			}
 
-			// Response is the contact address (string or object)
+			// Extract contact address from MLS response
 			var hubContact;
-			if(typeof addrres.response === "string"){
+			if(addrres.response.mlsresponse && addrres.response.mlsresponse.address){
+				hubContact = addrres.response.mlsresponse.address;
+			}else if(typeof addrres.response === "string"){
 				hubContact = addrres.response;
-			}else if(addrres.response.contact){
-				hubContact = addrres.response.contact;
 			}else{
-				MDS.log("[TNZEC] Unexpected response format — will retry");
+				MDS.log("[TNZEC] Unexpected response: "+JSON.stringify(addrres.response).substring(0,100));
 				if(callback){ callback(false, false); }
 				return;
 			}
