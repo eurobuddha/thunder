@@ -2411,12 +2411,14 @@ function onGameResult(data){
 		winAmt = bv;
 		loseAmt = gm ? bv.mul(gm.payout - 1) : bv;
 	}
+	// Risk = what you stood to lose. Player risks stake. House risks payout.
+	var myRisk = iAmPlayer ? bv : (gm ? bv.mul(gm.payout - 1) : bv);
 	if(isWin){
-		addNotice('win', role + gmName + ': Chose ' + pickLabel + ', Result ' + resultLabel + ' — WIN +' + winAmt.toFixed(2) + ' (risked ' + betamt + ')');
-		addGameLog('win', role + gmName + ' Chose:' + pickLabel + ' Result:' + resultLabel + ' — WIN +' + winAmt.toFixed(2) + ' (risked ' + betamt + ')');
+		addNotice('win', role + gmName + ': Chose ' + pickLabel + ', Result ' + resultLabel + ' — WIN +' + winAmt.toFixed(2) + ' (risked ' + myRisk.toFixed(2) + ')');
+		addGameLog('win', role + gmName + ' Chose:' + pickLabel + ' Result:' + resultLabel + ' — WIN +' + winAmt.toFixed(2) + ' (risked ' + myRisk.toFixed(2) + ')');
 	}else{
-		addNotice('loss', role + gmName + ': Chose ' + pickLabel + ', Result ' + resultLabel + ' — LOSS -' + loseAmt.toFixed(2) + ' (risked ' + betamt + ')');
-		addGameLog('loss', role + gmName + ' Chose:' + pickLabel + ' Result:' + resultLabel + ' — LOSS -' + loseAmt.toFixed(2) + ' (risked ' + betamt + ')');
+		addNotice('loss', role + gmName + ': Chose ' + pickLabel + ', Result ' + resultLabel + ' — LOSS -' + loseAmt.toFixed(2) + ' (risked ' + myRisk.toFixed(2) + ')');
+		addGameLog('loss', role + gmName + ' Chose:' + pickLabel + ' Result:' + resultLabel + ' — LOSS -' + loseAmt.toFixed(2) + ' (risked ' + myRisk.toFixed(2) + ')');
 	}
 
 	// 5. Reset after delay — linger so player can absorb the result
