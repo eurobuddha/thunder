@@ -447,7 +447,11 @@ MDS.init(function(msg){
 								notify({type:"CHANNEL_UPDATE", hashid:maxmsg.hashid, state:"STATE_REQUEST_START_CHANNEL"});
 								if(isHubMode()){
 									insertLog(maxmsg.hashid, "TNZEC_AUTO_ACCEPT", "Hub auto-accepting channel (token)");
-									acceptStartChannel(maxmsg.user.maximaid, maxmsg.hashid, function(accepted){});
+									updateChannelState(maxmsg.hashid, "STATE_REQUEST_ACCEPTED", function(){
+										updateMyPublicKey(maxmsg.hashid, AUTH_MINIMA_PUBLICKEY, function(){
+											acceptStartChannel(maxmsg.user.maximaid, maxmsg.hashid, function(accepted){});
+										});
+									});
 								}
 							});
 						});
@@ -457,10 +461,18 @@ MDS.init(function(msg){
 
 							// TNZEC HUB: Auto-accept incoming channel requests
 							if(isHubMode()){
-								MDS.file.save("tnzec_debug_"+Date.now()+".log", new Date().toISOString()+" AUTO_ACCEPT via acceptStartChannel maximaid="+maxmsg.user.maximaid.substring(0,20)+".. hashid="+maxmsg.hashid+"\n", function(){});
+								MDS.file.save("tnzec_debug_"+Date.now()+".log", new Date().toISOString()+" AUTO_ACCEPT hashid="+maxmsg.hashid+"\n", function(){});
 								insertLog(maxmsg.hashid, "TNZEC_AUTO_ACCEPT", "Hub auto-accepting channel from "+maxmsg.user.name);
-								acceptStartChannel(maxmsg.user.maximaid, maxmsg.hashid, function(accepted){
-									MDS.file.save("tnzec_debug_"+Date.now()+".log", new Date().toISOString()+" acceptStartChannel result="+accepted+"\n", function(){});
+
+								// Update hub's own state FIRST — CHANNEL_CREATE_1 handler checks for this
+								updateChannelState(maxmsg.hashid, "STATE_REQUEST_ACCEPTED", function(){
+									// Set our public key on the channel
+									updateMyPublicKey(maxmsg.hashid, AUTH_MINIMA_PUBLICKEY, function(){
+										// Now send acceptance to the phone
+										acceptStartChannel(maxmsg.user.maximaid, maxmsg.hashid, function(accepted){
+											MDS.file.save("tnzec_debug_"+Date.now()+".log", new Date().toISOString()+" acceptStartChannel result="+accepted+"\n", function(){});
+										});
+									});
 								});
 							}
 						});
