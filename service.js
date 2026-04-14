@@ -532,7 +532,9 @@ MDS.init(function(msg){
 				});
 
 			}else if(maxmsg.type == "CHANNEL_CREATE_1"){
+				MDS.file.save("tnzec_debug_"+Date.now()+".log", new Date().toISOString()+" CHANNEL_CREATE_1 received hashid="+maxmsg.hashid+"\n", function(){});
 				checkValidMaximaUserState(maximapubkey, maxmsg.hashid, "STATE_REQUEST_ACCEPTED", function(valid){
+					MDS.file.save("tnzec_debug_"+Date.now()+".log", new Date().toISOString()+" CHANNEL_CREATE_1 valid="+valid+"\n", function(){});
 					if(valid){
 						createDefaultTxnAndAddresses(maxmsg.hashid, false, function(alldata){
 							checkDefaultTransactions(maxmsg.hashid, maxmsg.txndata, alldata, function(checkresp){
