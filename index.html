@@ -33,7 +33,7 @@
 
 	<style>
 	/* =========================================================================
-	 * THUNDER CASINO v0.4.0 -- INLINE ANIMATION & GAME STYLES
+	 * THUNDER CASINO v0.5.0 -- INLINE ANIMATION & GAME STYLES
 	 * ========================================================================= */
 
 	/* ---- Screen flash overlay ---- */
@@ -123,32 +123,36 @@
 		transform-style: preserve-3d;
 		border-radius: 50%;
 	}
+	/* Continuous loop — doesn't land on any face */
 	.coin-body.spinning {
-		animation: coinSpin3D 4s cubic-bezier(0.17,0.67,0.21,0.99) forwards;
+		animation: coinSpinLoop 0.6s linear infinite;
 	}
+	/* Landing animations — these actually resolve to a face */
 	.coin-body.spinning-heads {
-		animation: coinSpinHeads 2.5s cubic-bezier(0.17,0.67,0.21,0.99) forwards;
+		animation: coinSpinHeads 2s cubic-bezier(0.17,0.67,0.21,0.99) forwards;
 	}
 	.coin-body.spinning-tails {
-		animation: coinSpinTails 2.5s cubic-bezier(0.17,0.67,0.21,0.99) forwards;
+		animation: coinSpinTails 2s cubic-bezier(0.17,0.67,0.21,0.99) forwards;
 	}
-	@keyframes coinSpin3D {
-		0%   { transform: rotateY(0deg); }
-		100% { transform: rotateY(2880deg); }
+	@keyframes coinSpinLoop {
+		0%   { transform: rotateX(0deg); }
+		100% { transform: rotateX(360deg); }
 	}
+	/* Heads: land at 2880deg (8*360 = 0 remainder = heads face up) */
 	@keyframes coinSpinHeads {
-		0%   { transform: rotateY(0deg) translateY(0); }
-		70%  { transform: rotateY(2520deg) translateY(-30px); }
-		85%  { transform: rotateY(2800deg) translateY(0px); }
-		92%  { transform: rotateY(2860deg) translateY(-8px); }
-		100% { transform: rotateY(2880deg) translateY(0px); }
+		0%   { transform: rotateX(0deg) translateY(0); }
+		60%  { transform: rotateX(2160deg) translateY(-20px); }
+		80%  { transform: rotateX(2600deg) translateY(0px); }
+		92%  { transform: rotateX(2840deg) translateY(-6px); }
+		100% { transform: rotateX(2880deg) translateY(0px); }
 	}
+	/* Tails: land at 2700deg (7*360+180 = 180 remainder = tails face up) */
 	@keyframes coinSpinTails {
-		0%   { transform: rotateY(0deg) translateY(0); }
-		70%  { transform: rotateY(2520deg) translateY(-30px); }
-		85%  { transform: rotateY(2800deg) translateY(0px); }
-		92%  { transform: rotateY(2860deg) translateY(-8px); }
-		100% { transform: rotateY(2700deg) translateY(0px); }
+		0%   { transform: rotateX(0deg) translateY(0); }
+		60%  { transform: rotateX(2160deg) translateY(-20px); }
+		80%  { transform: rotateX(2420deg) translateY(0px); }
+		92%  { transform: rotateX(2660deg) translateY(-6px); }
+		100% { transform: rotateX(2700deg) translateY(0px); }
 	}
 	.coin-side {
 		position: absolute;
@@ -172,7 +176,7 @@
 	.coin-side-tails {
 		background: linear-gradient(135deg, #7a8aaa 0%, #c0c8e0 50%, #7a8aaa 100%);
 		color: #080c18;
-		transform: rotateY(180deg);
+		transform: rotateX(180deg);
 		box-shadow: inset 0 0 40px rgba(0,0,0,0.15);
 	}
 
@@ -214,12 +218,8 @@
 		80%  { transform: scale(0.98) rotateZ(0deg) translateY(1px); }
 		100% { transform: scale(1) rotateZ(0deg) translateY(0); }
 	}
-	.die-face[data-val="1"] { grid-template: 1fr 1fr 1fr / 1fr 1fr 1fr; }
-	.die-face[data-val="2"] { grid-template: 1fr 1fr 1fr / 1fr 1fr 1fr; }
-	.die-face[data-val="3"] { grid-template: 1fr 1fr 1fr / 1fr 1fr 1fr; }
-	.die-face[data-val="4"] { grid-template: 1fr 1fr / 1fr 1fr; }
-	.die-face[data-val="5"] { grid-template: 1fr 1fr 1fr / 1fr 1fr 1fr; }
-	.die-face[data-val="6"] { grid-template: 1fr 1fr 1fr / 1fr 1fr; }
+	/* All faces use 3x3 grid — dots placed in correct positions */
+	.die-face { grid-template: 1fr 1fr 1fr / 1fr 1fr 1fr; }
 	.die-dot {
 		width: 20px;
 		height: 20px;
@@ -478,39 +478,6 @@
 		color: #fff;
 	}
 
-	/* ---- Noticeboard ---- */
-	.noticeboard {
-		background: rgba(6, 8, 16, 0.85);
-		border: 1px solid #1a2140;
-		border-radius: 10px;
-		padding: 10px 14px;
-		max-height: 100px;
-		overflow-y: auto;
-		font-family: 'JetBrains Mono', monospace;
-		font-size: 11px;
-		line-height: 1.6;
-		margin-top: 16px;
-	}
-	.noticeboard-title {
-		font-family: 'Orbitron', sans-serif;
-		font-size: 10px;
-		color: #8892b0;
-		letter-spacing: 2px;
-		text-transform: uppercase;
-		margin-bottom: 6px;
-	}
-	.notice-entry {
-		padding: 2px 0;
-		border-bottom: 1px solid rgba(26,33,64,0.3);
-	}
-	.notice-time { color: #3a4060; margin-right: 6px; font-size: 10px; }
-	.notice-msg { color: #8892b0; }
-	.notice-msg.notice-info { color: #00e5ff; }
-	.notice-msg.notice-warn { color: #f5a623; }
-	.notice-msg.notice-win { color: #00e676; }
-	.notice-msg.notice-loss { color: #ff2d78; }
-	.notice-msg.notice-system { color: #8892b0; }
-
 	/* ---- Win celebration pulsing border ---- */
 	.game-area.win-celebrate {
 		border-color: #00e676;
@@ -574,35 +541,29 @@
 <!-- Screen flash overlay -->
 <div id="screen-flash" class="screen-flash"></div>
 
-<div class="app-container">
+<div class="app-shell">
 
 	<!-- ============================================================ -->
-	<!-- HEADER                                                        -->
+	<!-- HEADER — fixed 48px bar                                       -->
 	<!-- ============================================================ -->
-	<div class="header">
-		<div class="header-brand">
-			<div class="header-icon">T</div>
-			<div>
-				<div class="header-title">THUNDER CASINO</div>
-				<div class="header-subtitle">Provably Fair Layer 2 Gaming</div>
-			</div>
-		</div>
+	<div class="app-header">
+		<div class="header-logo">THUNDER CASINO</div>
 		<div class="header-info" id="header-info">
 			<span id="header-name"></span>
 			<span>BLK <span class="info-value" id="header-block">--</span></span>
 			<span>BAL <span class="info-value" id="header-balance">--</span></span>
 		</div>
-	</div>
-
-	<!-- Tab navigation -->
-	<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
 		<div class="tab-nav">
 			<button class="tab-btn active" id="tab-casino" onclick="switchTab('casino')">CASINO</button>
-			<button class="tab-btn" id="tab-props" onclick="switchTab('props')">PROPS</button>
 			<button class="tab-btn" id="tab-channels" onclick="switchTab('channels')">CHANNELS</button>
 		</div>
 		<button id="btn-snd" class="btn-snd active" onclick="SFX.toggle()" title="Toggle sound">SND ON</button>
 	</div>
+
+	<!-- ============================================================ -->
+	<!-- CONTENT — scrollable area between header and footer           -->
+	<!-- ============================================================ -->
+	<div class="app-content">
 
 	<!-- ============================================================ -->
 	<!-- TAB: CASINO                                                   -->
@@ -701,33 +662,19 @@
 					</div>
 				</div>
 
-				<!-- Play button -->
-				<div class="text-center mt-24">
+				<!-- Play button + Odds -->
+				<div class="text-center mt-8">
 					<button id="btn-play" class="btn btn-primary btn-lg" onclick="playRound()" disabled>
 						PLACE BET
 					</button>
+					<div class="mt-8"><span class="text-ghost" style="font-size:11px;" id="odds-display">Select a game to see odds</span></div>
 				</div>
 
-				<!-- Odds display -->
-				<div class="text-center mt-16">
-					<span class="text-ghost" id="odds-display">Select a game to see odds</span>
-				</div>
-
-				<!-- Noticeboard -->
-				<div class="noticeboard" id="noticeboard">
-					<div class="noticeboard-title">NOTICEBOARD</div>
-					<div id="noticeboard-entries">
-						<div class="notice-entry">
-							<span class="notice-time">--:--:--</span>
-							<span class="notice-msg notice-system">Ready to play.</span>
-						</div>
-					</div>
-				</div>
 			</div>
 
 			<!-- Game log -->
-			<div class="mt-24">
-				<div class="card-title mb-16">GAME LOG</div>
+			<div class="mt-8">
+				<div class="card-title mb-8">GAME LOG</div>
 				<div class="log-panel" id="game-log">
 					<div class="log-entry">
 						<span class="log-type system">SYSTEM</span>
@@ -737,126 +684,9 @@
 			</div>
 
 			<!-- Channel controls -->
-			<div class="flex-between mt-24">
+			<div class="flex-between mt-8">
 				<button class="btn btn-secondary btn-sm" onclick="exitGame()">BACK</button>
 				<button class="btn btn-danger btn-sm" onclick="closeChannelPrompt()">CLOSE CHANNEL</button>
-			</div>
-		</div>
-	</div>
-
-	<!-- ============================================================ -->
-	<!-- TAB: PROPS                                                    -->
-	<!-- ============================================================ -->
-	<div id="tab-view-props" class="hidden">
-		<div class="card">
-			<div class="card-header">
-				<div class="card-title">PROPOSE A BET</div>
-			</div>
-
-			<!-- Channel selector -->
-			<div class="form-group">
-				<label class="form-label">Channel</label>
-				<select id="prop-channel-select" class="form-select" onchange="onPropChannelSelect()"></select>
-			</div>
-
-			<!-- Proposition text -->
-			<div class="form-group">
-				<label class="form-label">Proposition</label>
-				<input id="prop-text" type="text" class="form-input" placeholder="e.g. England win the Euros" maxlength="200">
-			</div>
-
-			<!-- Side selector -->
-			<div class="form-group">
-				<label class="form-label">Your Side</label>
-				<div style="display:flex; gap:12px;">
-					<button id="btn-side-true" class="btn btn-success btn-sm" onclick="selectPropSide('TRUE')" style="flex:1; opacity:0.4;">TRUE</button>
-					<button id="btn-side-false" class="btn btn-danger btn-sm" onclick="selectPropSide('FALSE')" style="flex:1; opacity:0.4;">FALSE</button>
-				</div>
-			</div>
-
-			<!-- Stakes -->
-			<div style="display:flex; gap:16px;">
-				<div class="form-group" style="flex:1;">
-					<label class="form-label">Your Stake</label>
-					<input id="prop-mystake" type="number" class="form-input" value="10" min="0.001" step="1" oninput="updatePropOdds()">
-				</div>
-				<div class="form-group" style="flex:1;">
-					<label class="form-label">They Stake</label>
-					<input id="prop-wantstake" type="number" class="form-input" value="10" min="0.001" step="1" oninput="updatePropOdds()">
-				</div>
-			</div>
-
-			<!-- Odds display -->
-			<div class="text-center text-ghost mb-16" id="prop-odds-display">Even money (1:1)</div>
-
-			<!-- Propose button -->
-			<div class="text-center">
-				<button id="btn-propose" class="btn btn-primary btn-lg" onclick="proposeProp()" disabled>PROPOSE BET</button>
-			</div>
-		</div>
-
-		<!-- Active prop display -->
-		<div id="prop-active" class="hidden">
-			<div class="card card-active">
-				<div class="card-header">
-					<div class="card-title">ACTIVE PROPOSITION</div>
-					<span id="prop-status" class="text-ghost"></span>
-				</div>
-				<div id="prop-proposition-text" style="font-size:18px; font-weight:600; margin-bottom:16px;"></div>
-				<div style="display:flex; justify-content:space-between; margin-bottom:16px;">
-					<div><span class="text-ghost">Proposer:</span> <span id="prop-proposer-side" class="text-green"></span> for <span id="prop-proposer-stake" class="text-gold"></span></div>
-					<div><span class="text-ghost">Taker:</span> <span id="prop-taker-side" class="text-pink"></span> for <span id="prop-taker-stake" class="text-gold"></span></div>
-				</div>
-
-				<div id="prop-settle-area" class="hidden">
-					<div class="text-center mb-16 text-ghost">The event has happened. What's the outcome?</div>
-					<div style="display:flex; gap:16px; justify-content:center;">
-						<button class="btn btn-success btn-lg" onclick="settleProp('TRUE')">SETTLE TRUE</button>
-						<button class="btn btn-danger btn-lg" onclick="settleProp('FALSE')">SETTLE FALSE</button>
-					</div>
-				</div>
-
-				<div id="prop-waiting" class="hidden">
-					<div class="text-center text-ghost">Waiting for counterparty to submit their verdict...</div>
-				</div>
-
-				<div id="prop-result" class="hidden">
-					<div id="prop-result-text" class="text-center" style="font-size:24px; font-weight:700;"></div>
-				</div>
-			</div>
-		</div>
-
-		<!-- Incoming prop -->
-		<div id="prop-incoming" class="hidden">
-			<div class="card" style="border-color:#00e5ff;">
-				<div class="card-header">
-					<div class="card-title" style="color:#00e5ff;">INCOMING PROPOSITION</div>
-				</div>
-				<div id="prop-incoming-text" style="font-size:18px; font-weight:600; margin-bottom:16px;"></div>
-				<div id="prop-incoming-details" class="text-ghost mb-16"></div>
-				<div style="display:flex; gap:12px; justify-content:center;">
-					<button class="btn btn-danger btn-sm" onclick="declineProp()">DECLINE</button>
-					<button class="btn btn-success btn-lg" onclick="acceptProp()">ACCEPT BET</button>
-				</div>
-			</div>
-		</div>
-
-		<!-- Noticeboard (props view) -->
-		<div class="noticeboard" id="noticeboard-props" style="margin-top:16px;">
-			<div class="noticeboard-title">NOTICEBOARD</div>
-			<div id="noticeboard-props-entries">
-				<div class="notice-entry">
-					<span class="notice-time">--:--:--</span>
-					<span class="notice-msg notice-system">Ready for props.</span>
-				</div>
-			</div>
-		</div>
-
-		<!-- Prop history -->
-		<div class="mt-24">
-			<div class="card-title mb-16">BET HISTORY</div>
-			<div id="prop-history" class="log-panel">
-				<div class="log-entry"><span class="log-type system">SYSTEM</span><span class="log-msg">No props yet. Propose one above.</span></div>
 			</div>
 		</div>
 	</div>
@@ -870,7 +700,7 @@
 		</div>
 
 		<!-- New channel form -->
-		<div class="card mt-24">
+		<div class="card mt-12">
 			<div class="card-header">
 				<div class="card-title">OPEN NEW CHANNEL</div>
 			</div>
@@ -892,7 +722,7 @@
 					<input id="they-add" type="number" class="form-input" value="10" min="0">
 				</div>
 			</div>
-			<div class="text-center mt-24">
+			<div class="text-center mt-12">
 				<button id="btn-request-channel" class="btn btn-primary btn-lg" onclick="requestChannel()">
 					REQUEST CHANNEL
 				</button>
@@ -900,7 +730,22 @@
 		</div>
 	</div>
 
-</div><!-- /app-container -->
+	</div><!-- /app-content -->
+
+	<!-- ============================================================ -->
+	<!-- FOOTER — fixed noticeboard bar                                -->
+	<!-- ============================================================ -->
+	<div class="app-footer">
+		<div class="noticeboard-title">NOTICEBOARD</div>
+		<div id="noticeboard-entries">
+			<div class="notice-entry">
+				<span class="notice-time">--:--:--</span>
+				<span class="notice-msg notice-system">Ready to play.</span>
+			</div>
+		</div>
+	</div>
+
+</div><!-- /app-shell -->
 
 <!-- ============================================================ -->
 <!-- JAVASCRIPT                                                    -->
@@ -908,7 +753,7 @@
 <script type="text/javascript">
 
 /* =========================================================================
- * THUNDER CASINO v0.4.0
+ * THUNDER CASINO v0.5.0
  * =========================================================================
  * Architecture: index.html = THE SCREEN
  *
@@ -1025,7 +870,7 @@ function addNotice(type, message){
 		container.removeChild(container.lastChild);
 	}
 
-	var board = document.getElementById('noticeboard');
+	var board = document.querySelector('.app-footer');
 	if(board) board.scrollTop = 0;
 }
 
@@ -1305,6 +1150,26 @@ var ANIM = (function(){
 		});
 	}
 
+	function clearPickResults(){
+		document.querySelectorAll('.pick-btn').forEach(function(btn){
+			btn.classList.remove('dimmed','result-match','result-miss','selected');
+		});
+	}
+
+	// Highlight the winning pick on the grid: user's choice in yellow (selected),
+	// actual outcome in green (match/win) or red (miss/loss), flashing
+	function highlightPickResult(result, isWin){
+		document.querySelectorAll('.pick-btn').forEach(function(btn){
+			btn.classList.remove('dimmed');
+			var pick = parseInt(btn.dataset.pick);
+			if(pick === result){
+				btn.classList.add(isWin ? 'result-match' : 'result-miss');
+			} else if(!btn.classList.contains('selected')){
+				btn.classList.add('dimmed');
+			}
+		});
+	}
+
 	function hideAllStages(){
 		document.getElementById('coin-stage').classList.remove('visible');
 		document.getElementById('dice-stage').classList.remove('visible');
@@ -1504,7 +1369,8 @@ var ANIM = (function(){
 		confetti: confetti, floatAmount: floatAmount,
 		flashBalance: flashBalance, flashBalanceLock: flashBalanceLock,
 		setBorderState: setBorderState,
-		dimPicks: dimPicks, undimPicks: undimPicks,
+		dimPicks: dimPicks, undimPicks: undimPicks, clearPickResults: clearPickResults,
+		highlightPickResult: highlightPickResult,
 		startSpin: startSpin, stopSpin: stopSpin,
 		hideStage: hideStage, hideAllStages: hideAllStages,
 		renderDieFace: renderDieFace
@@ -1525,9 +1391,10 @@ var PHASE_BETAMT = null;
 
 var GAME_BUSY = false;
 var PENDING_RESULT = null;
+var PENDING_GAME_RESULT_DATA = null;
 var SPIN_START_TIME = 0;
 var MIN_SPIN_MS = 4000;
-var STEP_TIMEOUT_MS = 15000;
+var STEP_TIMEOUT_MS = 45000;
 var STEP_TIMEOUT_HANDLE = null;
 var IS_HOUSING = false;
 
@@ -1552,6 +1419,7 @@ function clearStepTimeout(){
 function abortAndReset(){
 	clearStepTimeout();
 	PENDING_RESULT = null;
+	PENDING_GAME_RESULT_DATA = null;
 	SPIN_START_TIME = 0;
 	IS_HOUSING = false;
 	GAME_BUSY = false;
@@ -1596,6 +1464,7 @@ function setGamePhase(phase, data){
 			PHASE_PICK = CURRENT_PICK;
 			PHASE_BETAMT = document.getElementById('bet-amount').value;
 			enableGameControls(false);
+			ANIM.clearPickResults();
 			ANIM.dimPicks();
 			numEl.textContent = '?';
 			numEl.className = 'result-number waiting';
@@ -1659,6 +1528,7 @@ function setGamePhase(phase, data){
 			var resultLabel = data.resultLabel || getPickLabel(gametype, data.result);
 			numEl.textContent = resultLabel;
 			numEl.className = 'result-number win result-bounce';
+			ANIM.highlightPickResult(data.result, true);
 
 			var betval = parseFloat(PHASE_BETAMT || document.getElementById('bet-amount').value);
 			var game = GAME_TYPES[gametype];
@@ -1668,8 +1538,11 @@ function setGamePhase(phase, data){
 			ANIM.floatAmount('+' + payout.toFixed(2), true);
 			ANIM.flashBalance(true);
 
-			// Game log added by onGameResult — not here (prevents duplicates)
-			// Reset handled by onGameResult — not here (prevents double chime)
+			// Now call onGameResult with stored data to update stats/log/balance
+			if(PENDING_GAME_RESULT_DATA){
+				onGameResult(PENDING_GAME_RESULT_DATA);
+				PENDING_GAME_RESULT_DATA = null;
+			}
 			break;
 
 		case 'LOSE':
@@ -1684,6 +1557,7 @@ function setGamePhase(phase, data){
 			var resultLabel = data.resultLabel || getPickLabel(gametype, data.result);
 			numEl.textContent = resultLabel;
 			numEl.className = 'result-number lose result-shake';
+			ANIM.highlightPickResult(data.result, false);
 
 			labelEl.textContent = 'YOU LOSE';
 			labelEl.className = 'result-label lose';
@@ -1691,9 +1565,11 @@ function setGamePhase(phase, data){
 			ANIM.floatAmount('-' + parseFloat(betval).toFixed(2), false);
 			ANIM.flashBalance(false);
 
-			var game = GAME_TYPES[gametype];
-			// Game log added by onGameResult — not here (prevents duplicates)
-			// Reset handled by onGameResult — not here (prevents double chime)
+			// Now call onGameResult with stored data to update stats/log/balance
+			if(PENDING_GAME_RESULT_DATA){
+				onGameResult(PENDING_GAME_RESULT_DATA);
+				PENDING_GAME_RESULT_DATA = null;
+			}
 			break;
 	}
 }
@@ -1775,16 +1651,13 @@ var IN_GAME_SESSION  = false;
 function switchTab(tab){
 	CURRENT_TAB = tab;
 	document.getElementById('tab-view-casino').classList.add('hidden');
-	document.getElementById('tab-view-props').classList.add('hidden');
 	document.getElementById('tab-view-channels').classList.add('hidden');
 	document.getElementById('tab-view-' + tab).classList.remove('hidden');
 
 	document.getElementById('tab-casino').classList.toggle('active', tab === 'casino');
-	document.getElementById('tab-props').classList.toggle('active', tab === 'props');
 	document.getElementById('tab-channels').classList.toggle('active', tab === 'channels');
 
 	if(tab === 'casino') loadCasinoChannels();
-	if(tab === 'props') loadPropsView();
 	if(tab === 'channels') loadChannelsTab();
 }
 
@@ -1822,9 +1695,10 @@ function refreshHeaderInfo(){
  * ========================================================================= */
 
 function loadCasinoChannels(){
-	if(IN_GAME_SESSION) return; // Don't reload list when in game
+	if(IN_GAME_SESSION) return;
 
 	sqlSelectAllOpenChannels(function(res){
+		MDS.log("loadCasinoChannels: " + res.rows.length + " channels found");
 		var html = '';
 		var openCount = 0;
 
@@ -2054,6 +1928,8 @@ function doRequestChannel(pubkey, youAdd, theyAdd, tokName, tokId, tokData){
  * ========================================================================= */
 
 function enterGame(hashid){
+	MDS.log("enterGame called: hashid=" + hashid);
+
 	CURRENT_CHANNEL = hashid;
 	GAME_WINS = 0;
 	GAME_LOSSES = 0;
@@ -2068,6 +1944,13 @@ function enterGame(hashid){
 	document.getElementById('noticeboard-entries').innerHTML = '';
 
 	sqlSelectChannel(hashid, function(sql){
+		MDS.log("enterGame SQL returned: count=" + sql.count);
+		if(!sql.count || sql.count === 0){
+			MDS.log("enterGame ERROR: no channel found for " + hashid);
+			thunderAlert('Channel not found. Try refreshing.');
+			IN_GAME_SESSION = false;
+			return;
+		}
 		var ch = sql.rows[0];
 		var myamt    = (ch.USERNUM === '1') ? ch.USER1AMOUNT : ch.USER2AMOUNT;
 		var theiramt = (ch.USERNUM === '1') ? ch.USER2AMOUNT : ch.USER1AMOUNT;
@@ -2232,15 +2115,28 @@ function onGameResult(data){
 	var betamt = data.betamt || PHASE_BETAMT || '0';
 	var result = data.result;
 
+	// Am I the player (bettor) or the house for this round?
+	var iAmPlayer = (data.amIBettor !== undefined) ? data.amIBettor : true;
+	var bv = new Decimal(betamt);
+	var gm = GAME_TYPES[gametype];
+
 	// 1. Update stats -- THE ONLY PLACE
+	// Player wins: profit = betamt * (payout - 1). Player loses: loss = betamt.
+	// House wins: profit = betamt (the stake). House loses: loss = betamt * (payout - 1).
 	if(isWin){
 		GAME_WINS++;
-		var bv = new Decimal(betamt);
-		var gm = GAME_TYPES[gametype];
-		if(gm) GAME_PROFIT = GAME_PROFIT.plus(bv.mul(gm.payout - 1));
+		if(iAmPlayer){
+			if(gm) GAME_PROFIT = GAME_PROFIT.plus(bv.mul(gm.payout - 1));
+		} else {
+			GAME_PROFIT = GAME_PROFIT.plus(bv);
+		}
 	} else {
 		GAME_LOSSES++;
-		GAME_PROFIT = GAME_PROFIT.sub(new Decimal(betamt));
+		if(iAmPlayer){
+			GAME_PROFIT = GAME_PROFIT.sub(bv);
+		} else {
+			if(gm) GAME_PROFIT = GAME_PROFIT.sub(bv.mul(gm.payout - 1));
+		}
 	}
 	GAME_ROUNDS++;
 	updateStats();
@@ -2275,90 +2171,115 @@ function onGameResult(data){
 	}
 
 	// 4. Noticeboard + Game Log — ONE entry each, here only
+	// Show correct P&L: player wins payout, house wins stake (and vice versa)
 	var resultLabel = (result !== undefined && result >= 0) ? getPickLabel(gametype, result) : '?';
-	var gm = GAME_TYPES[gametype];
+	var pickNum = (data.pick !== undefined && data.pick >= 0) ? data.pick : PHASE_PICK;
+	var pickLabel = (pickNum >= 0) ? getPickLabel(gametype, pickNum) : '?';
 	var gmName = gm ? gm.name : gametype;
+	var role = iAmPlayer ? '' : 'HOUSE ';
+	var winAmt, loseAmt;
+	if(iAmPlayer){
+		winAmt = gm ? bv.mul(gm.payout - 1) : bv;
+		loseAmt = bv;
+	} else {
+		winAmt = bv;
+		loseAmt = gm ? bv.mul(gm.payout - 1) : bv;
+	}
 	if(isWin){
-		var payout = new Decimal(betamt).mul(gm ? gm.payout - 1 : 1);
-		addNotice('win', gmName + ': WIN +' + payout.toFixed(2));
-		addGameLog('win', gmName + ' Result:' + resultLabel + ' — WIN +' + payout.toFixed(2));
+		addNotice('win', role + gmName + ': Chose ' + pickLabel + ', Result ' + resultLabel + ' — WIN +' + winAmt.toFixed(2));
+		addGameLog('win', role + gmName + ' Chose:' + pickLabel + ' Result:' + resultLabel + ' — WIN +' + winAmt.toFixed(2));
 	}else{
-		addNotice('loss', gmName + ': LOSS -' + betamt);
-		addGameLog('loss', gmName + ' Result:' + resultLabel + ' — LOSS -' + betamt);
+		addNotice('loss', role + gmName + ': Chose ' + pickLabel + ', Result ' + resultLabel + ' — LOSS -' + loseAmt.toFixed(2));
+		addGameLog('loss', role + gmName + ' Chose:' + pickLabel + ' Result:' + resultLabel + ' — LOSS -' + loseAmt.toFixed(2));
 	}
 
-	// 5. Reset after delay
+	// 5. Reset after delay — linger so player can absorb the result
 	GAME_BUSY = false;
-	setTimeout(function(){ SFX.ready_chime(); setGamePhase('IDLE'); }, isWin ? 2000 : 1000);
+	setTimeout(function(){ SFX.ready_chime(); setGamePhase('IDLE'); }, isWin ? 5000 : 3000);
 }
 
 
 /* =========================================================================
- * HOUSE-SIDE FEEDBACK
+ * HOUSE-SIDE VISUAL FEEDBACK
+ * Shows the full animation + result on the house side when a game resolves.
+ * Same visual experience as the player — animation, reveal, win/lose display.
  * ========================================================================= */
 
-function showHouseSideFeedback(gametype, result, winner, betamt){
-	if(CURRENT_TAB !== 'casino' || !IN_GAME_SESSION) return;
+function showHouseGameVisual(comms){
+	var gametype = comms.gametype;
+	var result = comms.result;
+	var isMyWin = comms.isMyWin;
 
-	IS_HOUSING = true;
-	var isHouseWin = (winner === 'house');
+	if(!IN_GAME_SESSION || GAME_BUSY) return;
 
-	addNotice(isHouseWin ? 'win' : 'loss',
-		'HOUSE: ' + (isHouseWin ? 'Won' : 'Lost') + ' ' + betamt + ' on ' + gametype);
+	// Set up the game type display so pick grid is visible
+	PHASE_GAMETYPE = gametype;
+	selectGameType(gametype);
+	GAME_BUSY = true;
+	enableGameControls(false);
 
-	if(GAME_PHASE === 'IDLE' && !GAME_BUSY){
-		PHASE_GAMETYPE = gametype;
-		ANIM.startSpin(gametype);
+	// Compute correct house P&L amounts
+	var gm = GAME_TYPES[gametype];
+	var bv = parseFloat(comms.betamt);
+	var houseWinAmt = bv;
+	var houseLoseAmt = gm ? bv * (gm.payout - 1) : bv;
 
-		setTimeout(function(){
-			if(result >= 0){
-				ANIM.stopSpin(gametype, result, function(){
-					setTimeout(function(){
-						ANIM.hideStage(gametype);
+	// Start the spin animation
+	ANIM.startSpin(gametype);
+	ANIM.setBorderState('spinning-border');
+	SFX.lever_pull();
+
+	// After 2s of spinning, stop on the actual result
+	setTimeout(function(){
+		if(result >= 0){
+			ANIM.stopSpin(gametype, result, function(){
+				setTimeout(function(){
+					ANIM.hideStage(gametype);
+
+					var numEl = document.getElementById('result-number');
+					var labelEl = document.getElementById('result-label');
+					var resultLabel = getPickLabel(gametype, result);
+
+					if(isMyWin){
+						ANIM.setBorderState('win-celebrate');
+						SFX.win_fanfare();
+						ANIM.screenFlash('win');
+						ANIM.confetti(20);
+						numEl.textContent = resultLabel;
+						numEl.className = 'result-number win result-bounce';
+						labelEl.textContent = 'HOUSE WINS!';
+						labelEl.className = 'result-label win';
+						ANIM.floatAmount('+' + houseWinAmt.toFixed(2), true);
+						ANIM.flashBalance(true);
+					} else {
 						ANIM.setBorderState(null);
+						SFX.lose_wah();
+						ANIM.screenFlash('lose');
+						ANIM.shakeGameArea();
+						numEl.textContent = resultLabel;
+						numEl.className = 'result-number lose result-shake';
+						labelEl.textContent = 'HOUSE LOST';
+						labelEl.className = 'result-label lose';
+						ANIM.floatAmount('-' + houseLoseAmt.toFixed(2), false);
+						ANIM.flashBalance(false);
+					}
 
-						var numEl = document.getElementById('result-number');
-						var labelEl = document.getElementById('result-label');
+					// Highlight the result on the pick grid
+					ANIM.highlightPickResult(result, isMyWin);
 
-						if(isHouseWin){
-							numEl.textContent = 'HOUSE WINS';
-							numEl.className = 'result-number win result-bounce';
-							labelEl.textContent = 'YOU HOUSED THIS ROUND';
-							labelEl.className = 'result-label win';
-							SFX.win_fanfare();
-							ANIM.screenFlash('win');
-							ANIM.confetti(20);
-						} else {
-							numEl.textContent = 'HOUSE LOST';
-							numEl.className = 'result-number lose';
-							labelEl.textContent = 'YOU HOUSED THIS ROUND';
-							labelEl.className = 'result-label lose';
-							SFX.lose_wah();
-						}
-
-						// Update stats via onGameResult for house-side
-						onGameResult({
-							isMyWin: isHouseWin,
-							gametype: gametype,
-							betamt: betamt,
-							result: result
-						});
-
-						setTimeout(function(){
-							IS_HOUSING = false;
-							numEl.textContent = '?';
-							numEl.className = 'result-number waiting';
-							labelEl.textContent = 'PICK YOUR NUMBER';
-							labelEl.className = 'result-label waiting';
-						}, 2000);
-					}, 500);
-				});
-			} else {
-				ANIM.hideStage(gametype);
-				IS_HOUSING = false;
-			}
-		}, 2000);
-	}
+					// Update stats, balance, log via onGameResult
+					onGameResult(comms);
+					PENDING_GAME_RESULT_DATA = null;
+				}, 500);
+			});
+		} else {
+			ANIM.hideStage(gametype);
+			ANIM.setBorderState(null);
+			GAME_BUSY = false;
+			onGameResult(comms);
+			PENDING_GAME_RESULT_DATA = null;
+		}
+	}, 2000);
 }
 
 
@@ -2389,9 +2310,18 @@ function addGameLog(type, message){
 	var time = new Date().toLocaleTimeString();
 	var entry = document.createElement('div');
 	entry.className = 'log-entry';
-	entry.innerHTML = '<span class="log-time">' + time + '</span>'
-		+'<span class="log-type ' + type + '">' + type.toUpperCase() + '</span>'
-		+'<span class="log-msg">' + message + '</span>';
+	var timeSpan = document.createElement('span');
+	timeSpan.className = 'log-time';
+	timeSpan.textContent = time;
+	var typeSpan = document.createElement('span');
+	typeSpan.className = 'log-type ' + type;
+	typeSpan.textContent = type.toUpperCase();
+	var msgSpan = document.createElement('span');
+	msgSpan.className = 'log-msg';
+	msgSpan.textContent = message;
+	entry.appendChild(timeSpan);
+	entry.appendChild(typeSpan);
+	entry.appendChild(msgSpan);
 	log.insertBefore(entry, log.firstChild);
 	while(log.children.length > 50){
 		log.removeChild(log.lastChild);
@@ -2472,6 +2402,13 @@ function doUnilateralClose(){
  * STALE CHANNEL CLEANUP
  * ========================================================================= */
 
+/* Clear any stuck gamephase=1 from previous crashes/timeouts */
+function clearStuckGames(){
+	MDS.sql("UPDATE channels SET gamephase=0, gametype=null, gameresult=null WHERE gamephase=1", function(res){
+		if(res.status) MDS.log("Cleared stuck games on startup");
+	});
+}
+
 function cleanupStaleChannels(){
 	sqlSelectAllOpenChannels(function(res){
 		if(!res || !res.rows) return;
@@ -2506,6 +2443,7 @@ MDS.init(function(msg){
 				initAuthDetails(function(){
 					MDS.cmd("maxcontacts", function(mc){
 						MAXIMA_CONTACTS = mc.response.contacts;
+						clearStuckGames();
 						loadCasinoChannels();
 						refreshHeaderInfo();
 						cleanupStaleChannels();
@@ -2540,35 +2478,43 @@ MDS.init(function(msg){
 				addGameLog('info', 'Game started: ' + comms.gametype + ' bet:' + comms.betamt);
 				if(IN_GAME_SESSION && GAME_PHASE === 'PLACING'){
 					setGamePhase('LOCKED');
+					// After showing LOCKED for 1s, transition to SPINNING
+					setTimeout(function(){
+						if(GAME_PHASE === 'LOCKED'){
+							setGamePhase('SPINNING');
+						}
+					}, 1000);
 				}
 
 			} else if(comms.type === 'GAME_RESULT'){
-				/* THE ONE AND ONLY handler — onGameResult adds its own notice */
-				onGameResult(comms);
+				/* THE ONE AND ONLY handler.
+				 * Always store the full data. If we're mid-animation (SPINNING),
+				 * the pending result system handles min spin time.
+				 * If we're in PLACING/LOCKED, force SPINNING first so animation plays.
+				 * If IDLE (house side or late arrival), process directly. */
+				PENDING_GAME_RESULT_DATA = comms;
+
+				if(GAME_PHASE === 'SPINNING'){
+					storePendingResult(comms.result, comms.isMyWin ? 'player' : 'house');
+				} else if(GAME_PHASE === 'LOCKED' || GAME_PHASE === 'PLACING'){
+					// Force into SPINNING so animation plays, then deliver
+					setGamePhase('SPINNING');
+					storePendingResult(comms.result, comms.isMyWin ? 'player' : 'house');
+				} else if(IN_GAME_SESSION && GAME_PHASE === 'IDLE'){
+					// House side — in game session but idle. Show full visual experience.
+					showHouseGameVisual(comms);
+				} else {
+					// Not in game session or unexpected phase — process directly
+					onGameResult(comms);
+					PENDING_GAME_RESULT_DATA = null;
+				}
 
 			} else if(comms.type === 'GAME_ABANDONED'){
 				addNotice('warn', 'Game abandoned: ' + (comms.reason || 'Unknown'));
 				addGameLog('warn', 'Abandoned: ' + (comms.reason || 'Unknown'));
 				abortAndReset();
 
-			/* ---- Prop notifications ---- */
-			} else if(comms.type === 'PROP_INCOMING'){
-				addNotice('info', 'Incoming prop: "' + comms.proposition + '"');
-				if(CURRENT_TAB === 'props') loadPropsView();
-
-			} else if(comms.type === 'PROP_ACTIVE'){
-				addNotice('info', 'Prop is now ACTIVE — bet locked');
-				if(CURRENT_TAB === 'props') loadPropsView();
-
-			} else if(comms.type === 'PROP_SETTLED'){
-				addNotice(comms.isMyWin ? 'win' : 'loss',
-					'Prop settled: ' + comms.outcome + ' — ' + (comms.isMyWin ? 'WIN' : 'LOSS'));
-				if(CURRENT_TAB === 'props') loadPropsView();
-
-			} else if(comms.type === 'PROP_CANCELLED'){
-				addNotice('warn', 'Prop cancelled');
-				if(CURRENT_TAB === 'props') loadPropsView();
-			}
+			/* Props removed — will be a separate Thunder Props dapp */
 		}
 
 
@@ -2610,252 +2556,7 @@ MDS.init(function(msg){
 });
 
 
-/* =========================================================================
- * PROPS FUNCTIONS
- * ========================================================================= */
-
-var INCOMING_PROP = null;
-var PROP_CHANNEL = null;
-var PROP_SIDE = null;
-var PROP_MY_USERNUM = null;
-
-function loadPropsView(){
-	sqlSelectAllOpenChannels(function(res){
-		var sel = document.getElementById('prop-channel-select');
-		if(!sel) return;
-		sel.innerHTML = '';
-		for(var i=0; i<res.rows.length; i++){
-			var ch = res.rows[i];
-			if(!ch.STATE.startsWith('STATE_CHANNEL_OPEN')) continue;
-			var name = (ch.USERNUM === '1')
-				? decodeStringFromDB(ch.USER2NAME || 'Contact')
-				: decodeStringFromDB(ch.USER1NAME || 'Contact');
-			var opt = document.createElement('option');
-			opt.value = ch.HASHID;
-			opt.text = name + ' (' + ch.USER1AMOUNT + '/' + ch.USER2AMOUNT + ')';
-			sel.appendChild(opt);
-		}
-		onPropChannelSelect();
-	});
-
-	if(PROP_CHANNEL){
-		selectActiveProp(PROP_CHANNEL, function(pr){
-			if(pr.count > 0){
-				showActiveProp(pr.rows[0]);
-			} else {
-				document.getElementById('prop-active').classList.add('hidden');
-				document.getElementById('prop-settle-area').classList.add('hidden');
-			}
-		});
-	}
-
-	if(INCOMING_PROP) showIncomingProp();
-	updatePropButton();
-}
-
-function onPropChannelSelect(){
-	var sel = document.getElementById('prop-channel-select');
-	if(sel && sel.value){
-		PROP_CHANNEL = sel.value;
-		sqlSelectChannel(PROP_CHANNEL, function(sql){
-			if(sql.count > 0) PROP_MY_USERNUM = sql.rows[0].USERNUM;
-		});
-	}
-	updatePropButton();
-}
-
-function selectPropSide(side){
-	PROP_SIDE = side;
-	document.getElementById('btn-side-true').style.opacity = (side === 'TRUE') ? '1' : '0.4';
-	document.getElementById('btn-side-false').style.opacity = (side === 'FALSE') ? '1' : '0.4';
-	updatePropButton();
-}
-
-function updatePropOdds(){
-	var my = parseFloat(document.getElementById('prop-mystake').value) || 0;
-	var want = parseFloat(document.getElementById('prop-wantstake').value) || 0;
-	var display = document.getElementById('prop-odds-display');
-	if(my > 0 && want > 0){
-		if(my === want) display.textContent = 'Even money (1:1)';
-		else if(my > want) display.textContent = 'Odds: ' + (my/want).toFixed(1) + ':1 (you risk more)';
-		else display.textContent = 'Odds: 1:' + (want/my).toFixed(1) + ' (they risk more)';
-	} else {
-		display.textContent = 'Enter stakes';
-	}
-	updatePropButton();
-}
-
-function updatePropButton(){
-	var btn = document.getElementById('btn-propose');
-	if(!btn) return;
-	var text = (document.getElementById('prop-text').value || '').trim();
-	var my = parseFloat(document.getElementById('prop-mystake').value) || 0;
-	var want = parseFloat(document.getElementById('prop-wantstake').value) || 0;
-	btn.disabled = (!PROP_CHANNEL || !PROP_SIDE || text.length < 3 || my <= 0 || want <= 0);
-}
-
-function proposeProp(){
-	if(!PROP_CHANNEL || !PROP_SIDE) return;
-	var text = document.getElementById('prop-text').value.trim();
-	var mystake = document.getElementById('prop-mystake').value;
-	var wantstake = document.getElementById('prop-wantstake').value;
-
-	sqlSelectChannel(PROP_CHANNEL, function(sql){
-		if(sql.count == 0) return;
-		var sqlrow = sql.rows[0];
-		var proposer = parseInt(sqlrow.USERNUM);
-		var validation = validateProp(sqlrow, mystake, wantstake, text, proposer);
-		if(!validation.valid){
-			thunderAlert(validation.error);
-			return;
-		}
-
-		createPropsTable(function(){
-			insertProp(PROP_CHANNEL, text, proposer, PROP_SIDE, mystake, wantstake, function(){
-				updateChannelPropActive(PROP_CHANNEL, text, proposer, mystake, wantstake, PROP_SIDE, function(){
-					var othermax = (sqlrow.USERNUM == '1') ? sqlrow.USER2MAXIMAID : sqlrow.USER1MAXIMAID;
-					sendMaximaMessage(othermax, propOfferMessage(PROP_CHANNEL, text, mystake, wantstake, PROP_SIDE));
-					addNotice('info', 'Prop sent: "' + text + '"');
-					loadPropsView();
-				});
-			});
-		});
-	});
-}
-
-function showActiveProp(prop){
-	document.getElementById('prop-active').classList.remove('hidden');
-	document.getElementById('prop-proposition-text').textContent = decodeStringFromDB(prop.PROPOSITION);
-	document.getElementById('prop-proposer-side').textContent = prop.PROPOSERSIDE;
-	document.getElementById('prop-proposer-stake').textContent = prop.MYSTAKE;
-	document.getElementById('prop-taker-side').textContent = (prop.PROPOSERSIDE === 'TRUE') ? 'FALSE' : 'TRUE';
-	document.getElementById('prop-taker-stake').textContent = prop.WANTSTAKE;
-	document.getElementById('prop-status').textContent = prop.PROPSTATE.toUpperCase();
-
-	var settleArea = document.getElementById('prop-settle-area');
-	var waitingArea = document.getElementById('prop-waiting');
-	var resultArea = document.getElementById('prop-result');
-
-	settleArea.classList.add('hidden');
-	waitingArea.classList.add('hidden');
-	resultArea.classList.add('hidden');
-
-	if(prop.PROPSTATE === 'active'){
-		settleArea.classList.remove('hidden');
-	} else if(prop.PROPSTATE === 'settling'){
-		waitingArea.classList.remove('hidden');
-	} else if(prop.PROPSTATE === 'agreed'){
-		resultArea.classList.remove('hidden');
-		var winner = (prop.FINALOUTCOME === prop.PROPOSERSIDE) ? 'Proposer' : 'Taker';
-		document.getElementById('prop-result-text').textContent = 'AGREED: ' + prop.FINALOUTCOME + ' -- ' + winner + ' wins!';
-		document.getElementById('prop-result-text').className = 'text-green';
-	} else if(prop.PROPSTATE === 'disputed'){
-		resultArea.classList.remove('hidden');
-		document.getElementById('prop-result-text').textContent = 'DISPUTED -- Needs arbiter resolution';
-		document.getElementById('prop-result-text').className = 'text-pink';
-	}
-}
-
-function showIncomingProp(){
-	if(!INCOMING_PROP) return;
-	document.getElementById('prop-incoming').classList.remove('hidden');
-	document.getElementById('prop-incoming-text').textContent = INCOMING_PROP.proposition;
-	var takerSide = (INCOMING_PROP.side === 'TRUE') ? 'FALSE' : 'TRUE';
-	document.getElementById('prop-incoming-details').textContent =
-		'They bet ' + INCOMING_PROP.mystake + ' on ' + INCOMING_PROP.side
-		+ '. You would bet ' + INCOMING_PROP.wantstake + ' on ' + takerSide + '.';
-}
-
-function acceptProp(){
-	if(!INCOMING_PROP) return;
-	var hashid = INCOMING_PROP.hashid;
-	addNotice('info', 'Accepting prop...');
-
-	createPropsTable(function(){
-		sqlSelectChannel(hashid, function(sql){
-			if(sql.count == 0) return;
-			var sqlrow = sql.rows[0];
-			var proposer = (sqlrow.USERNUM == '1') ? 2 : 1;
-			var takerSide = (INCOMING_PROP.side === 'TRUE') ? 'FALSE' : 'TRUE';
-			insertProp(hashid, INCOMING_PROP.proposition, proposer, INCOMING_PROP.side,
-				INCOMING_PROP.mystake, INCOMING_PROP.wantstake, function(){
-					updatePropState(hashid, 'active');
-					updateChannelPropActive(hashid, INCOMING_PROP.proposition, proposer,
-						INCOMING_PROP.mystake, INCOMING_PROP.wantstake, INCOMING_PROP.side, function(){
-							sendMaximaMessage(INCOMING_PROP.from, propAcceptMessage(hashid));
-							INCOMING_PROP = null;
-							document.getElementById('prop-incoming').classList.add('hidden');
-							addNotice('info', 'Prop accepted! Waiting for balance signing...');
-							loadPropsView();
-						});
-				});
-		});
-	});
-}
-
-function declineProp(){
-	if(!INCOMING_PROP) return;
-	sendMaximaMessage(INCOMING_PROP.from, propCancelledMessage(INCOMING_PROP.hashid));
-	INCOMING_PROP = null;
-	document.getElementById('prop-incoming').classList.add('hidden');
-	addNotice('warn', 'Prop declined');
-}
-
-function settleProp(outcome){
-	if(!PROP_CHANNEL) return;
-	addNotice('info', 'Submitting verdict: ' + outcome);
-
-	selectActiveProp(PROP_CHANNEL, function(pr){
-		if(pr.count == 0){ thunderAlert('No active prop'); return; }
-		var prop = pr.rows[0];
-		var amIProposer = (prop.PROPOSER == PROP_MY_USERNUM);
-		var who = amIProposer ? 'proposer' : 'taker';
-
-		updatePropOutcome(PROP_CHANNEL, who, outcome, function(){
-			sqlSelectChannel(PROP_CHANNEL, function(sql){
-				if(sql.count == 0) return;
-				var sqlrow = sql.rows[0];
-				var othermax = (sqlrow.USERNUM == '1') ? sqlrow.USER2MAXIMAID : sqlrow.USER1MAXIMAID;
-				sendMaximaMessage(othermax, propSettleMessage(PROP_CHANNEL, outcome));
-
-				selectActiveProp(PROP_CHANNEL, function(pr2){
-					if(pr2.count == 0) return;
-					var p = pr2.rows[0];
-					if(p.PROPOSEROUTCOME && p.TAKEROUTCOME){
-						if(p.PROPOSEROUTCOME === p.TAKEROUTCOME){
-							addNotice('win', 'Both agree: ' + p.PROPOSEROUTCOME + '!');
-							var winner = (p.PROPOSEROUTCOME === p.PROPOSERSIDE) ? 'proposer' : 'taker';
-							updatePropAgreed(PROP_CHANNEL, p.PROPOSEROUTCOME, function(){
-								var nb = calculatePropBalance(sqlrow, winner);
-								var ns = new Decimal(sqlrow.SEQUENCE).plus(1);
-								createSettlementTxn(sqlrow.HASHID, ns, sqlrow.ELTOOADDRESS, sqlrow.TOTALAMOUNT,
-									nb.user1amount, sqlrow.USER1ADDRESS, nb.user2amount, sqlrow.USER2ADDRESS,
-									sqlrow.TOKENID, null, function(st){
-										createUpdateTxn(ns, sqlrow.ELTOOADDRESS, sqlrow.TOTALAMOUNT, sqlrow.TOKENID, null, function(ut){
-											signTxn(st, sqlrow.USERPUBLICKEY, function(ss){
-												signTxn(ut, sqlrow.USERPUBLICKEY, function(su){
-													sendMaximaMessage(othermax, propAgreedMessage(PROP_CHANNEL, ns.toString(), ss, su, p.PROPOSEROUTCOME));
-													updateGameCleared(PROP_CHANNEL, function(){
-														loadPropsView();
-													});
-												});
-											});
-										});
-									});
-							});
-						} else {
-							addNotice('loss', 'DISPUTED! You: ' + outcome + ', They: ' + (amIProposer ? p.TAKEROUTCOME : p.PROPOSEROUTCOME));
-							updatePropDisputed(PROP_CHANNEL, function(){ loadPropsView(); });
-						}
-					} else {
-						addNotice('info', 'Verdict submitted. Waiting for counterparty...');
-						loadPropsView();
-					}
-				});
-			});
-		});
-	});
-}
+/* Props removed — will be separate Thunder Props dapp */
 
 
 /* =========================================================================
@@ -2863,7 +2564,6 @@ function settleProp(outcome){
  * ========================================================================= */
 
 document.getElementById('bet-amount').addEventListener('input', updatePlayButton);
-document.getElementById('prop-text').addEventListener('input', updatePropButton);
 
 
 </script>

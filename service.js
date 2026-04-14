@@ -413,6 +413,12 @@ MDS.init(function(msg){
 								addDefaultScripts(alldata, function(){
 									updateChannelAddresses(maxmsg.hashid, alldata, function(){
 										scriptsMMRTxn(alldata.transactions.fundingtxn, function(mmrtxn){
+											if(!mmrtxn){
+												insertLog(maxmsg.hashid, "CHANNEL_CREATE_ERROR",
+													"Failed to process funding txn (corrupt data). Channel creation aborted.");
+												notify({type:"CHANNEL_UPDATE", hashid:maxmsg.hashid, state:"CHANNEL_CREATE_FAILED"});
+												return;
+											}
 											alldata.transactions.fundingtxn = mmrtxn;
 											signTriggerAndSettlement(alldata, sqlrow.USERPUBLICKEY, function(signeddata){
 												sendCreateChannel("CHANNEL_CREATE_1", maximapubkey,
@@ -442,6 +448,12 @@ MDS.init(function(msg){
 										addToFundingTxn(maxmsg.txndata.transactions.fundingtxn,
 											sqlrow.USER2AMOUNT, sqlrow.TOKENID, function(newfundingtxn){
 												scriptsMMRTxn(newfundingtxn, function(mmrtxn){
+													if(!mmrtxn){
+														insertLog(maxmsg.hashid, "CHANNEL_CREATE_ERROR",
+															"Failed to process funding txn in CREATE_1 (corrupt data). Channel creation aborted.");
+														notify({type:"CHANNEL_UPDATE", hashid:maxmsg.hashid, state:"CHANNEL_CREATE_FAILED"});
+														return;
+													}
 													maxmsg.txndata.transactions.fundingtxn = mmrtxn;
 													signAllTxn(maxmsg.txndata, sqlrow.USERPUBLICKEY, function(signeddata){
 														updateDefaultChannelTransactions(maxmsg.hashid, signeddata, function(){
@@ -986,28 +998,36 @@ MDS.init(function(msg){
 								isMyWin = (winner === "house");
 							}
 
-							// Get the numeric result from the gamerounds table
-							MDS.sql("SELECT result FROM gamerounds WHERE hashid='"+maxmsg.hashid+"' ORDER BY id DESC LIMIT 1", function(grres){
-								var numericResult = -1;
-								if(grres.count > 0 && grres.rows[0].RESULT !== null){
-									numericResult = parseInt(grres.rows[0].RESULT);
-								}
-
-								// THE ONE NOTIFICATION — contains the definitive result
+							// Compute the numeric result from secrets stored in channel
+							// computeOutcome is ASYNC (uses MDS.cmd) — must use callback
+							function sendGameResultNotification(numericResult){
+								MDS.log("GAME_RESULT_SIGNED: result="+numericResult
+									+" pick="+sqlrow.PLAYERPICK+" winner="+winner+" isMyWin="+isMyWin);
 								notify({
 									type:        "GAME_RESULT",
 									hashid:      maxmsg.hashid,
 									gametype:    sqlrow.GAMETYPE,
 									winner:      winner,
-									result:      numericResult,  // numeric (0-35), not "WIN"/"LOSS"
+									result:      numericResult,
 									pick:        parseInt(sqlrow.PLAYERPICK),
 									betamt:      sqlrow.BETAMOUNT,
 									user1amount: newbalance.user1amount,
 									user2amount: newbalance.user2amount,
 									sequence:    maxmsg.sequence,
-									isMyWin:     isMyWin
+									isMyWin:     isMyWin,
+									amIBettor:   amIBettor
 								});
-							});
+							}
+
+							if(sqlrow.HOUSESECRET && sqlrow.PLAYERSECRET && sqlrow.GAMERANGE){
+								computeOutcome(sqlrow.HOUSESECRET, sqlrow.PLAYERSECRET, parseInt(sqlrow.GAMERANGE), function(outcome){
+									sendGameResultNotification(outcome.result);
+								});
+							} else {
+								// Fallback: no secrets available, send with -1
+								MDS.log("GAME_RESULT_SIGNED: no secrets in channel, sending result=-1");
+								sendGameResultNotification(-1);
+							}
 						});
 				});
 

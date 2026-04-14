@@ -1,0 +1,2937 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Thunder Casino — Design Presentation</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Chakra+Petch:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════
+   PRESENTATION SHELL
+   ═══════════════════════════════════════════ */
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+:root {
+  --midnight: #080c18;
+  --midnight-light: #0d1425;
+  --midnight-mid: #111a32;
+  --steel: #1a2140;
+  --gold: #f5a623;
+  --hot-gold: #ffd700;
+  --cyan: #00e5ff;
+  --pink: #ff2d78;
+  --green: #00e676;
+  --ghost: #8892b0;
+  --white: #e6f1ff;
+  --glass-bg: rgba(13, 20, 37, 0.85);
+  --glass-border: rgba(26, 33, 64, 0.6);
+  --gold-grad: linear-gradient(135deg, #f5a623, #ffd700);
+  --gold-grad-h: linear-gradient(135deg, #ffd700, #f5a623);
+  --sidebar-w: 220px;
+}
+
+html, body {
+  width: 100vw; height: 100vh;
+  overflow: hidden;
+  background: #050810;
+  color: var(--white);
+  font-family: 'Chakra Petch', sans-serif;
+  font-size: 14px;
+}
+
+/* ═══════════════════════════════════════════
+   PRESENTATION LAYOUT
+   ═══════════════════════════════════════════ */
+#app {
+  display: flex;
+  width: 100vw; height: 100vh;
+}
+
+/* SIDEBAR */
+#sidebar {
+  width: var(--sidebar-w);
+  min-width: var(--sidebar-w);
+  background: linear-gradient(180deg, #060a14 0%, #0a0f1e 100%);
+  border-right: 1px solid var(--steel);
+  overflow-y: auto;
+  padding: 12px 10px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--steel) transparent;
+}
+#sidebar::-webkit-scrollbar { width: 4px; }
+#sidebar::-webkit-scrollbar-track { background: transparent; }
+#sidebar::-webkit-scrollbar-thumb { background: var(--steel); border-radius: 2px; }
+
+#sidebar h2 {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 11px;
+  color: var(--gold);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+.thumb {
+  cursor: pointer;
+  margin-bottom: 14px;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 2px solid transparent;
+  transition: border-color 0.2s, transform 0.15s;
+}
+.thumb:hover { border-color: var(--ghost); transform: scale(1.02); }
+.thumb.active { border-color: var(--gold); box-shadow: 0 0 12px rgba(245,166,35,0.3); }
+
+.thumb-preview {
+  width: 196px; height: 110px;
+  overflow: hidden;
+  background: var(--midnight);
+  position: relative;
+}
+.thumb-preview > div {
+  transform: scale(0.102);
+  transform-origin: top left;
+  width: 1920px; height: 1080px;
+  pointer-events: none;
+}
+
+.thumb-label {
+  background: var(--midnight-light);
+  padding: 4px 6px;
+  font-size: 10px;
+  color: var(--ghost);
+  font-family: 'Chakra Petch', sans-serif;
+  line-height: 1.2;
+}
+.thumb-label strong {
+  color: var(--white);
+  font-size: 10px;
+}
+
+/* MAIN AREA */
+#main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: #070b15;
+  overflow: hidden;
+}
+
+/* Title bar */
+#titlebar {
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  background: linear-gradient(90deg, rgba(245,166,35,0.08), transparent);
+  border-bottom: 1px solid var(--steel);
+  flex-shrink: 0;
+}
+#titlebar .slide-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 13px;
+  color: var(--white);
+  letter-spacing: 1px;
+}
+#titlebar .slide-title span { color: var(--gold); }
+#titlebar .nav-btns { display: flex; gap: 8px; }
+#titlebar .nav-btns button {
+  background: var(--steel);
+  border: 1px solid var(--glass-border);
+  color: var(--white);
+  font-family: 'Orbitron', sans-serif;
+  font-size: 11px;
+  padding: 5px 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+#titlebar .nav-btns button:hover {
+  background: var(--gold);
+  color: var(--midnight);
+}
+
+/* Slide viewport */
+#viewport {
+  flex: 1;
+  overflow: auto;
+  position: relative;
+  padding: 12px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+#slide-container {
+  width: 100%;
+  max-width: 900px;
+  min-height: 500px;
+  position: relative;
+  box-shadow: 0 0 40px rgba(0,0,0,0.5), 0 0 2px rgba(245,166,35,0.15);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* ═══════════════════════════════════════════
+   SLIDE INTERNALS — responsive, not fixed px
+   ═══════════════════════════════════════════ */
+.slide {
+  width: 100%;
+  min-height: 500px;
+  position: relative;
+  display: none;
+  background: linear-gradient(165deg, #080c18 0%, #0d1425 40%, #111a32 100%);
+  font-family: 'Chakra Petch', sans-serif;
+  color: var(--white);
+  overflow: hidden;
+}
+.slide.active { display: block; }
+
+/* Noise overlay on each slide */
+.slide::before {
+  content: '';
+  position: absolute; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* HEADER BAR */
+.s-header {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 50px;
+  background: linear-gradient(90deg, rgba(13,20,37,0.95), rgba(17,26,50,0.95));
+  border-bottom: 1px solid var(--steel);
+  display: flex;
+  align-items: center;
+  padding: 0 30px;
+  z-index: 10;
+}
+.s-header .logo {
+  font-family: 'Orbitron', sans-serif;
+  font-weight: 900;
+  font-size: 18px;
+  background: var(--gold-grad);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-right: 24px;
+}
+.s-header .logo::before { content: '⚡ '; -webkit-text-fill-color: var(--gold); }
+.s-header .node-info {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--ghost);
+  margin-right: auto;
+}
+.s-header .tabs { display: flex; gap: 2px; }
+.s-header .tab {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 11px;
+  letter-spacing: 1px;
+  padding: 8px 20px;
+  border-radius: 4px 4px 0 0;
+  color: var(--ghost);
+  background: transparent;
+  border: none;
+  cursor: default;
+  transition: all 0.2s;
+}
+.s-header .tab.active {
+  color: var(--gold);
+  background: rgba(245,166,35,0.1);
+  border-bottom: 2px solid var(--gold);
+}
+
+/* NOTICEBOARD BAR */
+.s-notice {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 80px;
+  background: linear-gradient(180deg, rgba(13,20,37,0.95), rgba(8,12,24,0.98));
+  border-top: 1px solid var(--steel);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 8px 30px;
+  z-index: 10;
+}
+.s-notice .notice-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 9px;
+  color: var(--ghost);
+  letter-spacing: 2px;
+  margin-bottom: 6px;
+}
+.s-notice .notice-line {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--ghost);
+  line-height: 1.5;
+}
+.s-notice .notice-line .time { color: #555e78; }
+.s-notice .notice-line .gold { color: var(--gold); }
+.s-notice .notice-line .green { color: var(--green); }
+.s-notice .notice-line .cyan { color: var(--cyan); }
+
+/* CONTENT AREA */
+.s-content {
+  position: absolute;
+  top: 50px; left: 0; right: 0; bottom: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 5;
+  padding: 20px;
+}
+
+/* GLASS CARD */
+.glass {
+  background: var(--glass-bg);
+  border: 1px solid var(--steel);
+  border-radius: 12px;
+  backdrop-filter: blur(12px);
+}
+
+/* BUTTONS */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 12px;
+  letter-spacing: 1px;
+  padding: 10px 24px;
+  border-radius: 6px;
+  border: none;
+  cursor: default;
+  transition: all 0.15s;
+  font-weight: 700;
+}
+.btn-gold {
+  background: var(--gold-grad);
+  color: var(--midnight);
+}
+.btn-outline {
+  background: transparent;
+  border: 1px solid var(--steel);
+  color: var(--ghost);
+}
+.btn-green {
+  background: linear-gradient(135deg, #00e676, #00c853);
+  color: var(--midnight);
+}
+.btn-pink {
+  background: linear-gradient(135deg, #ff2d78, #e91e63);
+  color: white;
+}
+.btn-cyan {
+  background: linear-gradient(135deg, #00e5ff, #00b8d4);
+  color: var(--midnight);
+}
+.btn-sm {
+  font-size: 10px;
+  padding: 6px 14px;
+  letter-spacing: 0.5px;
+}
+.btn-lg {
+  font-size: 14px;
+  padding: 14px 36px;
+}
+
+/* MODAL OVERLAY */
+.modal-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(8,12,24,0.75);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+.modal-box {
+  width: 540px;
+  background: linear-gradient(160deg, rgba(13,20,37,0.97), rgba(17,26,50,0.97));
+  border: 1px solid var(--steel);
+  border-radius: 16px;
+  padding: 36px 40px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 0 1px var(--gold);
+}
+.modal-box h2 {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 20px;
+  margin-bottom: 20px;
+  color: var(--white);
+}
+.modal-box .modal-line {
+  font-size: 15px;
+  color: var(--ghost);
+  margin-bottom: 8px;
+  font-family: 'Chakra Petch', sans-serif;
+}
+.modal-box .modal-line strong { color: var(--white); }
+.modal-box .modal-line .gold { color: var(--gold); }
+.modal-box .modal-line .green { color: var(--green); }
+.modal-box .modal-line .pink { color: var(--pink); }
+.modal-box .modal-line .cyan { color: var(--cyan); }
+.modal-box .modal-actions {
+  margin-top: 28px;
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+/* BALANCE BAR */
+.balance-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 24px;
+  border-radius: 8px;
+  background: rgba(26,33,64,0.5);
+  border: 1px solid var(--steel);
+  margin-bottom: 16px;
+}
+.balance-bar .bal-item {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  color: var(--ghost);
+}
+.balance-bar .bal-item strong {
+  color: var(--white);
+  font-family: 'Orbitron', sans-serif;
+  font-size: 16px;
+}
+.balance-bar .bal-item .amount { color: var(--gold); font-weight: 700; }
+
+/* INPUT */
+.input {
+  background: rgba(8,12,24,0.6);
+  border: 1px solid var(--steel);
+  border-radius: 6px;
+  padding: 10px 16px;
+  color: var(--white);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  outline: none;
+}
+.input:focus { border-color: var(--gold); }
+
+/* Confetti keyframes */
+@keyframes confetti-fall {
+  0% { transform: translateY(-20px) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(400px) rotate(720deg); opacity: 0; }
+}
+@keyframes spin-coin {
+  0% { transform: rotateY(0deg); }
+  100% { transform: rotateY(1440deg); }
+}
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 20px rgba(245,166,35,0.3); }
+  50% { box-shadow: 0 0 40px rgba(245,166,35,0.6); }
+}
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.confetti-particle {
+  position: absolute;
+  width: 8px; height: 8px;
+  border-radius: 2px;
+  animation: confetti-fall 2.5s ease-in forwards;
+}
+
+.coin-spin {
+  width: 120px; height: 120px;
+  border-radius: 50%;
+  background: var(--gold-grad);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 24px;
+  font-weight: 900;
+  color: var(--midnight);
+  animation: spin-coin 2s linear infinite;
+  box-shadow: 0 0 30px rgba(245,166,35,0.5);
+  margin: 20px auto;
+  perspective: 800px;
+}
+
+.pulse { animation: pulse-glow 1.5s ease-in-out infinite; }
+
+/* Game selector pills */
+.game-pills {
+  display: flex; gap: 8px; margin-bottom: 16px;
+}
+.game-pill {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 11px;
+  letter-spacing: 1px;
+  padding: 8px 20px;
+  border-radius: 20px;
+  border: 1px solid var(--steel);
+  color: var(--ghost);
+  background: transparent;
+  cursor: default;
+}
+.game-pill.active {
+  background: rgba(245,166,35,0.15);
+  border-color: var(--gold);
+  color: var(--gold);
+}
+
+/* Pick grid */
+.pick-grid {
+  display: flex; gap: 10px; margin-bottom: 16px;
+}
+.pick-btn {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 13px;
+  padding: 12px 28px;
+  border-radius: 8px;
+  border: 2px solid var(--steel);
+  background: rgba(26,33,64,0.3);
+  color: var(--ghost);
+  cursor: default;
+}
+.pick-btn.selected {
+  border-color: var(--cyan);
+  color: var(--cyan);
+  background: rgba(0,229,255,0.1);
+}
+
+/* Stats row */
+.stats-row {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 10px 20px;
+  background: rgba(26,33,64,0.3);
+  border-radius: 6px;
+  margin-bottom: 16px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--ghost);
+}
+.stats-row .stat-val { color: var(--white); font-weight: 700; }
+.stats-row .stat-green { color: var(--green); }
+.stats-row .pips { display: flex; gap: 4px; }
+.stats-row .pip {
+  width: 16px; height: 16px; border-radius: 3px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 9px; font-weight: 700;
+}
+.stats-row .pip.w { background: rgba(0,230,118,0.2); color: var(--green); }
+.stats-row .pip.l { background: rgba(255,45,120,0.2); color: var(--pink); }
+
+/* Odds display */
+.odds-display {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--ghost);
+  margin-top: 8px;
+}
+
+/* Channel row */
+.channel-row {
+  display: flex;
+  align-items: center;
+  padding: 16px 24px;
+  border-radius: 10px;
+  background: rgba(26,33,64,0.35);
+  border: 1px solid var(--steel);
+  margin-bottom: 10px;
+}
+.channel-row .ch-name {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 14px;
+  color: var(--white);
+  min-width: 120px;
+}
+.channel-row .ch-status {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  margin-left: 16px;
+  min-width: 180px;
+}
+.channel-row .ch-status.open { color: var(--green); }
+.channel-row .ch-status.pending { color: var(--gold); }
+.channel-row .ch-status.incoming { color: var(--cyan); }
+.channel-row .ch-actions {
+  margin-left: auto;
+  display: flex; gap: 8px;
+}
+
+/* Props form elements */
+.prop-form-group {
+  margin-bottom: 14px;
+}
+.prop-form-group label {
+  display: block;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: var(--ghost);
+  margin-bottom: 6px;
+}
+.prop-toggle {
+  display: flex; gap: 0;
+}
+.prop-toggle .toggle-opt {
+  padding: 8px 20px;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 11px;
+  border: 1px solid var(--steel);
+  color: var(--ghost);
+  background: transparent;
+  cursor: default;
+}
+.prop-toggle .toggle-opt:first-child { border-radius: 6px 0 0 6px; }
+.prop-toggle .toggle-opt:last-child { border-radius: 0 6px 6px 0; }
+.prop-toggle .toggle-opt.active-green {
+  background: rgba(0,230,118,0.15);
+  border-color: var(--green);
+  color: var(--green);
+}
+.prop-toggle .toggle-opt.active-pink {
+  background: rgba(255,45,120,0.15);
+  border-color: var(--pink);
+  color: var(--pink);
+}
+
+.prop-card {
+  padding: 20px 24px;
+  border-radius: 10px;
+  background: rgba(26,33,64,0.4);
+  border: 1px solid var(--steel);
+  margin-bottom: 12px;
+}
+.prop-card h4 {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 12px;
+  color: var(--gold);
+  margin-bottom: 8px;
+  letter-spacing: 1px;
+}
+.prop-card p {
+  font-size: 14px;
+  color: var(--ghost);
+  margin-bottom: 6px;
+}
+.prop-card .prop-stakes {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--white);
+}
+
+/* ═══════════════════════════════════════════
+   PROPS — WAGER-STYLE MARKET COMPONENTS
+   ═══════════════════════════════════════════ */
+
+/* Question card (market listing) */
+.qcard {
+  background: rgba(26,33,64,0.5);
+  border: 1px solid var(--steel);
+  border-radius: 12px;
+  padding: 18px 20px;
+  margin-bottom: 12px;
+  transition: border-color 0.2s;
+}
+.qcard:hover { border-color: rgba(245,166,35,0.3); }
+.qcard__question {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--white);
+  line-height: 1.35;
+  margin-bottom: 10px;
+}
+.qcard__meta {
+  display: flex;
+  gap: 10px;
+  font-size: 11px;
+  color: var(--ghost);
+  margin-bottom: 12px;
+  font-family: 'JetBrains Mono', monospace;
+}
+.qcard__meta span { white-space: nowrap; }
+
+/* Odds bar — proportional TRUE/FALSE visualization */
+.oddsbar {
+  display: flex;
+  height: 36px;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 14px;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+}
+.oddsbar__yes {
+  background: rgba(0,230,118,0.2);
+  color: var(--green);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  border: 1px solid rgba(0,230,118,0.3);
+  border-radius: 8px 0 0 8px;
+}
+.oddsbar__no {
+  background: rgba(255,45,120,0.2);
+  color: var(--pink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  border: 1px solid rgba(255,45,120,0.3);
+  border-radius: 0 8px 8px 0;
+}
+.oddsbar__open {
+  background: rgba(136,146,176,0.1);
+  color: var(--ghost);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 500;
+  border: 1px dashed rgba(136,146,176,0.3);
+  border-radius: 0 8px 8px 0;
+  font-size: 10px;
+}
+.qcard__actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* Payout preview */
+.payout-preview {
+  background: rgba(17,26,50,0.6);
+  border: 1px solid var(--steel);
+  border-radius: 10px;
+  padding: 14px 18px;
+  margin: 14px 0;
+}
+.payout-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 5px 0;
+  font-size: 14px;
+  color: var(--ghost);
+}
+.payout-row strong { color: var(--white); font-weight: 700; }
+.payout-row .win { color: var(--green); font-weight: 700; }
+.payout-row .lose { color: var(--pink); font-weight: 700; }
+.payout-row--big {
+  font-size: 16px;
+  padding: 8px 0;
+  border-top: 1px solid rgba(26,33,64,0.6);
+  margin-top: 4px;
+}
+
+/* Big number display (counter modal) */
+.bignumber {
+  text-align: center;
+  margin: 16px 0 8px;
+}
+.bignumber__label {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--ghost);
+  margin-bottom: 4px;
+}
+.bignumber__val {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 48px;
+  font-weight: 900;
+  color: var(--gold);
+  letter-spacing: -2px;
+}
+.bignumber__unit {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 20px;
+  color: var(--ghost);
+  margin-left: 4px;
+}
+
+/* Slider (counter modal) */
+.counter-slider {
+  width: 100%;
+  height: 6px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: linear-gradient(90deg, var(--steel) 0%, var(--gold) 100%);
+  border-radius: 3px;
+  outline: none;
+  margin: 12px 0 6px;
+}
+.counter-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--white);
+  border: 3px solid var(--gold);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  cursor: pointer;
+}
+.counter-slider::-moz-range-thumb {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--white);
+  border: 3px solid var(--gold);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  cursor: pointer;
+}
+.counter-slider::-moz-range-track {
+  height: 6px;
+  background: linear-gradient(90deg, var(--steel) 0%, var(--gold) 100%);
+  border-radius: 3px;
+  border: none;
+}
+.slider-ends {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: var(--ghost);
+  font-family: 'JetBrains Mono', monospace;
+  margin-bottom: 16px;
+}
+
+/* Live bet card */
+.livebet {
+  background: rgba(26,33,64,0.5);
+  border: 1px solid var(--steel);
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 14px;
+}
+.livebet__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px 0;
+}
+.livebet__tag {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 10px;
+  letter-spacing: 1px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-weight: 700;
+}
+.livebet__tag--live {
+  background: rgba(0,229,255,0.12);
+  color: var(--cyan);
+}
+.livebet__tag--won {
+  background: rgba(0,230,118,0.15);
+  color: var(--green);
+}
+.livebet__tag--lost {
+  background: rgba(255,45,120,0.15);
+  color: var(--pink);
+}
+.livebet__tag--open {
+  background: rgba(245,166,35,0.12);
+  color: var(--gold);
+}
+.livebet__question {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--white);
+  padding: 10px 18px 6px;
+  line-height: 1.35;
+}
+.livebet__stakes {
+  padding: 4px 18px 14px;
+}
+.livebet__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+  font-size: 13px;
+}
+.livebet__row .label { color: var(--ghost); }
+.livebet__row .value { font-weight: 700; color: var(--white); }
+
+/* Settlement decision section */
+.decide {
+  padding: 16px 18px;
+  background: rgba(17,26,50,0.5);
+  border-top: 1px solid var(--steel);
+}
+.decide__title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--white);
+  margin-bottom: 4px;
+}
+.decide__sub {
+  font-size: 12px;
+  color: var(--ghost);
+  margin-bottom: 12px;
+}
+.decide__btns {
+  display: flex;
+  gap: 8px;
+}
+
+/* Settlement proposal (incoming from counterparty) */
+.proposal {
+  margin: 14px 18px;
+  padding: 18px;
+  background: linear-gradient(135deg, rgba(0,229,255,0.08), rgba(0,229,255,0.03));
+  border: 2px solid rgba(0,229,255,0.3);
+  border-radius: 12px;
+  position: relative;
+}
+.proposal::before {
+  content: '\1F4E8';
+  position: absolute;
+  top: -14px;
+  right: 14px;
+  font-size: 22px;
+}
+.proposal__from {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--cyan);
+  letter-spacing: 0.5px;
+}
+.proposal__verdict {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--white);
+  margin: 4px 0 6px;
+}
+.proposal__fee {
+  font-size: 11px;
+  color: var(--ghost);
+  margin-bottom: 12px;
+  line-height: 1.4;
+}
+.proposal__btns {
+  display: flex;
+  gap: 8px;
+}
+
+/* Win/loss banner */
+.result-banner {
+  border-radius: 12px;
+  padding: 20px;
+  text-align: center;
+  margin-bottom: 14px;
+}
+.result-banner--win {
+  background: rgba(0,230,118,0.1);
+  border: 2px solid var(--green);
+}
+.result-banner--lose {
+  background: rgba(255,45,120,0.1);
+  border: 2px solid var(--pink);
+}
+.result-banner__title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: 2px;
+}
+.result-banner__amount {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  margin: 6px 0;
+}
+.result-banner__prop {
+  font-size: 13px;
+  color: var(--ghost);
+}
+
+/* Props section header */
+.props-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+.props-topbar h3 {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 13px;
+  color: var(--gold);
+  letter-spacing: 1px;
+}
+
+/* Props tab switcher (Markets / My Bets) */
+.props-tabs {
+  display: flex;
+  gap: 2px;
+  background: rgba(17,26,50,0.5);
+  border-radius: 8px;
+  padding: 3px;
+}
+.props-tab {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  padding: 6px 16px;
+  border-radius: 6px;
+  color: var(--ghost);
+  cursor: default;
+}
+.props-tab.active {
+  background: rgba(245,166,35,0.12);
+  color: var(--gold);
+}
+
+/* Post new proposition mini-form */
+.post-prop-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  background: var(--gold-grad);
+  color: var(--midnight);
+  font-weight: 700;
+  cursor: default;
+}
+
+/* Pulse dot for live bets */
+.pulse-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--cyan);
+  display: inline-block;
+  margin-right: 6px;
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 4px var(--cyan); opacity: 1; }
+  50% { box-shadow: 0 0 12px var(--cyan); opacity: 0.7; }
+}
+
+/* ═══════════════════════════════════════════
+   RESPONSIVE DEVICE STYLES
+   ═══════════════════════════════════════════ */
+
+/* --- DESKTOP (900px) — default, no overrides needed --- */
+.device-desktop { max-width: 900px; }
+
+/* --- TABLET (768px) --- */
+.device-tablet { max-width: 768px; }
+
+/* Header — tablet */
+.device-tablet .s-header {
+  padding: 0 16px;
+}
+.device-tablet .s-header .logo {
+  font-size: 18px;
+  margin-right: 12px;
+}
+.device-tablet .s-header .node-info {
+  font-size: 10px;
+}
+.device-tablet .s-header .tab {
+  font-size: 10px;
+  padding: 6px 14px;
+  letter-spacing: 0.5px;
+}
+
+/* Noticeboard — tablet */
+.device-tablet .s-notice {
+  padding: 6px 16px;
+  height: 70px;
+}
+.device-tablet .s-notice .notice-line {
+  font-size: 10px;
+}
+
+/* Content area — tablet */
+.device-tablet .s-content {
+  padding: 14px;
+  top: 50px;
+  bottom: 70px;
+}
+
+/* Channel rows — tablet */
+.device-tablet .channel-row {
+  padding: 12px 16px;
+}
+.device-tablet .channel-row .ch-name {
+  font-size: 13px;
+  min-width: 90px;
+}
+.device-tablet .channel-row .ch-status {
+  font-size: 11px;
+  min-width: 140px;
+}
+
+/* Balance bar — tablet */
+.device-tablet .balance-bar {
+  padding: 10px 16px;
+}
+.device-tablet .balance-bar .bal-item {
+  font-size: 12px;
+}
+.device-tablet .balance-bar .bal-item strong {
+  font-size: 14px;
+}
+
+/* Stats row — tablet */
+.device-tablet .stats-row {
+  gap: 16px;
+  padding: 8px 14px;
+  font-size: 11px;
+}
+
+/* Game pills — tablet */
+.device-tablet .game-pills {
+  gap: 6px;
+}
+.device-tablet .game-pill {
+  font-size: 10px;
+  padding: 6px 16px;
+}
+
+/* Pick grid — tablet: 3 cols for dice, 4 for roulette */
+.device-tablet .pick-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.device-tablet .pick-btn {
+  font-size: 12px;
+  padding: 10px 20px;
+}
+
+/* Bet area — tablet */
+.device-tablet .input {
+  font-size: 13px;
+  padding: 8px 12px;
+}
+
+/* Modal — tablet */
+.device-tablet .modal-box {
+  width: 90%;
+  max-width: 540px;
+  padding: 28px 30px;
+}
+
+/* Glass cards — tablet */
+.device-tablet .glass {
+  border-radius: 10px;
+}
+
+/* Props — tablet */
+.device-tablet .prop-card {
+  padding: 16px 18px;
+}
+.device-tablet .prop-form-group .input {
+  font-size: 13px;
+}
+
+/* Wager-style Props — tablet */
+.device-tablet .qcard { padding: 14px 16px; }
+.device-tablet .qcard__question { font-size: 14px; }
+.device-tablet .qcard__meta { font-size: 10px; gap: 8px; }
+.device-tablet .oddsbar { height: 32px; font-size: 10px; }
+.device-tablet .livebet__question { font-size: 14px; }
+.device-tablet .livebet__row { font-size: 12px; }
+.device-tablet .bignumber__val { font-size: 40px; }
+.device-tablet .payout-row { font-size: 13px; }
+.device-tablet .decide__title { font-size: 14px; }
+.device-tablet .proposal__verdict { font-size: 16px; }
+.device-tablet .result-banner__title { font-size: 18px; }
+.device-tablet .result-banner__amount { font-size: 16px; }
+.device-tablet .props-topbar h3 { font-size: 12px; }
+.device-tablet .counter-slider::-webkit-slider-thumb { width: 24px; height: 24px; }
+.device-tablet .counter-slider::-moz-range-thumb { width: 24px; height: 24px; }
+
+/* All buttons — tablet touch targets */
+.device-tablet .btn {
+  min-height: 40px;
+}
+
+/* --- MOBILE (375px) --- */
+.device-mobile { max-width: 375px; }
+
+/* Header — mobile: stack logo above tabs */
+.device-mobile .s-header {
+  flex-wrap: wrap;
+  padding: 6px 10px;
+  height: auto;
+  min-height: 50px;
+  gap: 4px;
+}
+.device-mobile .s-header .logo {
+  font-size: 16px;
+  margin-right: 0;
+  width: 100%;
+  text-align: center;
+  padding-bottom: 4px;
+}
+.device-mobile .s-header .node-info {
+  display: none;
+}
+.device-mobile .s-header .tabs {
+  width: 100%;
+  justify-content: center;
+  gap: 1px;
+}
+.device-mobile .s-header .tab {
+  font-size: 10px;
+  padding: 5px 12px;
+  letter-spacing: 0.5px;
+  flex: 1;
+  text-align: center;
+}
+
+/* Content area — mobile: adjust for taller header */
+.device-mobile .s-content {
+  top: 70px;
+  bottom: 60px;
+  padding: 10px 8px;
+  align-items: flex-start;
+}
+
+/* Noticeboard — mobile */
+.device-mobile .s-notice {
+  height: 60px;
+  padding: 4px 10px;
+}
+.device-mobile .s-notice .notice-title {
+  font-size: 8px;
+  margin-bottom: 3px;
+}
+.device-mobile .s-notice .notice-line {
+  font-size: 9px;
+  line-height: 1.4;
+  max-height: 50px;
+  overflow: hidden;
+}
+.device-mobile .s-notice .notice-line:nth-child(n+4) {
+  display: none;
+}
+
+/* Channel rows — mobile: stack vertically */
+.device-mobile .channel-row {
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  align-items: flex-start;
+}
+.device-mobile .channel-row .ch-name {
+  font-size: 14px;
+  min-width: auto;
+}
+.device-mobile .channel-row .ch-status {
+  margin-left: 0;
+  min-width: auto;
+  font-size: 11px;
+}
+.device-mobile .channel-row .ch-actions {
+  margin-left: 0;
+  width: 100%;
+  justify-content: center;
+}
+
+/* Balance bar — mobile: stack vertically */
+.device-mobile .balance-bar {
+  flex-direction: column;
+  text-align: center;
+  gap: 4px;
+  padding: 10px 12px;
+}
+.device-mobile .balance-bar .bal-item {
+  font-size: 12px;
+}
+.device-mobile .balance-bar .bal-item strong {
+  font-size: 18px;
+}
+.device-mobile .balance-bar .bal-item .amount {
+  font-size: 18px;
+}
+
+/* Stats row — mobile: 2x2 grid */
+.device-mobile .stats-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 8px 12px;
+  font-size: 11px;
+}
+.device-mobile .stats-row .pips {
+  grid-column: 1 / -1;
+  justify-content: center;
+}
+
+/* Game pills — mobile: stack vertically */
+.device-mobile .game-pills {
+  flex-direction: column;
+  gap: 6px;
+}
+.device-mobile .game-pill {
+  width: 100%;
+  text-align: center;
+  font-size: 11px;
+  padding: 10px 16px;
+}
+
+/* Pick grid — mobile: 2 columns, wrap */
+.device-mobile .pick-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.device-mobile .pick-btn {
+  width: 100%;
+  text-align: center;
+  font-size: 12px;
+  padding: 12px 8px;
+}
+
+/* Bet area — mobile: full width, stacked */
+.device-mobile .input {
+  font-size: 14px;
+  padding: 10px 14px;
+}
+
+/* Modal — mobile */
+.device-mobile .modal-overlay {
+  padding: 0;
+  align-items: center;
+}
+.device-mobile .modal-box {
+  width: 95%;
+  padding: 16px;
+  border-radius: 12px;
+}
+.device-mobile .modal-box h2 {
+  font-size: 16px;
+  margin-bottom: 14px;
+}
+.device-mobile .modal-box .modal-line {
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+.device-mobile .modal-box .modal-actions {
+  margin-top: 20px;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+
+/* Modal result text — mobile */
+.device-mobile .modal-box [style*="font-size:64px"] {
+  font-size: 48px !important;
+}
+.device-mobile .modal-box [style*="font-size:48px"] {
+  font-size: 36px !important;
+}
+.device-mobile .modal-box [style*="font-size:32px"] {
+  font-size: 24px !important;
+}
+.device-mobile .modal-box [style*="font-size:28px"] {
+  font-size: 22px !important;
+}
+
+/* Coin spin — mobile */
+.device-mobile .coin-spin {
+  width: 80px;
+  height: 80px;
+  font-size: 18px;
+}
+
+/* Glass cards — mobile */
+.device-mobile .glass {
+  border-radius: 10px;
+  padding: 16px !important;
+}
+
+/* All buttons — mobile: touch targets */
+.device-mobile .btn {
+  min-height: 44px;
+  padding: 10px 16px;
+  font-size: 11px;
+}
+.device-mobile .btn-lg {
+  padding: 12px 24px;
+  font-size: 13px;
+}
+.device-mobile .btn-sm {
+  min-height: 44px;
+  padding: 10px 14px;
+  font-size: 10px;
+}
+
+/* Props tab — mobile: stack form and cards */
+.device-mobile .prop-form-group {
+  margin-bottom: 10px;
+}
+.device-mobile .prop-form-group .input {
+  width: 100% !important;
+  display: block !important;
+  font-size: 14px;
+}
+.device-mobile .prop-toggle {
+  width: 100%;
+}
+.device-mobile .prop-toggle .toggle-opt {
+  flex: 1;
+  text-align: center;
+  padding: 10px 12px;
+  min-height: 44px;
+}
+.device-mobile .prop-card {
+  padding: 14px 12px;
+}
+.device-mobile .prop-card h4 {
+  font-size: 11px;
+}
+.device-mobile .prop-card p {
+  font-size: 13px;
+}
+.device-mobile .prop-card .prop-stakes {
+  font-size: 11px;
+}
+
+/* Inline content that uses style= for widths: force fluid on mobile */
+.device-mobile .s-content > div,
+.device-mobile .s-content > div > div {
+  max-width: 100% !important;
+}
+.device-mobile .s-content [style*="width:900px"],
+.device-mobile .s-content [style*="width:700px"] {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+.device-mobile .s-content [style*="width:360px"] {
+  width: 100% !important;
+}
+.device-mobile .s-content [style*="width:120px"] {
+  width: 100% !important;
+}
+.device-mobile .s-content [style*="width:140px"] {
+  width: 100% !important;
+}
+.device-mobile .s-content [style*="width:540px"] {
+  width: 100% !important;
+}
+
+/* Props two-column layout — mobile: stack */
+.device-mobile .s-content [style*="display:flex"][style*="gap:24px"] {
+  flex-direction: column !important;
+}
+
+/* New channel form — mobile: stack */
+.device-mobile .s-content .glass [style*="display:flex"][style*="gap:12px"] {
+  flex-direction: column !important;
+}
+
+/* Bet input row — mobile: stack */
+.device-mobile .s-content > div > [style*="display:flex"][style*="gap:16px"] {
+  flex-direction: column !important;
+  width: 100%;
+}
+
+/* Close channel balance columns — mobile: stack */
+.device-mobile .modal-box [style*="display:flex"][style*="gap:40px"] {
+  flex-direction: column !important;
+  gap: 16px !important;
+}
+
+/* Close channel modal buttons — mobile */
+.device-mobile .modal-box .modal-actions .btn {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Odds display — mobile */
+.device-mobile .odds-display {
+  font-size: 11px;
+}
+
+/* Wager-style Props — mobile */
+.device-mobile .qcard { padding: 12px 14px; }
+.device-mobile .qcard__question { font-size: 14px; }
+.device-mobile .qcard__meta { font-size: 9px; gap: 6px; flex-wrap: wrap; }
+.device-mobile .qcard__actions { flex-direction: column; }
+.device-mobile .qcard__actions .btn { width: 100%; }
+.device-mobile .oddsbar { height: 30px; font-size: 9px; }
+.device-mobile .livebet__header { padding: 12px 14px 0; }
+.device-mobile .livebet__question { font-size: 14px; padding: 8px 14px 4px; }
+.device-mobile .livebet__stakes { padding: 4px 14px 12px; }
+.device-mobile .livebet__row { font-size: 12px; }
+.device-mobile .bignumber__val { font-size: 36px; }
+.device-mobile .bignumber__unit { font-size: 16px; }
+.device-mobile .payout-preview { padding: 12px 14px; }
+.device-mobile .payout-row { font-size: 12px; }
+.device-mobile .payout-row--big { font-size: 14px; }
+.device-mobile .decide { padding: 14px; }
+.device-mobile .decide__title { font-size: 14px; }
+.device-mobile .decide__btns { flex-wrap: wrap; }
+.device-mobile .decide__btns .btn { flex: 1; min-width: 80px; }
+.device-mobile .proposal { margin: 12px 14px; padding: 14px; }
+.device-mobile .proposal__verdict { font-size: 15px; }
+.device-mobile .proposal__btns { flex-direction: column; }
+.device-mobile .result-banner { padding: 16px; }
+.device-mobile .result-banner__title { font-size: 18px; }
+.device-mobile .result-banner__amount { font-size: 15px; }
+.device-mobile .props-topbar { flex-direction: column; gap: 10px; align-items: stretch; }
+.device-mobile .props-tabs { width: 100%; justify-content: center; }
+.device-mobile .counter-slider::-webkit-slider-thumb { width: 32px; height: 32px; }
+.device-mobile .counter-slider::-moz-range-thumb { width: 32px; height: 32px; }
+.device-mobile .slider-ends { font-size: 9px; }
+
+/* Bottom actions row — mobile */
+.device-mobile .s-content [style*="justify-content:space-between"][style*="margin-top:24px"] {
+  flex-direction: column !important;
+  gap: 8px;
+}
+
+/* Roulette-specific: 4 columns on mobile when many items */
+.device-mobile .pick-grid:has(.pick-btn:nth-child(7)) {
+  grid-template-columns: repeat(4, 1fr);
+}
+.device-mobile .pick-grid:has(.pick-btn:nth-child(7)) .pick-btn {
+  font-size: 10px;
+  padding: 8px 4px;
+}
+
+/* --- TABLET-specific pick grid overrides --- */
+.device-tablet .pick-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+}
+/* Roulette on tablet: 4 columns */
+.device-tablet .pick-grid:has(.pick-btn:nth-child(7)) {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+/* Inline flex items that set width:900px — tablet: constrain */
+.device-tablet .s-content [style*="width:900px"],
+.device-tablet .s-content [style*="width:700px"] {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+/* Props two-column layout — tablet: keep horizontal but tighter */
+.device-tablet .prop-card {
+  padding: 16px 18px;
+}
+
+/* Props markets/bets container — tablet */
+.device-tablet .livebet__stakes { padding: 4px 16px 12px; }
+
+/* Mobile: channel balance info inline text */
+.device-mobile .channel-row [style*="margin-left:20px"] {
+  margin-left: 0 !important;
+}
+
+/* Confetti — smaller on mobile */
+.device-mobile .confetti-particle {
+  width: 6px;
+  height: 6px;
+}
+</style>
+</head>
+<body>
+
+<div id="app">
+  <!-- SIDEBAR -->
+  <div id="sidebar">
+    <h2>Slides</h2>
+    <div id="thumb-list"></div>
+  </div>
+
+  <!-- MAIN -->
+  <div id="main">
+    <div id="titlebar">
+      <div class="slide-title" id="slide-title">SLIDE <span>1</span>: Channels Tab — Empty State</div>
+      <div class="nav-btns">
+        <button onclick="prevSlide()">&#9664; PREV</button>
+        <button onclick="nextSlide()">NEXT &#9654;</button>
+      </div>
+    </div>
+    <div id="viewport">
+      <div id="slide-container">
+
+<!-- ═══════════════════════════════════════════════════════════
+     SLIDE CONTENTS — Each .slide is 1920x1080
+     ═══════════════════════════════════════════════════════════ -->
+
+<!-- SLIDE 1: Channels Tab — Empty State -->
+<div class="slide active" data-name="Channels Tab — Empty State">
+  <div class="s-header">
+    <div class="logo">THUNDER CASINO</div>
+    <div class="node-info">Node: Mx5a8f..3d21 | Block: 1,847,392</div>
+    <div class="tabs">
+      <div class="tab">CASINO</div>
+      <div class="tab">PROPS</div>
+      <div class="tab active">CHANNELS</div>
+    </div>
+  </div>
+  <div class="s-content">
+    <div class="glass" style="width:700px; padding:80px 60px; text-align:center;">
+      <div style="font-size:80px; margin-bottom:24px; opacity:0.3;">&#x1F50C;</div>
+      <h2 style="font-family:'Orbitron',sans-serif; font-size:22px; color:var(--white); margin-bottom:12px;">No Channels Open</h2>
+      <p style="font-size:16px; color:var(--ghost); margin-bottom:36px; line-height:1.6;">
+        Open a channel to start playing.<br>
+        Channels enable instant, trustless games with anyone on the network.
+      </p>
+      <div class="btn btn-gold btn-lg">OPEN CHANNEL</div>
+    </div>
+  </div>
+  <div class="s-notice">
+    <div class="notice-title">NOTICEBOARD</div>
+    <div class="notice-line"><span class="time">12:01</span> <span class="gold">System</span> — Welcome to Thunder Casino v0.3.4</div>
+    <div class="notice-line"><span class="time">12:01</span> <span class="cyan">Network</span> — Connected to Minima node</div>
+    <div class="notice-line"><span class="time">12:01</span> <span class="green">Ready</span> — Open a channel to begin</div>
+  </div>
+</div>
+
+<!-- SLIDE 2: Channels Tab — With Channels -->
+<div class="slide" data-name="Channels Tab — With Channels">
+  <div class="s-header">
+    <div class="logo">THUNDER CASINO</div>
+    <div class="node-info">Node: Mx5a8f..3d21 | Block: 1,847,392</div>
+    <div class="tabs">
+      <div class="tab">CASINO</div>
+      <div class="tab">PROPS</div>
+      <div class="tab active">CHANNELS</div>
+    </div>
+  </div>
+  <div class="s-content">
+    <div style="width:900px;">
+      <h2 style="font-family:'Orbitron',sans-serif; font-size:18px; margin-bottom:20px; color:var(--gold);">Your Channels</h2>
+
+      <div class="channel-row">
+        <div class="ch-name">Alice</div>
+        <div class="ch-status open">&#x2713; OPEN</div>
+        <div style="font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--ghost); margin-left:20px;">
+          You: <span style="color:var(--gold); font-weight:700;">125</span> &nbsp;|&nbsp; Them: <span style="color:var(--white);">75</span>
+        </div>
+        <div class="ch-actions">
+          <div class="btn btn-gold btn-sm">PLAY</div>
+          <div class="btn btn-cyan btn-sm">PROPS</div>
+          <div class="btn btn-outline btn-sm">CLOSE</div>
+        </div>
+      </div>
+
+      <div class="channel-row">
+        <div class="ch-name">Bob</div>
+        <div class="ch-status pending">&#x23F3; Setting up...</div>
+        <div style="font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--ghost); margin-left:20px;">
+          Awaiting confirmation
+        </div>
+        <div class="ch-actions">
+          <div class="btn btn-outline btn-sm" style="opacity:0.5;">CANCEL</div>
+        </div>
+      </div>
+
+      <div class="channel-row" style="border-color: rgba(0,229,255,0.3);">
+        <div class="ch-name">Charlie</div>
+        <div class="ch-status incoming">&#x1F4E8; Incoming request</div>
+        <div style="font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--ghost); margin-left:20px;">
+          Wants to open 100/100
+        </div>
+        <div class="ch-actions">
+          <div class="btn btn-green btn-sm">ACCEPT</div>
+          <div class="btn btn-pink btn-sm">DENY</div>
+        </div>
+      </div>
+
+      <div class="glass" style="margin-top:24px; padding:24px 28px;">
+        <h3 style="font-family:'Orbitron',sans-serif; font-size:12px; color:var(--ghost); letter-spacing:1px; margin-bottom:14px;">OPEN NEW CHANNEL</h3>
+        <div style="display:flex; gap:12px; align-items:center;">
+          <div>
+            <label style="font-size:10px; color:var(--ghost); margin-bottom:4px; display:block;">Address</label>
+            <div class="input" style="width:360px; display:inline-block;">Mx7b3e..9f44</div>
+          </div>
+          <div>
+            <label style="font-size:10px; color:var(--ghost); margin-bottom:4px; display:block;">Amount</label>
+            <div class="input" style="width:120px; display:inline-block;">100</div>
+          </div>
+          <div class="btn btn-gold btn-sm" style="margin-top:16px;">OPEN CHANNEL</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="s-notice">
+    <div class="notice-title">NOTICEBOARD</div>
+    <div class="notice-line"><span class="time">14:22</span> <span class="green">Channel</span> — Alice channel OPEN (200 total)</div>
+    <div class="notice-line"><span class="time">14:23</span> <span class="gold">Pending</span> — Bob channel request sent</div>
+    <div class="notice-line"><span class="time">14:25</span> <span class="cyan">Incoming</span> — Charlie wants to open a channel</div>
+  </div>
+</div>
+
+<!-- SLIDE 3: Casino Lobby -->
+<div class="slide" data-name="Casino Lobby">
+  <div class="s-header">
+    <div class="logo">THUNDER CASINO</div>
+    <div class="node-info">Node: Mx5a8f..3d21 | Block: 1,847,392</div>
+    <div class="tabs">
+      <div class="tab active">CASINO</div>
+      <div class="tab">PROPS</div>
+      <div class="tab">CHANNELS</div>
+    </div>
+  </div>
+  <div class="s-content">
+    <div style="width:900px;">
+      <!-- Balance bar -->
+      <div class="balance-bar">
+        <div class="bal-item">You: <strong><span class="amount">125</span></strong></div>
+        <div class="bal-item" style="font-size:13px; color:var(--ghost);">Channel: <span style="color:var(--cyan);">Alice</span></div>
+        <div class="bal-item">Them: <strong>75</strong></div>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats-row">
+        <span>W:<span class="stat-val">3</span> L:<span class="stat-val">2</span> P&L:<span class="stat-green">+15</span></span>
+        <span>FLIP <span class="stat-val">2/1</span></span>
+        <span>DICE <span class="stat-val">1/1</span></span>
+        <span>ROUL <span class="stat-val">0/0</span></span>
+        <div class="pips">
+          <div class="pip w">W</div>
+          <div class="pip l">L</div>
+          <div class="pip w">W</div>
+          <div class="pip l">L</div>
+          <div class="pip w">W</div>
+        </div>
+      </div>
+
+      <!-- Game selector -->
+      <div class="game-pills">
+        <div class="game-pill active">COIN FLIP</div>
+        <div class="game-pill">DICE</div>
+        <div class="game-pill">ROULETTE</div>
+      </div>
+
+      <!-- Pick grid -->
+      <div style="margin-bottom:8px; font-family:'Orbitron',sans-serif; font-size:11px; color:var(--ghost); letter-spacing:1px;">PICK YOUR SIDE</div>
+      <div class="pick-grid">
+        <div class="pick-btn">HEADS</div>
+        <div class="pick-btn selected">TAILS</div>
+      </div>
+
+      <!-- Bet input -->
+      <div style="display:flex; align-items:center; gap:16px; margin-bottom:16px;">
+        <div style="font-family:'Orbitron',sans-serif; font-size:11px; color:var(--ghost); letter-spacing:1px;">BET AMOUNT</div>
+        <div class="input" style="width:140px; text-align:center; font-size:18px; color:var(--gold); font-weight:700;">25</div>
+        <div class="btn btn-gold btn-lg">PLACE BET</div>
+      </div>
+
+      <div class="odds-display">Coin Flip — 2 outcomes — 1:1 payout — House risks: 25</div>
+
+      <!-- Bottom actions -->
+      <div style="display:flex; justify-content:space-between; margin-top:24px; padding-top:16px; border-top:1px solid var(--steel);">
+        <div class="btn btn-outline">&#9664; BACK</div>
+        <div class="btn btn-outline" style="border-color:rgba(255,45,120,0.3); color:var(--pink);">CLOSE CHANNEL</div>
+      </div>
+    </div>
+  </div>
+  <div class="s-notice">
+    <div class="notice-title">NOTICEBOARD</div>
+    <div class="notice-line"><span class="time">14:30</span> <span class="green">Win</span> — Coin Flip: Won +25 (TAILS)</div>
+    <div class="notice-line"><span class="time">14:28</span> <span style="color:var(--pink);">Loss</span> — Coin Flip: Lost -25 (HEADS)</div>
+    <div class="notice-line"><span class="time">14:26</span> <span class="green">Win</span> — Dice: Won +50 (rolled 4)</div>
+  </div>
+</div>
+
+<!-- SLIDE 4: Game Modal — Bet Placed -->
+<div class="slide" data-name="Game Modal — Bet Placed" data-has-lobby="true">
+  <div class="s-header">
+    <div class="logo">THUNDER CASINO</div>
+    <div class="node-info">Node: Mx5a8f..3d21 | Block: 1,847,392</div>
+    <div class="tabs">
+      <div class="tab active">CASINO</div>
+      <div class="tab">PROPS</div>
+      <div class="tab">CHANNELS</div>
+    </div>
+  </div>
+  <div class="s-content" style="opacity:0.25; filter:blur(2px);">
+    <div style="width:900px;">
+      <div class="balance-bar">
+        <div class="bal-item">You: <strong><span class="amount">125</span></strong></div>
+        <div class="bal-item" style="font-size:13px; color:var(--ghost);">Channel: <span style="color:var(--cyan);">Alice</span></div>
+        <div class="bal-item">Them: <strong>75</strong></div>
+      </div>
+      <div class="stats-row"><span>W:3 L:2 P&L:+15</span></div>
+      <div class="game-pills"><div class="game-pill active">COIN FLIP</div><div class="game-pill">DICE</div><div class="game-pill">ROULETTE</div></div>
+    </div>
+  </div>
+  <div class="modal-overlay">
+    <div class="modal-box pulse">
+      <h2 style="color:var(--gold);">&#x26A1; COIN FLIP</h2>
+      <div class="modal-line">Your bet: <strong>25</strong> on <span class="cyan">TAILS</span></div>
+      <div class="modal-line">House risks: <strong>25</strong></div>
+      <div style="height:20px;"></div>
+      <div class="modal-line">Balance: <span class="gold">125</span> &#x2192; <span style="color:var(--white);">100</span> <span style="font-size:12px; color:var(--ghost);">(locked)</span></div>
+      <div style="height:30px;"></div>
+      <div style="text-align:center;">
+        <div style="display:inline-block; width:50px; height:50px; border:3px solid var(--gold); border-top-color:transparent; border-radius:50%; animation: spin-coin 1s linear infinite;"></div>
+        <div style="font-family:'Orbitron',sans-serif; font-size:13px; color:var(--gold); margin-top:12px; letter-spacing:2px;">Finding house...</div>
+      </div>
+    </div>
+  </div>
+  <div class="s-notice">
+    <div class="notice-title">NOTICEBOARD</div>
+    <div class="notice-line"><span class="time">14:31</span> <span class="gold">Bet</span> — Placing 25 on TAILS (Coin Flip)</div>
+    <div class="notice-line"><span class="time">14:30</span> <span class="green">Win</span> — Coin Flip: Won +25 (TAILS)</div>
+    <div class="notice-line"><span class="time">14:28</span> <span style="color:var(--pink);">Loss</span> — Coin Flip: Lost -25 (HEADS)</div>
+  </div>
+</div>
+
+<!-- SLIDE 5: Game Modal — Bet Locked -->
+<div class="slide" data-name="Game Modal — Bet Locked" data-has-lobby="true">
+  <div class="s-header">
+    <div class="logo">THUNDER CASINO</div>
+    <div class="node-info">Node: Mx5a8f..3d21 | Block: 1,847,392</div>
+    <div class="tabs">
+      <div class="tab active">CASINO</div>
+      <div class="tab">PROPS</div>
+      <div class="tab">CHANNELS</div>
+    </div>
+  </div>
+  <div class="s-content" style="opacity:0.25; filter:blur(2px);">
+    <div style="width:900px;">
+      <div class="balance-bar"><div class="bal-item">You: <strong><span class="amount">100</span></strong></div><div class="bal-item" style="font-size:13px; color:var(--ghost);">Channel: <span style="color:var(--cyan);">Alice</span></div><div class="bal-item">Them: <strong>75</strong></div></div>
+      <div class="stats-row"><span>W:3 L:2 P&L:+15</span></div>
+    </div>
+  </div>
+  <div class="modal-overlay">
+    <div class="modal-box" style="border-color: var(--gold); box-shadow: 0 0 40px rgba(245,166,35,0.4), 0 0 80px rgba(255,215,0,0.15);">
+      <h2 style="color:var(--gold);">&#x26A1; COIN FLIP</h2>
+      <div class="modal-line">Your bet: <strong>25</strong> on <span class="cyan">TAILS</span></div>
+      <div class="modal-line">House risks: <strong>25</strong></div>
+      <div style="height:24px;"></div>
+      <div style="text-align:center;">
+        <div style="font-family:'Orbitron',sans-serif; font-size:28px; color:var(--hot-gold); letter-spacing:3px; text-shadow: 0 0 20px rgba(255,215,0,0.6);">BET LOCKED!</div>
+        <div style="font-size:14px; color:var(--ghost); margin-top:16px;">Waiting for reveal...</div>
+      </div>
+      <div style="height:16px;"></div>
+      <div class="modal-line">Balance: <span class="gold">125</span> &#x2192; <span style="color:var(--white);">100</span></div>
+    </div>
+  </div>
+  <div class="s-notice">
+    <div class="notice-title">NOTICEBOARD</div>
+    <div class="notice-line"><span class="time">14:31</span> <span class="gold">Locked</span> — Bet LOCKED: 25 on TAILS</div>
+    <div class="notice-line"><span class="time">14:31</span> <span class="gold">Bet</span> — Placing 25 on TAILS (Coin Flip)</div>
+    <div class="notice-line"><span class="time">14:30</span> <span class="green">Win</span> — Coin Flip: Won +25 (TAILS)</div>
+  </div>
+</div>
+
+<!-- SLIDE 6: Game Modal — Spinning -->
+<div class="slide" data-name="Game Modal — Spinning" data-has-lobby="true">
+  <div class="s-header">
+    <div class="logo">THUNDER CASINO</div>
+    <div class="node-info">Node: Mx5a8f..3d21 | Block: 1,847,392</div>
+    <div class="tabs">
+      <div class="tab active">CASINO</div>
+      <div class="tab">PROPS</div>
+      <div class="tab">CHANNELS</div>
+    </div>
+  </div>
+  <div class="s-content" style="opacity:0.25; filter:blur(2px);">
+    <div style="width:900px;">
+      <div class="balance-bar"><div class="bal-item">You: <strong><span class="amount">100</span></strong></div><div class="bal-item" style="font-size:13px; color:var(--ghost);">Channel: <span style="color:var(--cyan);">Alice</span></div><div class="bal-item">Them: <strong>75</strong></div></div>
+    </div>
+  </div>
+  <div class="modal-overlay">
+    <div class="modal-box">
+      <h2 style="color:var(--gold);">&#x26A1; COIN FLIP</h2>
+      <div class="modal-line">Your bet: <strong>25</strong> on <span class="cyan">TAILS</span></div>
+      <div class="modal-line">House risks: <strong>25</strong></div>
+      <div style="height:16px;"></div>
+      <div style="text-align:center;">
+        <div class="coin-spin">&#x26A1;</div>
+        <div style="font-family:'Orbitron',sans-serif; font-size:16px; color:var(--gold); letter-spacing:2px; margin-top:8px;">Revealing...</div>
+      </div>
+    </div>
+  </div>
+  <div class="s-notice">
+    <div class="notice-title">NOTICEBOARD</div>
+    <div class="notice-line"><span class="time">14:31</span> <span class="gold">Spin</span> — Coin is flipping...</div>
+    <div class="notice-line"><span class="time">14:31</span> <span class="gold">Locked</span> — Bet LOCKED: 25 on TAILS</div>
+    <div class="notice-line"><span class="time">14:31</span> <span class="gold">Bet</span> — Placing 25 on TAILS (Coin Flip)</div>
+  </div>
+</div>
+
+<!-- SLIDE 7: Game Modal — WIN -->
+<div class="slide" data-name="Game Modal — WIN" data-has-lobby="true">
+  <div class="s-header">
+    <div class="logo">THUNDER CASINO</div>
+    <div class="node-info">Node: Mx5a8f..3d21 | Block: 1,847,392</div>
+    <div class="tabs">
+      <div class="tab active">CASINO</div>
+      <div class="tab">PROPS</div>
+      <div class="tab">CHANNELS</div>
+    </div>
+  </div>
+  <div class="s-content" style="opacity:0.25; filter:blur(2px);">
+    <div style="width:900px;">
+      <div class="balance-bar"><div class="bal-item">You: <strong><span class="amount">125</span></strong></div><div class="bal-item" style="font-size:13px; color:var(--ghost);">Channel: <span style="color:var(--cyan);">Alice</span></div><div class="bal-item">Them: <strong>75</strong></div></div>
+    </div>
+  </div>
+  <div class="modal-overlay">
+    <div class="modal-box" style="border-color: rgba(0,230,118,0.4);">
+      <h2 style="color:var(--gold);">&#x26A1; COIN FLIP</h2>
+      <div style="text-align:center; margin:16px 0;">
+        <div style="font-family:'Orbitron',sans-serif; font-size:48px; color:var(--green); text-shadow: 0 0 30px rgba(0,230,118,0.4);">TAILS &#x2713;</div>
+        <div style="font-size:32px; margin-top:8px;">&#x1F389; YOU WIN!</div>
+      </div>
+      <div style="background:rgba(0,230,118,0.08); border:1px solid rgba(0,230,118,0.2); border-radius:8px; padding:16px 20px; margin:16px 0;">
+        <div class="modal-line">You bet: <strong>25</strong> on <span class="cyan">TAILS</span></div>
+        <div class="modal-line">House risked: <strong>25</strong></div>
+        <div class="modal-line">Result: <span class="green">TAILS</span></div>
+        <div class="modal-line">Won: <span class="green" style="font-family:'Orbitron',sans-serif; font-weight:700;">+25</span></div>
+        <div class="modal-line">Balance: <span class="gold">100</span> &#x2192; <span class="green" style="font-weight:700;">125</span></div>
+      </div>
+      <div class="modal-actions">
+        <div class="btn btn-gold btn-lg">PLAY AGAIN</div>
+      </div>
+      <!-- Confetti particles -->
+      <div style="position:absolute; top:0; left:0; right:0; bottom:0; pointer-events:none; overflow:hidden;">
+        <div class="confetti-particle" style="left:10%; top:5%; background:var(--gold); animation-delay:0s;"></div>
+        <div class="confetti-particle" style="left:20%; top:2%; background:var(--green); animation-delay:0.2s;"></div>
+        <div class="confetti-particle" style="left:30%; top:8%; background:var(--cyan); animation-delay:0.4s;"></div>
+        <div class="confetti-particle" style="left:40%; top:3%; background:var(--gold); animation-delay:0.1s;"></div>
+        <div class="confetti-particle" style="left:50%; top:6%; background:var(--pink); animation-delay:0.5s;"></div>
+        <div class="confetti-particle" style="left:60%; top:1%; background:var(--green); animation-delay:0.3s;"></div>
+        <div class="confetti-particle" style="left:70%; top:7%; background:var(--hot-gold); animation-delay:0.15s;"></div>
+        <div class="confetti-particle" style="left:80%; top:4%; background:var(--cyan); animation-delay:0.35s;"></div>
+        <div class="confetti-particle" style="left:90%; top:9%; background:var(--gold); animation-delay:0.25s;"></div>
+        <div class="confetti-particle" style="left:15%; top:0%; background:var(--pink); animation-delay:0.6s;"></div>
+        <div class="confetti-particle" style="left:35%; top:2%; background:var(--green); animation-delay:0.7s;"></div>
+        <div class="confetti-particle" style="left:55%; top:5%; background:var(--gold); animation-delay:0.45s;"></div>
+        <div class="confetti-particle" style="left:75%; top:1%; background:var(--cyan); animation-delay:0.55s;"></div>
+        <div class="confetti-particle" style="left:85%; top:3%; background:var(--hot-gold); animation-delay:0.65s;"></div>
+        <div class="confetti-particle" style="left:25%; top:6%; background:var(--pink); animation-delay:0.8s;"></div>
+        <div class="confetti-particle" style="left:45%; top:0%; background:var(--green); animation-delay:0.9s;"></div>
+        <div class="confetti-particle" style="left:65%; top:4%; background:var(--gold); animation-delay:0.75s;"></div>
+      </div>
+    </div>
+  </div>
+  <div class="s-notice">
+    <div class="notice-title">NOTICEBOARD</div>
+    <div class="notice-line"><span class="time">14:31</span> <span class="green">WIN!</span> — Coin Flip: TAILS &#x2713; Won +25</div>
+    <div class="notice-line"><span class="time">14:31</span> <span class="gold">Spin</span> — Coin is flipping...</div>
+    <div class="notice-line"><span class="time">14:31</span> <span class="gold">Locked</span> — Bet LOCKED: 25 on TAILS</div>
+  </div>
+</div>
+
+<!-- SLIDE 8: Game Modal — LOSE -->
+<div class="slide" data-name="Game Modal — LOSE" data-has-lobby="true">
+  <div class="s-header">
+    <div class="logo">THUNDER CASINO</div>
+    <div class="node-info">Node: Mx5a8f..3d21 | Block: 1,847,392</div>
+    <div class="tabs">
+      <div class="tab active">CASINO</div>
+      <div class="tab">PROPS</div>
+      <div class="tab">CHANNELS</div>
+    </div>
+  </div>
+  <div class="s-content" style="opacity:0.25; filter:blur(2px);">
+    <div style="width:900px;">
+      <div class="balance-bar"><div class="bal-item">You: <strong><span class="amount">100</span></strong></div><div class="bal-item" style="font-size:13px; color:var(--ghost);">Channel: <span style="color:var(--cyan);">Alice</span></div><div class="bal-item">Them: <strong>100</strong></div></div>
+    </div>
+  </div>
+  <div class="modal-overlay">
+    <div class="modal-box" style="border-color: rgba(255,45,120,0.4);">
+      <h2 style="color:var(--gold);">&#x26A1; COIN FLIP</h2>
+      <div style="text-align:center; margin:16px 0;">
+        <div style="font-family:'Orbitron',sans-serif; font-size:48px; color:var(--pink); text-shadow: 0 0 30px rgba(255,45,120,0.4);">HEADS</div>
+        <div style="font-family:'Orbitron',sans-serif; font-size:24px; margin-top:8px; color:var(--pink);">YOU LOSE</div>
+      </div>
+      <div style="background:rgba(255,45,120,0.08); border:1px solid rgba(255,45,120,0.2); border-radius:8px; padding:16px 20px; margin:16px 0;">
+        <div class="modal-line">You bet: <strong>25</strong> on <span class="cyan">TAILS</span></div>
+        <div class="modal-line">House risked: <strong>25</strong></div>
+        <div class="modal-line">Result: <span class="pink">HEADS</span></div>
+        <div class="modal-line">Lost: <span class="pink" style="font-family:'Orbitron',sans-serif; font-weight:700;">-25</span></div>
+        <div class="modal-line">Balance: <span class="gold">125</span> &#x2192; <span class="pink" style="font-weight:700;">100</span></div>
+      </div>
+      <div class="modal-actions">
+        <div class="btn btn-gold btn-lg">PLAY AGAIN</div>
+      </div>
+    </div>
+  </div>
+  <div class="s-notice">
+    <div class="notice-title">NOTICEBOARD</div>
+    <div class="notice-line"><span class="time">14:32</span> <span style="color:var(--pink);">Loss</span> — Coin Flip: HEADS. Lost -25</div>
+    <div class="notice-line"><span class="time">14:31</span> <span class="green">Win</span> — Coin Flip: TAILS &#x2713; Won +25</div>
+    <div class="notice-line"><span class="time">14:31</span> <span class="gold">Locked</span> — Bet LOCKED: 25 on TAILS</div>
+  </div>
+</div>
+
+<!-- SLIDE 9: Game Modal — House View (Win) -->
+<div class="slide" data-name="Game Modal — House View" data-has-lobby="true">
+  <div class="s-header">
+    <div class="logo">THUNDER CASINO</div>
+    <div class="node-info">Node: MxB2c1..7e88 | Block: 1,847,392</div>
+    <div class="tabs">
+      <div class="tab active">CASINO</div>
+      <div class="tab">PROPS</div>
+      <div class="tab">CHANNELS</div>
+    </div>
+  </div>
+  <div class="s-content" style="opacity:0.25; filter:blur(2px);">
+    <div style="width:900px;">
+      <div class="balance-bar"><div class="bal-item">You: <strong><span class="amount">75</span></strong></div><div class="bal-item" style="font-size:13px; color:var(--ghost);">Channel: <span style="color:var(--cyan);">Player</span></div><div class="bal-item">Them: <strong>125</strong></div></div>
+    </div>
+  </div>
+  <div class="modal-overlay">
+    <div class="modal-box" style="border-color: rgba(0,230,118,0.3);">
+      <h2 style="color:var(--gold);">&#x26A1; COIN FLIP <span style="font-size:14px; background:rgba(0,229,255,0.15); color:var(--cyan); padding:3px 12px; border-radius:4px; margin-left:12px; vertical-align:middle;">(HOUSING)</span></h2>
+      <div style="background:rgba(26,33,64,0.5); border:1px solid var(--steel); border-radius:8px; padding:16px 20px; margin:20px 0;">
+        <div class="modal-line">Player bets: <strong>25</strong> on <span class="cyan">TAILS</span></div>
+        <div class="modal-line">You risk: <strong>25</strong></div>
+        <div style="height:12px;"></div>
+        <div class="modal-line">Result: <span class="pink" style="font-weight:700;">HEADS</span></div>
+        <div style="height:12px;"></div>
+        <div class="modal-line">Player loses. <span class="green" style="font-family:'Orbitron',sans-serif; font-weight:700; font-size:18px;">YOU WIN +25</span></div>
+        <div style="height:8px;"></div>
+        <div class="modal-line">Balance: <span class="gold">75</span> &#x2192; <span class="green" style="font-weight:700;">100</span></div>
+      </div>
+      <div class="modal-actions">
+        <div class="btn btn-gold btn-lg">OK</div>
+      </div>
+    </div>
+  </div>
+  <div class="s-notice">
+    <div class="notice-title">NOTICEBOARD</div>
+    <div class="notice-line"><span class="time">14:32</span> <span class="green">House Win</span> — Player lost Coin Flip. You won +25</div>
+    <div class="notice-line"><span class="time">14:31</span> <span class="cyan">Housing</span> — Accepted player bet: 25 on TAILS</div>
+    <div class="notice-line"><span class="time">14:30</span> <span class="gold">Request</span> — Incoming bet request from player</div>
+  </div>
+</div>
+
+<!-- SLIDE 10: Game Modal — Dice Win -->
+<div class="slide" data-name="Game Modal — Dice Win" data-has-lobby="true">
+  <div class="s-header">
+    <div class="logo">THUNDER CASINO</div>
+    <div class="node-info">Node: Mx5a8f..3d21 | Block: 1,847,395</div>
+    <div class="tabs">
+      <div class="tab active">CASINO</div>
+      <div class="tab">PROPS</div>
+      <div class="tab">CHANNELS</div>
+    </div>
+  </div>
+  <div class="s-content" style="opacity:0.25; filter:blur(2px);">
+    <div style="width:900px;">
+      <div class="balance-bar"><div class="bal-item">You: <strong><span class="amount">150</span></strong></div><div class="bal-item" style="font-size:13px; color:var(--ghost);">Channel: <span style="color:var(--cyan);">Alice</span></div><div class="bal-item">Them: <strong>50</strong></div></div>
+    </div>
+  </div>
+  <div class="modal-overlay">
+    <div class="modal-box" style="border-color: rgba(0,230,118,0.4);">
+      <h2 style="color:var(--gold);">&#x26A1; DICE</h2>
+      <div style="text-align:center; margin:16px 0;">
+        <div style="font-family:'Orbitron',sans-serif; font-size:64px; color:var(--green); text-shadow: 0 0 30px rgba(0,230,118,0.4);">4 &#x2713;</div>
+        <div style="font-size:32px; margin-top:4px;">&#x1F389; YOU WIN!</div>
+      </div>
+      <div style="background:rgba(0,230,118,0.08); border:1px solid rgba(0,230,118,0.2); border-radius:8px; padding:16px 20px; margin:16px 0;">
+        <div class="modal-line">Your bet: <strong>10</strong> on <span class="cyan">4</span></div>
+        <div class="modal-line">House risked: <strong>50</strong></div>
+        <div class="modal-line">Result: <span class="green">4 &#x2713;</span></div>
+        <div class="modal-line">Won: <span class="green" style="font-family:'Orbitron',sans-serif; font-weight:700;">+50</span></div>
+        <div class="modal-line">Balance: <span class="gold">100</span> &#x2192; <span class="green" style="font-weight:700;">150</span></div>
+      </div>
+      <div class="modal-actions">
+        <div class="btn btn-gold btn-lg">PLAY AGAIN</div>
+      </div>
+      <!-- Confetti -->
+      <div style="position:absolute; top:0; left:0; right:0; bottom:0; pointer-events:none; overflow:hidden;">
+        <div class="confetti-particle" style="left:12%; top:3%; background:var(--gold); animation-delay:0.1s;"></div>
+        <div class="confetti-particle" style="left:28%; top:6%; background:var(--green); animation-delay:0.3s;"></div>
+        <div class="confetti-particle" style="left:42%; top:1%; background:var(--cyan); animation-delay:0.5s;"></div>
+        <div class="confetti-particle" style="left:58%; top:4%; background:var(--gold); animation-delay:0.2s;"></div>
+        <div class="confetti-particle" style="left:72%; top:7%; background:var(--pink); animation-delay:0.4s;"></div>
+        <div class="confetti-particle" style="left:88%; top:2%; background:var(--green); animation-delay:0.6s;"></div>
+      </div>
+    </div>
+  </div>
+  <div class="s-notice">
+    <div class="notice-title">NOTICEBOARD</div>
+    <div class="notice-line"><span class="time">14:35</span> <span class="green">WIN!</span> — Dice: Rolled 4 &#x2713; Won +50</div>
+    <div class="notice-line"><span class="time">14:35</span> <span class="gold">Spin</span> — Dice rolling...</div>
+    <div class="notice-line"><span class="time">14:35</span> <span class="gold">Locked</span> — Bet LOCKED: 10 on 4</div>
+  </div>
+</div>
+
+<!-- SLIDE 11: Game Modal — Roulette Lose -->
+<div class="slide" data-name="Game Modal — Roulette Lose" data-has-lobby="true">
+  <div class="s-header">
+    <div class="logo">THUNDER CASINO</div>
+    <div class="node-info">Node: Mx5a8f..3d21 | Block: 1,847,398</div>
+    <div class="tabs">
+      <div class="tab active">CASINO</div>
+      <div class="tab">PROPS</div>
+      <div class="tab">CHANNELS</div>
+    </div>
+  </div>
+  <div class="s-content" style="opacity:0.25; filter:blur(2px);">
+    <div style="width:900px;">
+      <div class="balance-bar"><div class="bal-item">You: <strong><span class="amount">98</span></strong></div><div class="bal-item" style="font-size:13px; color:var(--ghost);">Channel: <span style="color:var(--cyan);">Alice</span></div><div class="bal-item">Them: <strong>102</strong></div></div>
+    </div>
+  </div>
+  <div class="modal-overlay">
+    <div class="modal-box" style="border-color: rgba(255,45,120,0.4);">
+      <h2 style="color:var(--gold);">&#x26A1; ROULETTE</h2>
+      <div style="text-align:center; margin:16px 0;">
+        <div style="font-family:'Orbitron',sans-serif; font-size:64px; color:var(--pink); text-shadow: 0 0 30px rgba(255,45,120,0.4);">5</div>
+        <div style="font-family:'Orbitron',sans-serif; font-size:18px; margin-top:4px; color:var(--ghost);">You picked 17</div>
+        <div style="font-family:'Orbitron',sans-serif; font-size:24px; margin-top:8px; color:var(--pink);">YOU LOSE</div>
+      </div>
+      <div style="background:rgba(255,45,120,0.08); border:1px solid rgba(255,45,120,0.2); border-radius:8px; padding:16px 20px; margin:16px 0;">
+        <div class="modal-line">Your bet: <strong>2</strong> on <span class="cyan">17</span></div>
+        <div class="modal-line">House risked: <strong>70</strong></div>
+        <div class="modal-line">Result: <span class="pink">5</span></div>
+        <div class="modal-line">Lost: <span class="pink" style="font-family:'Orbitron',sans-serif; font-weight:700;">-2</span></div>
+        <div class="modal-line">Balance: <span class="gold">100</span> &#x2192; <span class="pink" style="font-weight:700;">98</span></div>
+      </div>
+      <div class="modal-actions">
+        <div class="btn btn-gold btn-lg">PLAY AGAIN</div>
+      </div>
+    </div>
+  </div>
+  <div class="s-notice">
+    <div class="notice-title">NOTICEBOARD</div>
+    <div class="notice-line"><span class="time">14:40</span> <span style="color:var(--pink);">Loss</span> — Roulette: Landed 5 (picked 17). Lost -2</div>
+    <div class="notice-line"><span class="time">14:40</span> <span class="gold">Spin</span> — Roulette spinning...</div>
+    <div class="notice-line"><span class="time">14:39</span> <span class="gold">Locked</span> — Bet LOCKED: 2 on 17</div>
+  </div>
+</div>
+
+<!-- SLIDE 12: Props — Markets (Browse Open Propositions) -->
+<div class="slide" data-name="Props — Markets">
+  <div class="s-header">
+    <div class="logo">THUNDER CASINO</div>
+    <div class="node-info">Node: Mx5a8f..3d21 | Block: 1,847,400</div>
+    <div class="tabs">
+      <div class="tab">CASINO</div>
+      <div class="tab active">PROPS</div>
+      <div class="tab">CHANNELS</div>
+    </div>
+  </div>
+  <div class="s-content" style="align-items:flex-start; overflow-y:auto;">
+    <div style="width:100%; max-width:700px;">
+      <!-- Top bar: tabs + post button -->
+      <div class="props-topbar">
+        <div class="props-tabs">
+          <div class="props-tab active">MARKETS</div>
+          <div class="props-tab">MY BETS</div>
+        </div>
+        <div class="post-prop-btn">+ POST PROP</div>
+      </div>
+
+      <!-- Question card 1: Matched market -->
+      <div class="qcard">
+        <div class="qcard__question">"BTC over 100k by July 2026"</div>
+        <div class="qcard__meta">
+          <span>TRUE 80 — FALSE 80</span>
+          <span>| Size 160</span>
+          <span>| 2 bets</span>
+          <span>| via Alice</span>
+        </div>
+        <div class="oddsbar">
+          <div class="oddsbar__yes" style="flex:1;">TRUE 80</div>
+          <div class="oddsbar__no" style="flex:1;">FALSE 80</div>
+        </div>
+        <div class="qcard__actions">
+          <div class="btn btn-green btn-sm" style="flex:1;">COUNTER TRUE</div>
+          <div class="btn btn-pink btn-sm" style="flex:1;">COUNTER FALSE</div>
+        </div>
+      </div>
+
+      <!-- Question card 2: Unbalanced odds -->
+      <div class="qcard">
+        <div class="qcard__question">"England win the Euros"</div>
+        <div class="qcard__meta">
+          <span>TRUE 30 — FALSE 90</span>
+          <span>| Size 120</span>
+          <span>| 1 bet</span>
+          <span>| via Bob</span>
+        </div>
+        <div class="oddsbar">
+          <div class="oddsbar__yes" style="flex:1;">TRUE 30</div>
+          <div class="oddsbar__no" style="flex:3;">FALSE 90</div>
+        </div>
+        <div class="qcard__actions">
+          <div class="btn btn-green btn-sm" style="flex:1;">COUNTER TRUE</div>
+          <div class="btn btn-pink btn-sm" style="flex:1;">COUNTER FALSE</div>
+        </div>
+      </div>
+
+      <!-- Question card 3: Open (needs one side) -->
+      <div class="qcard">
+        <div class="qcard__question">"ETH flips SOL market cap by Q4"</div>
+        <div class="qcard__meta">
+          <span>TRUE 50 — FALSE ???</span>
+          <span>| Needs FALSE</span>
+          <span>| via Alice</span>
+        </div>
+        <div class="oddsbar">
+          <div class="oddsbar__yes" style="flex:1;">TRUE 50</div>
+          <div class="oddsbar__open" style="flex:1;">Needs FALSE</div>
+        </div>
+        <div class="qcard__actions">
+          <div class="btn btn-pink btn-sm" style="flex:1;">COUNTER FALSE</div>
+          <div class="btn btn-outline btn-sm" style="flex:1;">VIEW</div>
+        </div>
+      </div>
+
+      <!-- Question card 4: Your open prop -->
+      <div class="qcard" style="border-color:rgba(245,166,35,0.25);">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+          <div class="livebet__tag livebet__tag--open">YOUR PROP</div>
+        </div>
+        <div class="qcard__question">"Minima hits 10k nodes by Sept"</div>
+        <div class="qcard__meta">
+          <span>You: TRUE 40</span>
+          <span>| Wants: FALSE 40</span>
+          <span>| Waiting...</span>
+        </div>
+        <div class="oddsbar">
+          <div class="oddsbar__yes" style="flex:1;">TRUE 40</div>
+          <div class="oddsbar__open" style="flex:1;">Needs FALSE 40</div>
+        </div>
+        <div class="qcard__actions">
+          <div class="btn btn-outline btn-sm" style="flex:1;">CANCEL</div>
+          <div class="btn btn-outline btn-sm" style="flex:1;">EDIT</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="s-notice">
+    <div class="notice-title">NOTICEBOARD</div>
+    <div class="notice-line"><span class="time">15:00</span> <span class="cyan">Market</span> — New prop from Alice: "BTC over 100k by July"</div>
+    <div class="notice-line"><span class="time">14:55</span> <span class="gold">Posted</span> — Your prop "Minima 10k nodes" is live, waiting for FALSE side</div>
+    <div class="notice-line"><span class="time">14:50</span> <span class="green">Matched</span> — "England Euros" counter accepted by Bob</div>
+  </div>
+</div>
+
+<!-- SLIDE 13: Props — Counter Modal (Slider + Payout Preview) -->
+<div class="slide" data-name="Props — Counter Modal">
+  <div class="s-header">
+    <div class="logo">THUNDER CASINO</div>
+    <div class="node-info">Node: Mx5a8f..3d21 | Block: 1,847,401</div>
+    <div class="tabs">
+      <div class="tab">CASINO</div>
+      <div class="tab active">PROPS</div>
+      <div class="tab">CHANNELS</div>
+    </div>
+  </div>
+  <div class="s-content" style="opacity:0.2; filter:blur(3px);">
+    <div style="width:100%; max-width:700px; height:300px;"></div>
+  </div>
+  <div class="modal-overlay">
+    <div class="modal-box" style="max-width:460px; width:90%; border-color:rgba(0,230,118,0.3);">
+      <h2 style="color:var(--green); font-size:16px;">COUNTER TRUE</h2>
+
+      <!-- Proposition -->
+      <div style="background:rgba(0,230,118,0.06); border:1px solid rgba(0,230,118,0.2); border-radius:10px; padding:16px 18px; margin-bottom:16px;">
+        <div style="font-size:16px; color:var(--white); font-weight:600; line-height:1.4; margin-bottom:12px;">
+          "England win the Euros"
+        </div>
+        <div class="modal-line" style="font-size:13px;">They bet: <strong><span class="gold">90</span></strong> on <span class="pink" style="font-weight:700;">FALSE</span></div>
+        <div class="modal-line" style="font-size:13px;">They want from you: <strong><span class="gold">90</span> MINIMA</strong></div>
+      </div>
+
+      <!-- Big number: your bet amount -->
+      <div class="bignumber">
+        <div class="bignumber__label">YOUR BET</div>
+        <div><span class="bignumber__val">45</span> <span class="bignumber__unit">M</span></div>
+      </div>
+
+      <!-- Slider -->
+      <input type="range" class="counter-slider" min="1" max="90" value="45" disabled>
+      <div class="slider-ends">
+        <span>1 (counter)</span>
+        <span>90 (take bet)</span>
+      </div>
+
+      <!-- Payout preview -->
+      <div class="payout-preview">
+        <div class="payout-row">
+          <span>You stake (TRUE)</span>
+          <strong>45 MINIMA</strong>
+        </div>
+        <div class="payout-row">
+          <span>Their existing stake</span>
+          <strong>90 MINIMA</strong>
+        </div>
+        <div class="payout-row payout-row--big">
+          <span>If TRUE</span>
+          <strong class="win">+90 MINIMA</strong>
+        </div>
+        <div class="payout-row">
+          <span>If FALSE</span>
+          <strong class="lose">-45 MINIMA</strong>
+        </div>
+        <div class="payout-row" style="font-size:11px; color:var(--ghost);">
+          <span>Implied odds</span>
+          <span>2:1 — You risk 45 to win 90</span>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <div class="btn btn-outline btn-lg" style="flex:1;">CANCEL</div>
+        <div class="btn btn-green btn-lg" style="flex:2;">COUNTER — 45M</div>
+      </div>
+    </div>
+  </div>
+  <div class="s-notice">
+    <div class="notice-title">NOTICEBOARD</div>
+    <div class="notice-line"><span class="time">15:02</span> <span class="cyan">Counter</span> — Countering "England Euros" TRUE for 45...</div>
+    <div class="notice-line"><span class="time">15:00</span> <span class="gold">Market</span> — New prop from Bob: "England win Euros" — FALSE 90</div>
+  </div>
+</div>
+
+<!-- SLIDE 14: Props — Post New Proposition -->
+<div class="slide" data-name="Props — Post New Prop">
+  <div class="s-header">
+    <div class="logo">THUNDER CASINO</div>
+    <div class="node-info">Node: Mx5a8f..3d21 | Block: 1,847,402</div>
+    <div class="tabs">
+      <div class="tab">CASINO</div>
+      <div class="tab active">PROPS</div>
+      <div class="tab">CHANNELS</div>
+    </div>
+  </div>
+  <div class="s-content" style="opacity:0.2; filter:blur(3px);">
+    <div style="width:100%; max-width:700px; height:300px;"></div>
+  </div>
+  <div class="modal-overlay">
+    <div class="modal-box" style="max-width:480px; width:90%;">
+      <h2 style="font-size:16px;">POST PROPOSITION</h2>
+
+      <div class="prop-form-group">
+        <label>CHANNEL</label>
+        <div class="input" style="width:100%; display:block; padding:10px 14px;">Alice &#x25BE;</div>
+      </div>
+
+      <div class="prop-form-group">
+        <label>PROPOSITION</label>
+        <div class="input" style="width:100%; display:block; padding:10px 14px;">England win the Euros</div>
+      </div>
+
+      <div class="prop-form-group">
+        <label>YOUR SIDE</label>
+        <div class="prop-toggle">
+          <div class="toggle-opt active-green">TRUE</div>
+          <div class="toggle-opt">FALSE</div>
+        </div>
+      </div>
+
+      <div class="prop-form-group" style="display:flex; gap:12px;">
+        <div style="flex:1;">
+          <label>YOUR BET</label>
+          <div class="input" style="width:100%; display:block; padding:10px 14px; text-align:center; color:var(--gold); font-weight:700;">50</div>
+        </div>
+        <div style="flex:1;">
+          <label>THEY MUST BET</label>
+          <div class="input" style="width:100%; display:block; padding:10px 14px; text-align:center; color:var(--white);">50</div>
+        </div>
+      </div>
+
+      <!-- Payout preview -->
+      <div class="payout-preview">
+        <div class="payout-row">
+          <span>You stake (TRUE)</span>
+          <strong>50 MINIMA</strong>
+        </div>
+        <div class="payout-row">
+          <span>They must stake</span>
+          <strong>50 MINIMA</strong>
+        </div>
+        <div class="payout-row payout-row--big">
+          <span>If TRUE</span>
+          <strong class="win">+50 MINIMA</strong>
+        </div>
+        <div class="payout-row">
+          <span>If FALSE</span>
+          <strong class="lose">-50 MINIMA</strong>
+        </div>
+        <div class="payout-row" style="font-size:11px; color:var(--ghost);">
+          <span>Odds</span>
+          <span>1:1 (even money)</span>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <div class="btn btn-outline btn-lg" style="flex:1;">CANCEL</div>
+        <div class="btn btn-gold btn-lg" style="flex:2;">POST PROPOSITION</div>
+      </div>
+    </div>
+  </div>
+  <div class="s-notice">
+    <div class="notice-title">NOTICEBOARD</div>
+    <div class="notice-line"><span class="time">15:05</span> <span class="gold">Posting</span> — Creating prop: "England win Euros" TRUE 50...</div>
+    <div class="notice-line"><span class="time">15:00</span> <span class="cyan">Market</span> — New prop from Alice: "BTC over 100k by July"</div>
+    <div class="notice-line"><span class="time">14:55</span> <span class="green">Matched</span> — "ETH flips SOL" counter accepted by Bob</div>
+  </div>
+</div>
+
+<!-- SLIDE 15: Props — My Bets (Live + Settlement) -->
+<div class="slide" data-name="Props — My Bets + Settle">
+  <div class="s-header">
+    <div class="logo">THUNDER CASINO</div>
+    <div class="node-info">Node: Mx5a8f..3d21 | Block: 1,847,410</div>
+    <div class="tabs">
+      <div class="tab">CASINO</div>
+      <div class="tab active">PROPS</div>
+      <div class="tab">CHANNELS</div>
+    </div>
+  </div>
+  <div class="s-content" style="align-items:flex-start; overflow-y:auto;">
+    <div style="width:100%; max-width:700px;">
+      <!-- Top bar -->
+      <div class="props-topbar">
+        <div class="props-tabs">
+          <div class="props-tab">MARKETS</div>
+          <div class="props-tab active">MY BETS</div>
+        </div>
+        <div class="post-prop-btn">+ POST PROP</div>
+      </div>
+
+      <!-- Live bet card — ready to settle -->
+      <div class="livebet">
+        <div class="livebet__header">
+          <div class="livebet__tag livebet__tag--live"><span class="pulse-dot"></span>LIVE BET</div>
+          <span style="font-size:11px; color:var(--ghost); font-family:'JetBrains Mono',monospace;">via Alice</span>
+        </div>
+        <div class="livebet__question">"BTC over 100k by July 2026"</div>
+        <div class="livebet__stakes">
+          <div class="livebet__row">
+            <span class="label">You said</span>
+            <span class="value" style="color:var(--green);">TRUE &middot; 80 MINIMA</span>
+          </div>
+          <div class="livebet__row">
+            <span class="label">They said</span>
+            <span class="value" style="color:var(--pink);">FALSE &middot; 80 MINIMA</span>
+          </div>
+          <div class="livebet__row" style="border-top:1px solid rgba(26,33,64,0.6); margin-top:4px; padding-top:8px;">
+            <span class="label">If TRUE</span>
+            <span class="value" style="color:var(--green);">+80 MINIMA</span>
+          </div>
+          <div class="livebet__row">
+            <span class="label">If FALSE</span>
+            <span class="value" style="color:var(--pink);">-80 MINIMA</span>
+          </div>
+        </div>
+        <!-- Settlement decision -->
+        <div class="decide">
+          <div class="decide__title">Is "BTC over 100k by July" TRUE or FALSE?</div>
+          <div class="decide__sub">Both agree: instant settle, 0% fee. Disagree: MAST dispute on-chain.</div>
+          <div class="decide__btns">
+            <div class="btn btn-green" style="flex:1;">TRUE</div>
+            <div class="btn btn-pink" style="flex:1;">FALSE</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Live bet card — waiting for match -->
+      <div class="livebet">
+        <div class="livebet__header">
+          <div class="livebet__tag livebet__tag--open">OPEN</div>
+          <span style="font-size:11px; color:var(--ghost); font-family:'JetBrains Mono',monospace;">via Alice</span>
+        </div>
+        <div class="livebet__question">"Minima hits 10k nodes by Sept"</div>
+        <div class="livebet__stakes">
+          <div class="livebet__row">
+            <span class="label">You said</span>
+            <span class="value" style="color:var(--green);">TRUE &middot; 40 MINIMA</span>
+          </div>
+          <div class="livebet__row">
+            <span class="label">You want</span>
+            <span class="value">40 MINIMA from FALSE side</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Settled bet — won -->
+      <div class="livebet" style="opacity:0.65;">
+        <div class="livebet__header">
+          <div class="livebet__tag livebet__tag--won">WON</div>
+          <span style="font-size:11px; color:var(--ghost); font-family:'JetBrains Mono',monospace;">via Bob</span>
+        </div>
+        <div class="livebet__question">"ETH flips SOL by Q4"</div>
+        <div class="livebet__stakes">
+          <div class="livebet__row">
+            <span class="label">Result</span>
+            <span class="value" style="color:var(--green);">TRUE — You won +30 MINIMA</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="s-notice">
+    <div class="notice-title">NOTICEBOARD</div>
+    <div class="notice-line"><span class="time">16:00</span> <span class="cyan">Live</span> — "BTC 100k" ready to settle. Both sides matched.</div>
+    <div class="notice-line"><span class="time">15:30</span> <span class="green">Won</span> — "ETH flips SOL" settled TRUE. +30 MINIMA</div>
+    <div class="notice-line"><span class="time">15:05</span> <span class="gold">Open</span> — "Minima 10k nodes" awaiting FALSE side</div>
+  </div>
+</div>
+
+<!-- SLIDE 16: Props — Settlement Incoming + Result -->
+<div class="slide" data-name="Props — Settlement Result">
+  <div class="s-header">
+    <div class="logo">THUNDER CASINO</div>
+    <div class="node-info">Node: Mx5a8f..3d21 | Block: 1,847,415</div>
+    <div class="tabs">
+      <div class="tab">CASINO</div>
+      <div class="tab active">PROPS</div>
+      <div class="tab">CHANNELS</div>
+    </div>
+  </div>
+  <div class="s-content" style="align-items:flex-start; overflow-y:auto;">
+    <div style="width:100%; max-width:700px;">
+      <!-- Top bar -->
+      <div class="props-topbar">
+        <div class="props-tabs">
+          <div class="props-tab">MARKETS</div>
+          <div class="props-tab active">MY BETS</div>
+        </div>
+      </div>
+
+      <!-- WIN banner -->
+      <div class="result-banner result-banner--win">
+        <div class="result-banner__title" style="color:var(--green);">YOU WON!</div>
+        <div class="result-banner__amount" style="color:var(--green);">+80 MINIMA</div>
+        <div class="result-banner__prop">"BTC over 100k by July 2026" — settled TRUE</div>
+        <div style="font-size:11px; color:var(--ghost); margin-top:6px;">Fee: 0% &middot; Channel balance updated</div>
+        <div class="btn btn-outline btn-sm" style="margin-top:10px;">DISMISS</div>
+      </div>
+
+      <!-- Incoming settlement proposal card -->
+      <div class="livebet">
+        <div class="livebet__header">
+          <div class="livebet__tag livebet__tag--live"><span class="pulse-dot"></span>LIVE BET</div>
+          <span style="font-size:11px; color:var(--ghost); font-family:'JetBrains Mono',monospace;">via Alice</span>
+        </div>
+        <div class="livebet__question">"England win the Euros"</div>
+        <div class="livebet__stakes">
+          <div class="livebet__row">
+            <span class="label">You said</span>
+            <span class="value" style="color:var(--green);">TRUE &middot; 45 MINIMA</span>
+          </div>
+          <div class="livebet__row">
+            <span class="label">They said</span>
+            <span class="value" style="color:var(--pink);">FALSE &middot; 90 MINIMA</span>
+          </div>
+          <div class="livebet__row" style="border-top:1px solid rgba(26,33,64,0.6); margin-top:4px; padding-top:8px;">
+            <span class="label">If TRUE</span>
+            <span class="value" style="color:var(--green);">+90 MINIMA</span>
+          </div>
+          <div class="livebet__row">
+            <span class="label">If FALSE</span>
+            <span class="value" style="color:var(--pink);">-45 MINIMA</span>
+          </div>
+        </div>
+        <!-- Incoming proposal from counterparty -->
+        <div class="proposal">
+          <div class="proposal__from">Alice says:</div>
+          <div class="proposal__verdict">"England win the Euros" is <span style="color:var(--pink);">FALSE</span></div>
+          <div class="proposal__fee">Do you agree? Disagreement triggers MAST on-chain dispute.</div>
+          <div class="proposal__btns">
+            <div class="btn btn-pink" style="flex:1;">DISAGREE</div>
+            <div class="btn btn-green" style="flex:1;">AGREE</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- LOSS banner (previous settled bet) -->
+      <div class="result-banner result-banner--lose" style="opacity:0.6;">
+        <div class="result-banner__title" style="color:var(--pink);">YOU LOST</div>
+        <div class="result-banner__amount" style="color:var(--pink);">-30 MINIMA</div>
+        <div class="result-banner__prop">"Minima mainnet Q2" — settled FALSE</div>
+        <div style="font-size:11px; color:var(--ghost); margin-top:6px;">Fee: 0% &middot; Channel balance updated</div>
+      </div>
+    </div>
+  </div>
+  <div class="s-notice">
+    <div class="notice-title">NOTICEBOARD</div>
+    <div class="notice-line"><span class="time">16:10</span> <span class="green">Won</span> — "BTC 100k" settled TRUE. You won +80 MINIMA!</div>
+    <div class="notice-line"><span class="time">16:08</span> <span class="cyan">Proposal</span> — Alice says "England Euros" is FALSE. Agree?</div>
+    <div class="notice-line"><span class="time">16:05</span> <span style="color:var(--pink);">Lost</span> — "Minima mainnet Q2" settled FALSE. -30 MINIMA</div>
+  </div>
+</div>
+
+<!-- SLIDE 17: Close Channel Modal -->
+<div class="slide" data-name="Close Channel">
+  <div class="s-header">
+    <div class="logo">THUNDER CASINO</div>
+    <div class="node-info">Node: Mx5a8f..3d21 | Block: 1,847,405</div>
+    <div class="tabs">
+      <div class="tab active">CASINO</div>
+      <div class="tab">PROPS</div>
+      <div class="tab">CHANNELS</div>
+    </div>
+  </div>
+  <div class="s-content" style="opacity:0.25; filter:blur(2px);">
+    <div style="width:900px;">
+      <div class="balance-bar"><div class="bal-item">You: <strong><span class="amount">125</span></strong></div><div class="bal-item" style="font-size:13px; color:var(--ghost);">Channel: <span style="color:var(--cyan);">Alice</span></div><div class="bal-item">Them: <strong>75</strong></div></div>
+    </div>
+  </div>
+  <div class="modal-overlay">
+    <div class="modal-box">
+      <h2 style="color:var(--pink);">Close Channel</h2>
+      <div style="text-align:center; margin:12px 0 24px;">
+        <div style="font-family:'Orbitron',sans-serif; font-size:16px; color:var(--white); margin-bottom:8px;">Channel with <span style="color:var(--cyan);">Alice</span></div>
+      </div>
+      <div style="display:flex; justify-content:center; gap:40px; margin-bottom:28px;">
+        <div style="text-align:center;">
+          <div style="font-size:12px; color:var(--ghost); margin-bottom:4px; font-family:'Orbitron',sans-serif; letter-spacing:1px;">YOUR BALANCE</div>
+          <div style="font-family:'Orbitron',sans-serif; font-size:32px; color:var(--gold); font-weight:700;">125</div>
+        </div>
+        <div style="text-align:center;">
+          <div style="font-size:12px; color:var(--ghost); margin-bottom:4px; font-family:'Orbitron',sans-serif; letter-spacing:1px;">THEIR BALANCE</div>
+          <div style="font-family:'Orbitron',sans-serif; font-size:32px; color:var(--white); font-weight:700;">75</div>
+        </div>
+      </div>
+      <div style="font-size:12px; color:var(--ghost); text-align:center; margin-bottom:24px; line-height:1.6;">
+        Cooperative close requires both parties. Unilateral close has a time lock.
+      </div>
+      <div class="modal-actions">
+        <div class="btn btn-outline btn-lg">CANCEL</div>
+        <div class="btn btn-pink btn-lg" style="font-size:12px;">UNILATERAL</div>
+        <div class="btn btn-gold btn-lg" style="font-size:12px;">COOPERATIVE</div>
+      </div>
+    </div>
+  </div>
+  <div class="s-notice">
+    <div class="notice-title">NOTICEBOARD</div>
+    <div class="notice-line"><span class="time">15:10</span> <span class="gold">Channel</span> — Closing channel with Alice...</div>
+    <div class="notice-line"><span class="time">14:35</span> <span class="green">Win</span> — Dice: Rolled 4 &#x2713; Won +50</div>
+    <div class="notice-line"><span class="time">14:32</span> <span style="color:var(--pink);">Loss</span> — Coin Flip: HEADS. Lost -25</div>
+  </div>
+</div>
+
+      </div><!-- /slide-container -->
+    </div><!-- /viewport -->
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<script>
+(function() {
+  const slides = document.querySelectorAll('.slide');
+  const totalSlides = slides.length;
+  let currentSlide = 0;
+  const thumbList = document.getElementById('thumb-list');
+  const slideTitle = document.getElementById('slide-title');
+  const slideContainer = document.getElementById('slide-container');
+  const viewport = document.getElementById('viewport');
+
+  // Build thumbnails
+  slides.forEach((slide, i) => {
+    const name = slide.getAttribute('data-name');
+    const thumb = document.createElement('div');
+    thumb.className = 'thumb' + (i === 0 ? ' active' : '');
+    thumb.innerHTML = `
+      <div class="thumb-preview"><div>${slide.innerHTML}</div></div>
+      <div class="thumb-label"><strong>${i + 1}.</strong> ${name}</div>
+    `;
+    thumb.addEventListener('click', () => goToSlide(i));
+    thumbList.appendChild(thumb);
+  });
+
+  function goToSlide(n) {
+    if (n < 0 || n >= totalSlides) return;
+    slides[currentSlide].classList.remove('active');
+    currentSlide = n;
+    slides[currentSlide].classList.add('active');
+    // Update thumbs
+    document.querySelectorAll('.thumb').forEach((t, i) => {
+      t.classList.toggle('active', i === n);
+    });
+    // Scroll thumb into view
+    document.querySelectorAll('.thumb')[n].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    // Update title
+    const name = slides[n].getAttribute('data-name');
+    slideTitle.innerHTML = `SLIDE <span>${n + 1}</span>: ${name}`;
+    scaleSlide();
+  }
+
+  function nextSlide() { goToSlide(currentSlide + 1); }
+  function prevSlide() { goToSlide(currentSlide - 1); }
+
+  // Make nav functions global
+  window.nextSlide = nextSlide;
+  window.prevSlide = prevSlide;
+
+  // Keyboard nav
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); nextSlide(); }
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); prevSlide(); }
+  });
+
+  // Scale slide to fit viewport
+  // No transform scaling needed — slides are now responsive (width:100%, max-width:900px)
+  function scaleSlide() { /* no-op — responsive layout handles sizing */ }
+  window.addEventListener('resize', scaleSlide);
+
+  // Initial state
+  goToSlide(0);
+
+  /* =========================================================
+   * ANNOTATION SYSTEM
+   * Click anywhere on a slide to drop a pin and leave a note.
+   * Notes are saved to localStorage and persist across reloads.
+   * Click a pin to edit/delete. Export all notes as text.
+   * ========================================================= */
+
+  /* =========================================================
+   * DEVICE SIZE TOGGLE
+   * Switch between Mobile (375px), Tablet (768px), Desktop (1920px)
+   * ========================================================= */
+  var titlebar = document.getElementById('titlebar');
+
+  var DEVICES = {
+    mobile:  { w: 375, h: 812, label: '📱 MOBILE' },
+    tablet:  { w: 768, h: 1024, label: '📋 TABLET' },
+    desktop: { w: 1920, h: 1080, label: '🖥 DESKTOP' }
+  };
+  var currentDevice = 'desktop';
+
+  // Add device toggle to titlebar
+  var deviceBar = document.createElement('div');
+  deviceBar.style.cssText = 'display:flex; gap:4px; align-items:center; margin-right:16px;';
+  deviceBar.innerHTML = '<button class="dev-btn active" data-device="mobile" style="background:#f5a623;color:#080c18;border:none;padding:4px 10px;border-radius:4px;font-size:11px;cursor:pointer;font-family:Chakra Petch,sans-serif;font-weight:600;">📱 MOBILE</button>'
+    + '<button class="dev-btn" data-device="tablet" style="background:#1a2140;color:#8892b0;border:1px solid #1a2140;padding:4px 10px;border-radius:4px;font-size:11px;cursor:pointer;font-family:Chakra Petch,sans-serif;">📋 TABLET</button>'
+    + '<button class="dev-btn" data-device="desktop" style="background:#1a2140;color:#8892b0;border:1px solid #1a2140;padding:4px 10px;border-radius:4px;font-size:11px;cursor:pointer;font-family:Chakra Petch,sans-serif;">🖥 DESKTOP</button>';
+  titlebar.insertBefore(deviceBar, titlebar.querySelector('.nav-btns').nextSibling);
+
+  function setDevice(device){
+    currentDevice = device;
+    var d = DEVICES[device];
+
+    // Add device class for CSS-driven responsive styles
+    slideContainer.className = 'device-' + device;
+
+    // Set max-width to simulate device width
+    slideContainer.style.maxWidth = d.w + 'px';
+
+    // Show device frame outline
+    if(device === 'mobile'){
+      slideContainer.style.borderRadius = '24px';
+      slideContainer.style.border = '3px solid #f5a623';
+    } else if(device === 'tablet'){
+      slideContainer.style.borderRadius = '16px';
+      slideContainer.style.border = '2px solid #00e5ff';
+    } else {
+      slideContainer.style.borderRadius = '8px';
+      slideContainer.style.border = '1px solid #1a2140';
+    }
+
+    // Update button styles
+    deviceBar.querySelectorAll('.dev-btn').forEach(function(btn){
+      if(btn.dataset.device === device){
+        btn.style.background = '#f5a623';
+        btn.style.color = '#080c18';
+        btn.style.border = 'none';
+      } else {
+        btn.style.background = '#1a2140';
+        btn.style.color = '#8892b0';
+        btn.style.border = '1px solid #1a2140';
+      }
+    });
+  }
+
+  deviceBar.querySelectorAll('.dev-btn').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      setDevice(this.dataset.device);
+    });
+  });
+
+  // Override scaleSlide to respect current device
+  scaleSlide = function(){
+    setDevice(currentDevice);
+  };
+
+  var annotations = JSON.parse(localStorage.getItem('thunder_annotations') || '{}');
+  var annotationMode = true;
+  var pinCounter = Object.keys(annotations).length;
+
+  // Add annotation controls to titlebar
+  // titlebar already declared above
+  var annoControls = document.createElement('div');
+  annoControls.style.cssText = 'display:flex; gap:8px; align-items:center;';
+  annoControls.innerHTML = '<button id="btn-anno-toggle" style="background:#00e676;color:#080c18;border:none;padding:4px 12px;border-radius:4px;font-size:11px;cursor:pointer;font-family:Chakra Petch,sans-serif;font-weight:600;">📌 NOTES: ON</button>'
+    + '<button id="btn-anno-export" style="background:#1a2140;color:#8892b0;border:1px solid #1a2140;padding:4px 12px;border-radius:4px;font-size:11px;cursor:pointer;font-family:Chakra Petch,sans-serif;">EXPORT NOTES</button>'
+    + '<span id="anno-count" style="color:#8892b0;font-size:11px;font-family:JetBrains Mono,monospace;">0 notes</span>';
+  titlebar.appendChild(annoControls);
+
+  document.getElementById('btn-anno-toggle').addEventListener('click', function(){
+    annotationMode = !annotationMode;
+    this.textContent = annotationMode ? '📌 NOTES: ON' : '📌 NOTES: OFF';
+    this.style.background = annotationMode ? '#00e676' : '#1a2140';
+    this.style.color = annotationMode ? '#080c18' : '#8892b0';
+    slideContainer.style.cursor = annotationMode ? 'crosshair' : 'default';
+  });
+
+  document.getElementById('btn-anno-export').addEventListener('click', exportNotes);
+  slideContainer.style.cursor = 'crosshair';
+
+  // Click on slide to add annotation
+  slideContainer.addEventListener('click', function(e){
+    if(!annotationMode) return;
+    // Don't trigger on existing pins
+    if(e.target.closest('.anno-pin')) return;
+
+    var rect = slideContainer.getBoundingClientRect();
+    // Get position as percentage of container (works at any size)
+    var x = Math.round(((e.clientX - rect.left) / rect.width) * 100);
+    var y = Math.round(((e.clientY - rect.top) / rect.height) * 100);
+
+    var text = prompt('Leave a note for this spot:');
+    if(!text || !text.trim()) return;
+
+    pinCounter++;
+    var pinId = 'pin_' + currentSlide + '_' + pinCounter;
+    var slideKey = 'slide_' + currentSlide;
+    if(!annotations[slideKey]) annotations[slideKey] = [];
+    annotations[slideKey].push({
+      id: pinId, x: Math.round(x), y: Math.round(y),
+      text: text.trim(), slide: currentSlide,
+      slideName: slides[currentSlide].dataset.name
+    });
+    saveAnnotations();
+    renderPins();
+  });
+
+  function saveAnnotations(){
+    localStorage.setItem('thunder_annotations', JSON.stringify(annotations));
+    var total = 0;
+    for(var k in annotations) total += annotations[k].length;
+    document.getElementById('anno-count').textContent = total + ' note' + (total !== 1 ? 's' : '');
+  }
+
+  function renderPins(){
+    // Remove existing pins
+    document.querySelectorAll('.anno-pin').forEach(function(p){ p.remove(); });
+
+    var slideKey = 'slide_' + currentSlide;
+    var slidePins = annotations[slideKey] || [];
+
+    slidePins.forEach(function(pin, idx){
+      var el = document.createElement('div');
+      el.className = 'anno-pin';
+      el.style.cssText = 'position:absolute;z-index:9999;cursor:pointer;';
+      el.style.left = pin.x + '%';
+      el.style.top = pin.y + '%';
+
+      // Pin marker (red circle with number)
+      el.innerHTML = '<div style="width:28px;height:28px;border-radius:50%;background:#ff2d78;color:white;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;font-family:JetBrains Mono,monospace;box-shadow:0 2px 8px rgba(255,45,120,0.5);border:2px solid white;transform:translate(-14px,-14px);">'
+        + (idx+1) + '</div>'
+        + '<div class="anno-tooltip" style="display:none;position:absolute;top:20px;left:0;background:#0e1428;border:1px solid #ff2d78;border-radius:8px;padding:10px 14px;min-width:200px;max-width:350px;font-family:Chakra Petch,sans-serif;font-size:13px;color:#e6f1ff;line-height:1.5;box-shadow:0 8px 24px rgba(0,0,0,0.5);z-index:10000;white-space:pre-wrap;">'
+        + '<div style="color:#ff2d78;font-size:10px;font-weight:600;margin-bottom:4px;">NOTE ' + (idx+1) + '</div>'
+        + pin.text
+        + '<div style="margin-top:8px;display:flex;gap:8px;">'
+        + '<button class="anno-edit" style="background:#1a2140;color:#f5a623;border:1px solid #1a2140;padding:2px 8px;border-radius:4px;font-size:10px;cursor:pointer;">EDIT</button>'
+        + '<button class="anno-delete" style="background:#1a2140;color:#ff2d78;border:1px solid #1a2140;padding:2px 8px;border-radius:4px;font-size:10px;cursor:pointer;">DELETE</button>'
+        + '</div></div>';
+
+      // Toggle tooltip on click
+      el.addEventListener('click', function(ev){
+        ev.stopPropagation();
+        var tt = el.querySelector('.anno-tooltip');
+        tt.style.display = tt.style.display === 'none' ? 'block' : 'none';
+      });
+
+      // Edit button
+      el.querySelector('.anno-edit').addEventListener('click', function(ev){
+        ev.stopPropagation();
+        var newText = prompt('Edit note:', pin.text);
+        if(newText && newText.trim()){
+          pin.text = newText.trim();
+          saveAnnotations();
+          renderPins();
+        }
+      });
+
+      // Delete button
+      el.querySelector('.anno-delete').addEventListener('click', function(ev){
+        ev.stopPropagation();
+        if(confirm('Delete this note?')){
+          annotations[slideKey].splice(idx, 1);
+          if(annotations[slideKey].length === 0) delete annotations[slideKey];
+          saveAnnotations();
+          renderPins();
+        }
+      });
+
+      slideContainer.appendChild(el);
+    });
+
+    // Also show pin count on thumbnails
+    document.querySelectorAll('.thumb').forEach(function(th, i){
+      var existing = th.querySelector('.thumb-pin-count');
+      if(existing) existing.remove();
+      var sk = 'slide_' + i;
+      var count = (annotations[sk] || []).length;
+      if(count > 0){
+        var badge = document.createElement('div');
+        badge.className = 'thumb-pin-count';
+        badge.style.cssText = 'position:absolute;top:4px;right:4px;background:#ff2d78;color:white;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;font-family:JetBrains Mono,monospace;';
+        badge.textContent = count;
+        th.style.position = 'relative';
+        th.appendChild(badge);
+      }
+    });
+  }
+
+  // Re-render pins when slide changes
+  var origGoToSlide = goToSlide;
+  goToSlide = function(idx){
+    origGoToSlide(idx);
+    setTimeout(renderPins, 50);
+  };
+
+  function exportNotes(){
+    var output = 'THUNDER CASINO — DESIGN NOTES\\n';
+    output += '================================\\n\\n';
+    var total = 0;
+    for(var i = 0; i < slides.length; i++){
+      var sk = 'slide_' + i;
+      var pins = annotations[sk] || [];
+      if(pins.length === 0) continue;
+      output += 'SLIDE ' + (i+1) + ': ' + slides[i].dataset.name + '\\n';
+      output += '---\\n';
+      pins.forEach(function(p, j){
+        output += '  ' + (j+1) + '. [' + p.x + ',' + p.y + '] ' + p.text + '\\n';
+        total++;
+      });
+      output += '\\n';
+    }
+    output += 'Total notes: ' + total + '\\n';
+
+    // Copy to clipboard
+    navigator.clipboard.writeText(output).then(function(){
+      alert('Notes copied to clipboard! (' + total + ' notes)');
+    }).catch(function(){
+      // Fallback: show in a textarea
+      var w = window.open('', '_blank');
+      w.document.write('<pre style="background:#080c18;color:#e6f1ff;padding:20px;font-family:monospace;white-space:pre-wrap;">' + output + '</pre>');
+    });
+  }
+
+  // Initial render — start with mobile view (mobile-first design)
+  setDevice('mobile');
+  saveAnnotations();
+  renderPins();
+
+})();
+</script>
+
+</body>
+</html>

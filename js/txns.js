@@ -926,6 +926,22 @@ function scriptsMMRTxn(txndata, callback){
 		+"txndelete id:"+txid+";";
 
 	MDS.cmd(create, function(fundresp){
+		// Guard: if txnimport failed (corrupt/truncated data), the chain breaks
+		if(!fundresp || !fundresp[0] || !fundresp[0].status){
+			MDS.log("ERROR scriptsMMRTxn: txnimport failed. Data length: "
+				+ (txndata ? txndata.length : 0)
+				+ " Error: " + (fundresp && fundresp[0] ? JSON.stringify(fundresp[0].error) : "no response"));
+			// Clean up the txn ID in case it was partially created
+			MDS.cmd("txndelete id:"+txid);
+			if(callback){ callback(null); }
+			return;
+		}
+		if(!fundresp[3] || !fundresp[3].response){
+			MDS.log("ERROR scriptsMMRTxn: txnexport failed at step 3");
+			MDS.cmd("txndelete id:"+txid);
+			if(callback){ callback(null); }
+			return;
+		}
 		callback(fundresp[3].response.data);
 	});
 }
