@@ -1,0 +1,263 @@
+<html>
+<head>
+<title>TNZEC Diagnostics</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script type="text/javascript" src="./js/mds.js"></script>
+<style>
+body { background:#0a0a1a; color:#00e5ff; font-family:monospace; font-size:13px; padding:10px; }
+.pass { color:#00e676; }
+.fail { color:#ff2d78; }
+.info { color:#ffd700; }
+.test { margin:6px 0; padding:6px; border:1px solid #333; }
+h2 { color:#fff; margin:10px 0 5px; }
+button { background:#00e5ff; color:#000; border:none; padding:8px 16px; margin:4px; font-size:14px; font-weight:bold; cursor:pointer; }
+#log { white-space:pre-wrap; }
+</style>
+</head>
+<body>
+<h1>TNZEC Diagnostics</h1>
+<div id="log"></div>
+<button onclick="runAll()">RUN ALL TESTS</button>
+<button onclick="testChannelState()">CHECK CHANNELS</button>
+<button onclick="testMaximaSend()">TEST MAXIMA TO HUB</button>
+
+<script>
+function log(msg, cls) {
+    var el = document.getElementById('log');
+    el.innerHTML += '<div class="test '+(cls||'')+'">' + msg + '</div>';
+}
+
+function runAll() {
+    document.getElementById('log').innerHTML = '';
+    log('Starting diagnostics...', 'info');
+    test1_MDS();
+}
+
+// TEST 1: MDS initialized?
+function test1_MDS() {
+    log('TEST 1: MDS.init status');
+    MDS.cmd("status", function(res) {
+        if (res.status) {
+            log('PASS — Node version: ' + res.response.version + ' Block: ' + res.response.chain.block, 'pass');
+        } else {
+            log('FAIL — MDS.cmd("status") failed', 'fail');
+        }
+        test2_SQL();
+    });
+}
+
+// TEST 2: SQL database works?
+function test2_SQL() {
+    log('TEST 2: SQL database');
+    MDS.sql("SELECT COUNT(*) AS CNT FROM channels", function(res) {
+        if (res.status) {
+            log('PASS — channels table exists. Count: ' + res.rows[0].CNT, 'pass');
+        } else {
+            log('FAIL — channels table missing: ' + (res.error || 'unknown'), 'fail');
+        }
+        test3_RoutedGames();
+    });
+}
+
+// TEST 3: routed_games table exists?
+function test3_RoutedGames() {
+    log('TEST 3: routed_games table');
+    MDS.sql("SELECT COUNT(*) AS CNT FROM routed_games", function(res) {
+        if (res.status) {
+            log('PASS — routed_games exists. Count: ' + res.rows[0].CNT, 'pass');
+        } else {
+            log('FAIL — routed_games missing: ' + (res.error || 'unknown'), 'fail');
+        }
+        test4_Maxima();
+    });
+}
+
+// TEST 4: Maxima identity
+function test4_Maxima() {
+    log('TEST 4: Maxima identity');
+    MDS.cmd("maxima action:info", function(res) {
+        if (res.status) {
+            log('PASS — Name: ' + res.response.name + ' StaticMLS: ' + res.response.staticmls, 'pass');
+            log('PubKey: ' + res.response.publickey.substring(0, 40) + '...', 'info');
+        } else {
+            log('FAIL — maxima action:info failed', 'fail');
+        }
+        test5_Contacts();
+    });
+}
+
+// TEST 5: Maxima contacts — is hub there?
+function test5_Contacts() {
+    log('TEST 5: Maxima contacts');
+    MDS.cmd("maxcontacts action:list", function(res) {
+        if (res.status) {
+            var contacts = res.response.contacts;
+            log('Contacts: ' + contacts.length, 'info');
+            var hubFound = false;
+            for (var i = 0; i < contacts.length; i++) {
+                var name = contacts[i].extradata.name;
+                log('  ' + contacts[i].id + ': ' + name, 'info');
+                if (name === 'TNZEC-Hub') hubFound = true;
+            }
+            if (hubFound) {
+                log('PASS — TNZEC-Hub found in contacts', 'pass');
+            } else {
+                log('FAIL — TNZEC-Hub NOT in contacts', 'fail');
+            }
+        } else {
+            log('FAIL — maxcontacts failed', 'fail');
+        }
+        test6_CheckMode();
+    });
+}
+
+// TEST 6: Check MDS permission mode
+function test6_CheckMode() {
+    log('TEST 6: MDS permission mode');
+    MDS.cmd("checkmode", function(res) {
+        if (res.status) {
+            log('Mode: ' + JSON.stringify(res.response), 'info');
+            if (res.response.mode === 'WRITE') {
+                log('PASS — WRITE mode', 'pass');
+            } else {
+                log('FAIL — READ mode. Channel creation needs WRITE.', 'fail');
+            }
+        } else {
+            log('FAIL — checkmode failed', 'fail');
+        }
+        test7_ChannelList();
+    });
+}
+
+// TEST 7: List all channels in DB
+function test7_ChannelList() {
+    log('TEST 7: Channel database state');
+    MDS.sql("SELECT hashid, state, usernum, user1name, user2name, user1amount, user2amount FROM channels ORDER BY date DESC LIMIT 5", function(res) {
+        if (res.status && res.count > 0) {
+            for (var i = 0; i < res.count; i++) {
+                var r = res.rows[i];
+                log('  ' + r.HASHID.substring(0, 16) + '.. state=' + r.STATE + ' u1=' + (r.USER1NAME || '?') + ' u2=' + (r.USER2NAME || '?'), 'info');
+            }
+        } else {
+            log('No channels in DB', 'info');
+        }
+        test8_Auth();
+    });
+}
+
+// TEST 8: Auth details loaded?
+function test8_Auth() {
+    log('TEST 8: Auth (getaddress)');
+    MDS.cmd("getaddress", function(res) {
+        if (res.status) {
+            log('PASS — Address: ' + res.response.miniaddress, 'pass');
+        } else {
+            log('FAIL — getaddress failed', 'fail');
+        }
+        test9_SendToHub();
+    });
+}
+
+// TEST 9: Can we send a Maxima message to the hub?
+function test9_SendToHub() {
+    log('TEST 9: Maxima delivery to hub');
+    MDS.cmd("maxcontacts action:list", function(res) {
+        if (!res.status) { log('FAIL — no contacts', 'fail'); return; }
+        var hubId = null;
+        for (var i = 0; i < res.response.contacts.length; i++) {
+            if (res.response.contacts[i].extradata.name === 'TNZEC-Hub') {
+                hubId = res.response.contacts[i].id;
+                break;
+            }
+        }
+        if (!hubId) { log('SKIP — hub not in contacts', 'fail'); return; }
+
+        MDS.cmd("maxima action:send id:" + hubId + " application:thunderpay data:0xDEADBEEF", function(sendres) {
+            if (sendres.status && sendres.response.delivered) {
+                log('PASS — Message delivered to hub (id:' + hubId + ')', 'pass');
+            } else {
+                log('FAIL — Delivery failed: ' + JSON.stringify(sendres), 'fail');
+            }
+            test10_Logs();
+        });
+    });
+}
+
+// TEST 10: Check TNZEC logs table
+function test10_Logs() {
+    log('TEST 10: Recent TNZEC logs');
+    MDS.sql("SELECT type, message FROM logs ORDER BY date DESC LIMIT 10", function(res) {
+        if (res.status && res.count > 0) {
+            for (var i = 0; i < res.count; i++) {
+                log('  ' + res.rows[i].TYPE + ': ' + res.rows[i].MESSAGE.substring(0, 80), 'info');
+            }
+        } else {
+            log('No logs or logs table missing', 'info');
+        }
+        log('=== DIAGNOSTICS COMPLETE ===', 'info');
+    });
+}
+
+// CHANNEL STATE CHECK
+function testChannelState() {
+    document.getElementById('log').innerHTML = '';
+    log('Checking all channels...', 'info');
+    MDS.sql("SELECT * FROM channels ORDER BY date DESC", function(res) {
+        if (res.status && res.count > 0) {
+            for (var i = 0; i < res.count; i++) {
+                var r = res.rows[i];
+                log('Channel: ' + r.HASHID.substring(0, 20) + '..', 'info');
+                log('  State: ' + r.STATE, r.STATE.indexOf('OPEN') >= 0 ? 'pass' : 'info');
+                log('  UserNum: ' + r.USERNUM, 'info');
+                log('  User1: ' + (r.USER1NAME || 'unknown') + ' MaxID: ' + (r.USER1MAXIMAID ? r.USER1MAXIMAID.substring(0, 20) + '..' : 'EMPTY'), 'info');
+                log('  User2: ' + (r.USER2NAME || 'unknown') + ' MaxID: ' + (r.USER2MAXIMAID ? r.USER2MAXIMAID.substring(0, 20) + '..' : 'EMPTY'), 'info');
+                log('  User1Amt: ' + r.USER1AMOUNT + ' User2Amt: ' + r.USER2AMOUNT, 'info');
+                log('  FundingAddr: ' + (r.FUNDINGADDRESS || 'NONE'), 'info');
+                log('  EltooAddr: ' + (r.ELTOOADDRESS || 'NONE'), 'info');
+            }
+        } else {
+            log('No channels found', 'fail');
+        }
+    });
+}
+
+// MAXIMA SEND TEST
+function testMaximaSend() {
+    document.getElementById('log').innerHTML = '';
+    log('Testing Maxima round-trip to hub...', 'info');
+
+    MDS.cmd("maxcontacts action:list", function(res) {
+        var hubPK = null;
+        for (var i = 0; i < res.response.contacts.length; i++) {
+            if (res.response.contacts[i].extradata.name === 'TNZEC-Hub') {
+                hubPK = res.response.contacts[i].publickey;
+                break;
+            }
+        }
+        if (!hubPK) { log('Hub not in contacts!', 'fail'); return; }
+
+        log('Hub PK: ' + hubPK.substring(0, 30) + '...', 'info');
+
+        // Send via publickey (same as sendMaximaMessage does)
+        var testdata = "0xDEADBEEF" + Date.now().toString(16);
+        MDS.cmd("maxima action:send publickey:" + hubPK + " application:thunderpay data:" + testdata, function(sendres) {
+            log('Send status: ' + sendres.status, sendres.status ? 'pass' : 'fail');
+            if (sendres.response) {
+                log('Delivered: ' + sendres.response.delivered, sendres.response.delivered ? 'pass' : 'fail');
+            }
+            if (sendres.error) {
+                log('Error: ' + sendres.error, 'fail');
+            }
+        });
+    });
+}
+
+// Auto-run on load
+MDS.init(function(msg) {
+    if (msg.event === 'inited') {
+        log('MDS INITED — ready to test', 'pass');
+    }
+});
+</script>
+</body>
+</html>
