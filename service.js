@@ -434,7 +434,7 @@ MDS.init(function(msg){
 								notify({type:"CHANNEL_UPDATE", hashid:maxmsg.hashid, state:"STATE_REQUEST_START_CHANNEL"});
 								if(isHubMode()){
 									insertLog(maxmsg.hashid, "TNZEC_AUTO_ACCEPT", "Hub auto-accepting channel from "+maxmsg.user.name);
-									acceptStartChannel(maxmsg.hashid, function(accepted){});
+									acceptStartChannel(maxmsg.user.maximaid, maxmsg.hashid, function(accepted){});
 								}
 							});
 						});
@@ -445,7 +445,7 @@ MDS.init(function(msg){
 							// TNZEC HUB: Auto-accept incoming channel requests
 							if(isHubMode()){
 								insertLog(maxmsg.hashid, "TNZEC_AUTO_ACCEPT", "Hub auto-accepting channel from "+maxmsg.user.name);
-								acceptStartChannel(maxmsg.hashid, function(accepted){
+								acceptStartChannel(maxmsg.user.maximaid, maxmsg.hashid, function(accepted){
 									if(accepted){
 										insertLog(maxmsg.hashid, "TNZEC_ACCEPTED", "Channel auto-accepted");
 									}else{
