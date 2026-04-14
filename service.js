@@ -138,27 +138,23 @@ MDS.init(function(msg){
 
 		// Create database tables (safe to call repeatedly — IF NOT EXISTS)
 		createDB(function(){
-			// Create props table
-			createPropsTable(function(){
-				// Load our Maxima identity and Minima address
-				initAuthDetails(function(){
-					// TNZEC: Check hub mode via file config or keypair
-					MDS.file.load("tnzec_hub.conf", function(fileres){
-						var fileHub = (fileres.status && fileres.response && fileres.response.trim() === "hub");
-						MDS.keypair.get("tnzec_mode", function(moderes){
-							var kpHub = (moderes.status && moderes.value === "hub");
-							if(fileHub || kpHub){
-								enableHubMode();
-								loadActiveRoutes(function(){
-									log("[TNZEC] Hub initialized");
-								});
-							}else{
-								autoConnectToHub(function(connected, already){
-									if(connected && !already) log("[TNZEC] Auto-connected to hub");
-								});
-								log("[TNZEC] Spoke initialized");
-							}
-						});
+			initAuthDetails(function(){
+				// TNZEC: Check hub mode via file config or keypair
+				MDS.file.load("tnzec_hub.conf", function(fileres){
+					var fileHub = (fileres.status && fileres.response && fileres.response.trim() === "hub");
+					MDS.keypair.get("tnzec_mode", function(moderes){
+						var kpHub = (moderes.status && moderes.value === "hub");
+						if(fileHub || kpHub){
+							enableHubMode();
+							loadActiveRoutes(function(){
+								log("[TNZEC] Hub initialized");
+							});
+						}else{
+							autoConnectToHub(function(connected, already){
+								if(connected && !already) log("[TNZEC] Auto-connected to hub");
+							});
+							log("[TNZEC] Spoke initialized");
+						}
 					});
 				});
 			});
@@ -1264,8 +1260,6 @@ MDS.init(function(msg){
 					notify({type:"GAME_ABANDONED", hashid:maxmsg.hashid, reason:maxmsg.reason});
 				});
 
-
-			/* Props removed — saved in thunder-props-tba/ for Thunder Props dapp */
 
 			}else if(maxmsg.type == "SYNACK_MESSAGE"){
 				/* ---- SYNACK received — trigger the queued function ---- */
