@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>TNZEC Icon Generator</title>
+<style>
+  body {
+    background: #1a1a2e;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 40px;
+    padding: 40px;
+    align-items: center;
+    justify-content: center;
+    font-family: monospace;
+    color: #888;
+  }
+  .size-label { text-align: center; margin-top: 8px; font-size: 12px; }
+  canvas { border: 1px solid #333; }
+</style>
+</head>
+<body>
+
+<div>
+  <canvas id="c512" width="512" height="512"></canvas>
+  <div class="size-label">512 × 512</div>
+</div>
+<div>
+  <canvas id="c128" width="128" height="128"></canvas>
+  <div class="size-label">128 × 128</div>
+</div>
+<div>
+  <canvas id="c64" width="64" height="64"></canvas>
+  <div class="size-label">64 × 64</div>
+</div>
+<div>
+  <canvas id="c32" width="32" height="32"></canvas>
+  <div class="size-label">32 × 32</div>
+</div>
+
+<script>
+function drawIcon(canvas) {
+  var s = canvas.width;
+  var ctx = canvas.getContext('2d');
+  var u = s / 512; // scale unit
+
+  // === BACKGROUND: deep dark with subtle radial glow ===
+  ctx.fillStyle = '#0a0a1a';
+  ctx.fillRect(0, 0, s, s);
+
+  // Radial glow — teal center
+  var glow = ctx.createRadialGradient(s*0.5, s*0.5, 0, s*0.5, s*0.5, s*0.45);
+  glow.addColorStop(0, 'rgba(0, 229, 255, 0.12)');
+  glow.addColorStop(0.6, 'rgba(0, 229, 255, 0.03)');
+  glow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 0, s, s);
+
+  // === THE ZERO — central "0" representing zero edge ===
+  // Thick ring (the zero) with network nodes on it
+
+  var cx = s * 0.5;
+  var cy = s * 0.5;
+  var outerR = s * 0.33;
+  var innerR = s * 0.22;
+
+  // Zero ring — gradient stroke
+  ctx.beginPath();
+  ctx.arc(cx, cy, (outerR + innerR) / 2, 0, Math.PI * 2);
+  ctx.lineWidth = (outerR - innerR);
+
+  var ringGrad = ctx.createLinearGradient(cx - outerR, cy - outerR, cx + outerR, cy + outerR);
+  ringGrad.addColorStop(0, '#00e5ff');
+  ringGrad.addColorStop(0.5, '#00bcd4');
+  ringGrad.addColorStop(1, '#00e676');
+  ctx.strokeStyle = ringGrad;
+  ctx.stroke();
+
+  // Inner glow of the ring
+  var innerGlow = ctx.createRadialGradient(cx, cy, innerR * 0.5, cx, cy, innerR);
+  innerGlow.addColorStop(0, 'rgba(0, 229, 255, 0.08)');
+  innerGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = innerGlow;
+  ctx.beginPath();
+  ctx.arc(cx, cy, innerR, 0, Math.PI * 2);
+  ctx.fill();
+
+  // === NETWORK NODES — 6 nodes around the ring ===
+  var nodeCount = 6;
+  var nodeR = s * 0.032;
+  var nodeOrbit = (outerR + innerR) / 2;
+
+  var nodePositions = [];
+  for (var i = 0; i < nodeCount; i++) {
+    var angle = (i / nodeCount) * Math.PI * 2 - Math.PI / 2;
+    var nx = cx + Math.cos(angle) * nodeOrbit;
+    var ny = cy + Math.sin(angle) * nodeOrbit;
+    nodePositions.push({x: nx, y: ny, angle: angle});
+  }
+
+  // === CONNECTION LINES — from each node to center hub ===
+  for (var i = 0; i < nodeCount; i++) {
+    var n = nodePositions[i];
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(n.x, n.y);
+    ctx.strokeStyle = 'rgba(0, 229, 255, 0.25)';
+    ctx.lineWidth = 2 * u;
+    ctx.stroke();
+
+    // Animated-look pulse dots along the line
+    var dotDist = 0.4 + (i * 0.1);
+    var dx = cx + (n.x - cx) * dotDist;
+    var dy = cy + (n.y - cy) * dotDist;
+    ctx.beginPath();
+    ctx.arc(dx, dy, 3 * u, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0, 229, 255, 0.5)';
+    ctx.fill();
+  }
+
+  // === HUB CENTER — the casino routing node ===
+  // Dice face as the hub icon
+  var hubR = s * 0.07;
+
+  // Hub glow
+  var hubGlow = ctx.createRadialGradient(cx, cy, 0, cx, cy, hubR * 2);
+  hubGlow.addColorStop(0, 'rgba(0, 230, 118, 0.3)');
+  hubGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = hubGlow;
+  ctx.beginPath();
+  ctx.arc(cx, cy, hubR * 2, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Hub square (die shape) with rounded corners
+  var dieS = hubR * 1.6;
+  var dieR = dieS * 0.2;
+  ctx.beginPath();
+  roundRect(ctx, cx - dieS, cy - dieS, dieS * 2, dieS * 2, dieR);
+  var dieGrad = ctx.createLinearGradient(cx - dieS, cy - dieS, cx + dieS, cy + dieS);
+  dieGrad.addColorStop(0, '#00e676');
+  dieGrad.addColorStop(1, '#00c853');
+  ctx.fillStyle = dieGrad;
+  ctx.fill();
+
+  // Die pips — showing 6
+  var pipR = dieS * 0.13;
+  var pipOff = dieS * 0.52;
+  var pipColor = '#0a0a1a';
+  // Left column (top, middle, bottom)
+  ctx.beginPath(); ctx.arc(cx - pipOff, cy - pipOff, pipR, 0, Math.PI*2); ctx.fillStyle = pipColor; ctx.fill();
+  ctx.beginPath(); ctx.arc(cx - pipOff, cy,          pipR, 0, Math.PI*2); ctx.fillStyle = pipColor; ctx.fill();
+  ctx.beginPath(); ctx.arc(cx - pipOff, cy + pipOff, pipR, 0, Math.PI*2); ctx.fillStyle = pipColor; ctx.fill();
+  // Right column (top, middle, bottom)
+  ctx.beginPath(); ctx.arc(cx + pipOff, cy - pipOff, pipR, 0, Math.PI*2); ctx.fillStyle = pipColor; ctx.fill();
+  ctx.beginPath(); ctx.arc(cx + pipOff, cy,          pipR, 0, Math.PI*2); ctx.fillStyle = pipColor; ctx.fill();
+  ctx.beginPath(); ctx.arc(cx + pipOff, cy + pipOff, pipR, 0, Math.PI*2); ctx.fillStyle = pipColor; ctx.fill();
+
+  // === OUTER NODES — glowing dots ===
+  for (var i = 0; i < nodeCount; i++) {
+    var n = nodePositions[i];
+
+    // Node glow
+    var nGlow = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, nodeR * 3);
+    nGlow.addColorStop(0, 'rgba(0, 229, 255, 0.4)');
+    nGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = nGlow;
+    ctx.beginPath();
+    ctx.arc(n.x, n.y, nodeR * 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Node circle
+    ctx.beginPath();
+    ctx.arc(n.x, n.y, nodeR, 0, Math.PI * 2);
+    ctx.fillStyle = '#00e5ff';
+    ctx.fill();
+
+    // Node inner dot
+    ctx.beginPath();
+    ctx.arc(n.x, n.y, nodeR * 0.4, 0, Math.PI * 2);
+    ctx.fillStyle = '#0a0a1a';
+    ctx.fill();
+  }
+
+  // === OUTER RING — stylized roulette wheel markings ===
+  var rouletteR = s * 0.44;
+  var rouletteW = s * 0.04;
+  var slots = 36;
+
+  // Outer track ring
+  ctx.beginPath();
+  ctx.arc(cx, cy, rouletteR + rouletteW * 0.5, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(0, 229, 255, 0.12)';
+  ctx.lineWidth = 1 * u;
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(cx, cy, rouletteR - rouletteW * 0.5, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Roulette slot dividers + alternating red/black (teal/dark)
+  var slotAngle = (Math.PI * 2) / slots;
+  for (var i = 0; i < slots; i++) {
+    var a1 = i * slotAngle - Math.PI / 2;
+    var a2 = a1 + slotAngle;
+
+    // Alternating colors — roulette style: teal for odd, dark for even
+    // With a green "0" slot at position 0
+    var slotColor;
+    if (i % 2 === 1) {
+      slotColor = 'rgba(0, 229, 255, 0.3)'; // teal (red equivalent)
+    } else {
+      slotColor = 'rgba(0, 229, 255, 0.08)'; // dark (black equivalent)
+    }
+
+    ctx.beginPath();
+    ctx.arc(cx, cy, rouletteR + rouletteW * 0.5, a1, a2);
+    ctx.arc(cx, cy, rouletteR - rouletteW * 0.5, a2, a1, true);
+    ctx.closePath();
+    ctx.fillStyle = slotColor;
+    ctx.fill();
+
+    // Divider tick
+    ctx.beginPath();
+    ctx.moveTo(
+      cx + Math.cos(a1) * (rouletteR - rouletteW * 0.5),
+      cy + Math.sin(a1) * (rouletteR - rouletteW * 0.5)
+    );
+    ctx.lineTo(
+      cx + Math.cos(a1) * (rouletteR + rouletteW * 0.5),
+      cy + Math.sin(a1) * (rouletteR + rouletteW * 0.5)
+    );
+    ctx.strokeStyle = 'rgba(0, 229, 255, 0.2)';
+    ctx.lineWidth = 0.8 * u;
+    ctx.stroke();
+  }
+
+  // Ball marker — small bright dot on the green zero slot
+  var ballAngle = -Math.PI / 2;
+  var ballX = cx + Math.cos(ballAngle) * rouletteR;
+  var ballY = cy + Math.sin(ballAngle) * rouletteR;
+  ctx.beginPath();
+  ctx.arc(ballX, ballY, 3 * u, 0, Math.PI * 2);
+  ctx.fillStyle = '#ffffff';
+  ctx.fill();
+
+  // === Corner accent — subtle "0" text for zero edge ===
+  if (s >= 128) {
+    ctx.font = 'bold ' + Math.round(48 * u) + 'px monospace';
+    ctx.fillStyle = 'rgba(0, 229, 255, 0.08)';
+    ctx.textAlign = 'center';
+    ctx.fillText('0', s * 0.15, s * 0.88);
+  }
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+// Draw at all sizes
+['c512', 'c128', 'c64', 'c32'].forEach(function(id) {
+  drawIcon(document.getElementById(id));
+});
+</script>
+</body>
+</html>
