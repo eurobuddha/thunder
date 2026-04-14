@@ -334,6 +334,26 @@ function addToFundingTxn(txndata, addamount, tokenid, callback){
 		+"txndelete id:"+txid+";";
 
 	MDS.cmd(create, function(fundresp){
+		if(!fundresp || !fundresp[0] || !fundresp[0].status){
+			MDS.log("ERROR addToFundingTxn: txnimport failed. "
+				+ (fundresp && fundresp[0] ? JSON.stringify(fundresp[0].error) : "no response"));
+			MDS.cmd("txndelete id:"+txid);
+			if(callback){ callback(null); }
+			return;
+		}
+		if(!fundresp[1] || !fundresp[1].status){
+			MDS.log("ERROR addToFundingTxn: txnaddamount failed. Amount:"+addamount
+				+" Error:" + (fundresp[1] ? JSON.stringify(fundresp[1].error) : "no response"));
+			MDS.cmd("txndelete id:"+txid);
+			if(callback){ callback(null); }
+			return;
+		}
+		if(!fundresp[2] || !fundresp[2].response){
+			MDS.log("ERROR addToFundingTxn: txnexport failed");
+			MDS.cmd("txndelete id:"+txid);
+			if(callback){ callback(null); }
+			return;
+		}
 		callback(fundresp[2].response.data);
 	});
 }
@@ -397,6 +417,19 @@ function spendFundingTxn(sqlrow, callback){
 		+"txndelete id:"+txid+";";
 
 	MDS.cmd(create, function(fundresp){
+		if(!fundresp || !fundresp[0] || !fundresp[0].status){
+			MDS.log("ERROR spendFundingTxn: txncreate/txninput failed");
+			MDS.cmd("txndelete id:"+txid);
+			if(callback){ callback(null); }
+			return;
+		}
+		if(!fundresp[cmdnum] || !fundresp[cmdnum].response){
+			MDS.log("ERROR spendFundingTxn: txnexport failed at index "+cmdnum
+				+" chain length:"+fundresp.length);
+			MDS.cmd("txndelete id:"+txid);
+			if(callback){ callback(null); }
+			return;
+		}
 		callback(fundresp[cmdnum].response.data);
 	});
 }
@@ -839,6 +872,19 @@ function signTxn(txndata, publickey, callback){
 		+"txndelete id:"+txid+";";
 
 	MDS.cmd(create, function(fundresp){
+		if(!fundresp || !fundresp[0] || !fundresp[0].status){
+			MDS.log("ERROR signTxn: txnimport failed. Data length:"
+				+(txndata ? txndata.length : 0));
+			MDS.cmd("txndelete id:"+txid);
+			if(callback){ callback(null); }
+			return;
+		}
+		if(!fundresp[2] || !fundresp[2].response){
+			MDS.log("ERROR signTxn: txnexport failed after sign");
+			MDS.cmd("txndelete id:"+txid);
+			if(callback){ callback(null); }
+			return;
+		}
 		callback(fundresp[2].response.data);
 	});
 }

@@ -447,6 +447,12 @@ MDS.init(function(msg){
 									updateChannelAddresses(maxmsg.hashid, alldata, function(sqlrow){
 										addToFundingTxn(maxmsg.txndata.transactions.fundingtxn,
 											sqlrow.USER2AMOUNT, sqlrow.TOKENID, function(newfundingtxn){
+												if(!newfundingtxn){
+													insertLog(maxmsg.hashid, "CHANNEL_CREATE_ERROR",
+														"addToFundingTxn failed in CREATE_1. Insufficient funds or corrupt data.");
+													notify({type:"CHANNEL_UPDATE", hashid:maxmsg.hashid, state:"CHANNEL_CREATE_FAILED"});
+													return;
+												}
 												scriptsMMRTxn(newfundingtxn, function(mmrtxn){
 													if(!mmrtxn){
 														insertLog(maxmsg.hashid, "CHANNEL_CREATE_ERROR",
@@ -508,8 +514,17 @@ MDS.init(function(msg){
 			}else if(maxmsg.type == "SPEND_CHANNEL"){
 				// Cooperative close — co-sign and post
 				sqlSelectChannel(maxmsg.hashid, function(sql){
+					if(!sql || sql.count == 0){
+						MDS.log("SPEND_CHANNEL: channel not found "+maxmsg.hashid);
+						return;
+					}
 					var sqlrow = sql.rows[0];
 					signTxn(maxmsg.spendfundingtxn, sqlrow.USERPUBLICKEY, function(fulltxn){
+						if(!fulltxn){
+							MDS.log("SPEND_CHANNEL: signTxn failed for "+maxmsg.hashid);
+							insertLog(maxmsg.hashid, "CLOSE_ERROR", "Failed to co-sign close txn");
+							return;
+						}
 						postTxn(fulltxn, "true", function(postreq){
 							insertLog(maxmsg.hashid, "POST_CHANNEL_CLOSE_COOP",
 								"Cooperative close transaction posted");
@@ -521,6 +536,10 @@ MDS.init(function(msg){
 			}else if(maxmsg.type == "SEND_FUNDS"){
 				// Standard fund transfer — co-sign the new state
 				sqlSelectChannel(maxmsg.hashid, function(sql){
+					if(!sql || sql.count == 0){
+						MDS.log("SEND_FUNDS: channel not found "+maxmsg.hashid);
+						return;
+					}
 					var sqlrow = sql.rows[0];
 					var sendamount = getValidDecimalNumber(maxmsg.amount);
 					var newvalues = calculateNewValues(sqlrow, sendamount.toString(), sqlrow.USERNUM);
