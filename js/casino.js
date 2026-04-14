@@ -351,19 +351,19 @@ function validateBet(sqlrow, betamt, range, pickmask, numpicks, bettor){
 		return {valid: false, error: "Pick count mismatch: mask has "+countBits(mask)+" bits, expected "+numpicks};
 	}
 
-	// Check 3: Player must have enough balance to cover the bet
+	// Check 3: Player must have enough balance to cover TOTAL stake (bet × numpicks)
+	var totalStake = bet.mul(new Decimal(numpicks));
 	var playerbalance = (bettor == 1)
 		? new Decimal(sqlrow.USER1AMOUNT)
 		: new Decimal(sqlrow.USER2AMOUNT);
 
-	if(bet.greaterThan(playerbalance)){
-		return {valid: false, error: "Insufficient player balance. Have:"+playerbalance+" Need:"+bet};
+	if(totalStake.greaterThan(playerbalance)){
+		return {valid: false, error: "Insufficient player balance. Have:"+playerbalance+" Need:"+totalStake+" ("+bet+"×"+numpicks+")"};
 	}
 
-	// Check 4: House must have enough balance to cover maximum possible loss
-	// Multi-pick: house max loss = bet * (range/numpicks - 1)
-	var effPayout = new Decimal(range).div(new Decimal(numpicks));
-	var maxhouseLoss = bet.mul(effPayout.sub(1));
+	// Check 4: House must have enough to cover max possible loss
+	// If player wins: house pays betamt*range, gets back totalStake. Net = betamt*(range-numpicks)
+	var maxhouseLoss = bet.mul(new Decimal(range - numpicks));
 	var housebalance = (bettor == 1)
 		? new Decimal(sqlrow.USER2AMOUNT)
 		: new Decimal(sqlrow.USER1AMOUNT);
@@ -655,34 +655,34 @@ function calculateGameBalance(sqlrow, winner){
 	var pre2    = new Decimal(sqlrow.PREBETAMT2);
 	var bettor  = parseInt(sqlrow.BETTOR);
 
+	var totalStake = betamt.mul(numpicks);  // Per-pick bet × number of picks
+
 	if(winner === "house"){
-		// Player lost — pessimistic balance is already correct
-		// Deduction was: player loses betamt, house gains betamt
+		// Player lost all bets — pessimistic balance stands
 		if(bettor == 1){
 			return {
-				user1amount: pre1.sub(betamt).toString(),
-				user2amount: pre2.plus(betamt).toString()
+				user1amount: pre1.sub(totalStake).toString(),
+				user2amount: pre2.plus(totalStake).toString()
 			};
 		}else{
 			return {
-				user1amount: pre1.plus(betamt).toString(),
-				user2amount: pre2.sub(betamt).toString()
+				user1amount: pre1.plus(totalStake).toString(),
+				user2amount: pre2.sub(totalStake).toString()
 			};
 		}
 	}else{
-		// Player won — compute winning balance
-		// Multi-pick: winnings = betamt * (range / numpicks)
-		var winnings = betamt.mul(range).div(numpicks);
+		// Player won — winning bet pays full single-number odds
+		var winnings = betamt.mul(range);  // ba * rn (full payout on winning number)
 
 		if(bettor == 1){
 			return {
-				user1amount: pre1.plus(winnings).sub(betamt).toString(),
-				user2amount: pre2.sub(winnings).plus(betamt).toString()
+				user1amount: pre1.plus(winnings).sub(totalStake).toString(),
+				user2amount: pre2.sub(winnings).plus(totalStake).toString()
 			};
 		}else{
 			return {
-				user1amount: pre1.sub(winnings).plus(betamt).toString(),
-				user2amount: pre2.plus(winnings).sub(betamt).toString()
+				user1amount: pre1.sub(winnings).plus(totalStake).toString(),
+				user2amount: pre2.plus(winnings).sub(totalStake).toString()
 			};
 		}
 	}

@@ -376,17 +376,18 @@ function mastPlayerDispute(hashid, housesecret, playersecret, callback){
 		var pre2   = new Decimal(sqlrow.PREBETAMT2);
 
 		var numpicks = new Decimal(sqlrow.NUMPICKS || 1);
-		var winnings = betamt.mul(range).div(numpicks);  // Multi-pick: scaled payout
+		var winnings = betamt.mul(range);      // Full single-number odds on winning bet
+		var totalStake = betamt.mul(numpicks); // Total at risk (per-pick × numpicks)
 		var pay1, pay2;
 
 		if(bettor == 1){
 			// User1 is the winning player
-			pay1 = pre1.plus(winnings).sub(betamt);   // pre + (bet*range) - bet = pre + bet*(range-1)
-			pay2 = pre2.sub(winnings).plus(betamt);    // pre - (bet*range) + bet = pre - bet*(range-1)
+			pay1 = pre1.plus(winnings).sub(totalStake);   // pre + ba*rn - ba*np
+			pay2 = pre2.sub(winnings).plus(totalStake);
 		}else{
 			// User2 is the winning player
-			pay1 = pre1.sub(winnings).plus(betamt);
-			pay2 = pre2.plus(winnings).sub(betamt);
+			pay1 = pre1.sub(winnings).plus(totalStake);
+			pay2 = pre2.plus(winnings).sub(totalStake);
 		}
 
 		// Safety check: payouts must not be negative
