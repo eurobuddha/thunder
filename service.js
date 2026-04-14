@@ -736,7 +736,11 @@ MDS.init(function(msg){
 						"Hub requests house duty: "+game.name+" bet:"+maxmsg.betamt);
 
 					houseStartRound(maxmsg.hashid, maxmsg.gametype, function(data){
-						if(!data){ return; }
+						if(!data){
+							sendMaximaMessage(maximapubkey,
+								gameAbandonedMessage(maxmsg.hashid, "House secret generation failed"));
+							return;
+						}
 						MDS.sql("UPDATE channels SET housecommit='"+data.commit
 							+"' WHERE hashid='"+maxmsg.hashid+"'", function(){
 							sendMaximaMessage(maximapubkey,
@@ -811,16 +815,16 @@ MDS.init(function(msg){
 			}else if(maxmsg.type == "HOUSE_REVEAL"){
 				/* ---- House revealed secret to hub — forward to player as GAME_REVEAL ---- */
 				if(!isHubMode()){ return; }
-				var playerHashid2 = getPlayerByHouse(maxmsg.hashid);
-				if(!playerHashid2){ return; }
+				var pHashid = getPlayerByHouse(maxmsg.hashid);
+				if(!pHashid){ return; }
 
-				updateGameHouseRevealed(playerHashid2, maxmsg.housesecret, function(){
-					sqlSelectChannel(playerHashid2, function(psql){
+				updateGameHouseRevealed(pHashid, maxmsg.housesecret, function(){
+					sqlSelectChannel(pHashid, function(psql){
 						if(psql.count == 0){ return; }
 						var prow = psql.rows[0];
 						var playerMaximaid = (parseInt(prow.USERNUM)==1) ? prow.USER2MAXIMAID : prow.USER1MAXIMAID;
 						sendMaximaMessage(playerMaximaid,
-							gameRevealMessage(playerHashid2, maxmsg.housesecret));
+							gameRevealMessage(pHashid, maxmsg.housesecret));
 					});
 				});
 
