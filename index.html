@@ -1656,6 +1656,7 @@ var CURRENT_TAB      = 'casino';
 var CURRENT_CHANNEL  = null;
 var CURRENT_GAME     = 'flip';
 var CURRENT_PICKS    = [];  // Array of selected pick indices (multi-pick)
+var BET_MODE         = 'picks'; // 'picks' = per-number bet, 'group' = single bet on group
 var MAXIMA_CONTACTS  = [];
 var USER_BALANCE     = [];
 var GAME_WINS        = 0;
@@ -2218,22 +2219,21 @@ function exitGame(){
  * ========================================================================= */
 
 /* ---- Roulette group bet helpers ---- */
+function clearPicks(){
+	CURRENT_PICKS = [];
+	BET_MODE = 'picks';
+	document.querySelectorAll('.pick-btn').forEach(function(btn){
+		btn.classList.remove('selected');
+	});
+	SFX.chip_click();
+	updateOddsDisplay();
+	updatePlayButton();
+}
+
 function selectRouletteGroup(groupPicks){
-	var game = GAME_TYPES['roulette'];
-	// Toggle: if all group picks are already selected, deselect them
-	var allSelected = groupPicks.every(function(p){ return CURRENT_PICKS.indexOf(p) >= 0; });
-	if(allSelected){
-		groupPicks.forEach(function(p){
-			var idx = CURRENT_PICKS.indexOf(p);
-			if(idx >= 0) CURRENT_PICKS.splice(idx, 1);
-		});
-	} else {
-		groupPicks.forEach(function(p){
-			if(CURRENT_PICKS.indexOf(p) < 0 && CURRENT_PICKS.length < game.maxPicks){
-				CURRENT_PICKS.push(p);
-			}
-		});
-	}
+	// Group bet = single bet at casino odds. Replace all picks.
+	BET_MODE = 'group';
+	CURRENT_PICKS = groupPicks.slice(); // Replace, don't add
 	SFX.chip_click();
 	document.querySelectorAll('.pick-btn').forEach(function(btn){
 		var p = parseInt(btn.dataset.pick);
@@ -2286,6 +2286,11 @@ function buildRouletteTable(){
 	html += '<button class="pick-btn rt-group" onclick="selectRouletteGroup([18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35])">19-36</button>';
 	html += '</div>';
 
+	// Clear picks button
+	html += '<div style="margin-top:4px; text-align:center;">';
+	html += '<button class="btn btn-secondary btn-sm" onclick="clearPicks()" style="width:100%;">CLEAR PICKS</button>';
+	html += '</div>';
+
 	html += '</div>';
 	return html;
 }
@@ -2295,6 +2300,7 @@ function selectGameType(gametype){
 
 	CURRENT_GAME = gametype;
 	CURRENT_PICKS = [];
+	BET_MODE = 'picks';
 
 	document.querySelectorAll('.game-type-btn').forEach(function(btn){
 		btn.classList.toggle('active', btn.dataset.game === gametype);
@@ -2315,6 +2321,9 @@ function selectGameType(gametype){
 			html += '<button class="pick-btn" data-pick="' + i + '" onclick="selectPick(' + i + ')">' + label + '</button>';
 		}
 		html += '</div>';
+		if(game.maxPicks > 1){
+			html += '<div style="text-align:center; margin-top:4px;"><button class="btn btn-secondary btn-sm" onclick="clearPicks()">CLEAR</button></div>';
+		}
 	}
 	document.getElementById('pick-container').innerHTML = html;
 
@@ -2336,11 +2345,19 @@ function updateOddsDisplay(){
 		document.getElementById('odds-display').textContent = game.name + ' — ' + game.range + ' outcomes — select your number' + (game.maxPicks > 1 ? 's' : '');
 		return;
 	}
-	var odds = (game.range - 1) + ':1 each';
 	var chance = ((n / game.range) * 100).toFixed(1) + '%';
 	var betVal = parseFloat(document.getElementById('bet-amount').value) || 0;
-	var totalRisk = (betVal * n).toFixed(2);
-	document.getElementById('odds-display').textContent = n + ' of ' + game.range + ' — ' + odds + ' — ' + chance + ' chance — total stake: ' + totalRisk;
+	if(BET_MODE === 'group'){
+		// Group bet: single bet, pays (range/numpicks - 1):1
+		var groupOdds = (game.range / n - 1).toFixed(1) + ':1';
+		var totalRisk = betVal.toFixed(2);
+		document.getElementById('odds-display').textContent = n + ' numbers — ' + groupOdds + ' — ' + chance + ' — stake: ' + totalRisk;
+	} else {
+		// Per-pick: bet on each number individually
+		var odds = (game.range - 1) + ':1 each';
+		var totalRisk = (betVal * n).toFixed(2);
+		document.getElementById('odds-display').textContent = n + ' picks — ' + odds + ' — ' + chance + ' — total stake: ' + totalRisk;
+	}
 }
 
 function selectPick(pick){
@@ -2348,12 +2365,11 @@ function selectPick(pick){
 
 	var game = GAME_TYPES[CURRENT_GAME];
 	SFX.chip_click();
+	BET_MODE = 'picks'; // Individual tap = per-number betting
 
 	if(game.maxPicks === 1){
-		// Single-pick: replace
 		CURRENT_PICKS = [pick];
 	} else {
-		// Multi-pick: toggle
 		var idx = CURRENT_PICKS.indexOf(pick);
 		if(idx >= 0){
 			CURRENT_PICKS.splice(idx, 1);
@@ -2390,16 +2406,25 @@ function updatePlayButton(){
 function playRound(){
 	if(!CURRENT_CHANNEL || CURRENT_PICKS.length === 0 || GAME_PHASE !== 'IDLE' || GAME_BUSY) return;
 
-	var betamt = document.getElementById('bet-amount').value;
+	var userBetamt = document.getElementById('bet-amount').value;
 	var gametype = CURRENT_GAME;
 	var pickmask = picksToBitmask(CURRENT_PICKS);
 	var numpicks = CURRENT_PICKS.length;
 	var game = GAME_TYPES[gametype];
 
-	var bet = parseFloat(betamt);
+	var bet = parseFloat(userBetamt);
 	if(isNaN(bet) || bet <= 0){
 		thunderAlert('Enter a valid bet amount');
 		return;
+	}
+
+	// Group bet: user enters TOTAL stake. Convert to per-pick for protocol.
+	// Per-pick: user enters bet PER NUMBER. Send as-is.
+	var protocolBetamt;
+	if(BET_MODE === 'group' && numpicks > 1){
+		protocolBetamt = new Decimal(userBetamt).div(numpicks).toString();
+	} else {
+		protocolBetamt = userBetamt;
 	}
 
 	GAME_BUSY = true;
@@ -2413,23 +2438,24 @@ function playRound(){
 	setGamePhase('PLACING');
 
 	var pickLabels = CURRENT_PICKS.map(function(p){ return getPickLabel(gametype, p); }).join(', ');
-	addGameLog('info', 'Placing ' + game.name + ' bet: ' + betamt + ' on ' + pickLabels);
-	addNotice('info', 'Bet placed: ' + betamt + ' on ' + pickLabels);
+	var modeLabel = BET_MODE === 'group' ? ' (group)' : '';
+	addGameLog('info', 'Placing ' + game.name + ' bet: ' + userBetamt + modeLabel + ' on ' + pickLabels);
+	addNotice('info', 'Bet: ' + userBetamt + modeLabel + ' on ' + (numpicks > 3 ? numpicks + ' numbers' : pickLabels));
 
-	// Store pending game for auto-commit
+	// Store pending game — protocol uses per-pick betamt
 	MDS.keypair.set("casino_pending_" + CURRENT_CHANNEL, JSON.stringify({
 		gametype: gametype,
 		pick: pickmask,
 		numpicks: numpicks,
-		betamt: betamt
+		betamt: protocolBetamt
 	}));
 
-	// Send GAME_REQUEST to counterparty
+	// Send GAME_REQUEST — protocol betamt is per-pick
 	sqlSelectChannel(CURRENT_CHANNEL, function(sql){
 		var ch = sql.rows[0];
 		var othermax = (ch.USERNUM == '1') ? ch.USER2MAXIMAID : ch.USER1MAXIMAID;
 
-		var msg = gameRequestMessage(CURRENT_CHANNEL, gametype, pickmask, numpicks, betamt);
+		var msg = gameRequestMessage(CURRENT_CHANNEL, gametype, pickmask, numpicks, protocolBetamt);
 		sendMaximaMessage(othermax, msg, function(maxresp){
 			if(maxresp && maxresp.response && maxresp.response.delivered){
 				addGameLog('info', 'Request sent. Waiting for house...');
