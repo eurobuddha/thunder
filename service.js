@@ -178,9 +178,10 @@ MDS.init(function(msg){
 	 * ================================================================== */
 	}else if(msg.event == "NEWBLOCK"){
 
+		var block = +msg.data.txpow.header.block;
+
 		// TNZEC: Retry hub connection every 10 blocks if not yet connected
-		var bnk = +msg.data.txpow.header.block;
-		if(!isHubMode() && !TNZEC_HUB_CONNECTED && bnk % 10 == 0){
+		if(!isHubMode() && !TNZEC_HUB_CONNECTED && block % 10 == 0){
 			autoConnectToHub(function(connected){
 				if(connected) log("[TNZEC] Hub connected on NEWBLOCK retry");
 			});
@@ -194,7 +195,6 @@ MDS.init(function(msg){
 		});
 
 		// Only do the expensive ELTOO scan every 5 blocks
-		var block = +msg.data.txpow.header.block;
 		if(block % 5 != 0){ return; }
 
 		// Scan for ALL relevant coins on-chain
@@ -950,8 +950,14 @@ MDS.init(function(msg){
 										insertLog(maxmsg.hashid, "GAME_BET_SENT",
 											"Pessimistic balance signed and sent to player");
 
+										// TNZEC: Don't auto-reveal if routing — house reveals via HOUSE_REVEAL
+										if(isHubMode() && getRouteByPlayer(maxmsg.hashid)){
+											insertLog(maxmsg.hashid, "TNZEC_BET_SIGNED",
+												"Pessimistic signed — waiting for house HOUSE_REVEAL");
+											return;
+										}
+
 										// AUTO-REVEAL: House reveals immediately after signing
-										// No reason to wait — the bet is locked, we must reveal
 										revealGameSecret(maxmsg.hashid, function(revealed){
 											if(revealed){
 												insertLog(maxmsg.hashid, "GAME_AUTO_REVEAL",
@@ -1225,6 +1231,31 @@ MDS.init(function(msg){
 				/* ---- Game abandoned by counterparty ---- */
 				insertLog(maxmsg.hashid, "GAME_ABANDONED",
 					"Game abandoned by counterparty. Reason:"+maxmsg.reason);
+
+				// TNZEC: Forward abandonment to the other channel and clear route
+				if(isHubMode()){
+					var routeAbn = getRouteByPlayer(maxmsg.hashid);
+					if(routeAbn){
+						sendMaximaMessage(routeAbn.house_maximaid,
+							gameAbandonedMessage(routeAbn.house_hashid, maxmsg.reason));
+						updateGameCleared(routeAbn.house_hashid, function(){});
+						clearRoute(maxmsg.hashid);
+					}else{
+						var playerAbn = getPlayerByHouse(maxmsg.hashid);
+						if(playerAbn){
+							sqlSelectChannel(playerAbn, function(psql){
+								if(psql.count == 0){ return; }
+								var prow = psql.rows[0];
+								var pmax = (parseInt(prow.USERNUM)==1) ? prow.USER2MAXIMAID : prow.USER1MAXIMAID;
+								sendMaximaMessage(pmax,
+									gameAbandonedMessage(playerAbn, maxmsg.reason));
+								updateGameCleared(playerAbn, function(){});
+							});
+							clearRoute(playerAbn);
+						}
+					}
+				}
+
 				updateGameCleared(maxmsg.hashid, function(){
 					notify({type:"GAME_ABANDONED", hashid:maxmsg.hashid, reason:maxmsg.reason});
 				});
