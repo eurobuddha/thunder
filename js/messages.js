@@ -420,6 +420,66 @@ function gameAbandonedMessage(hashid, reason){
 
 
 /* =========================================================================
+ * TNZEC ROUTING MESSAGES
+ * ========================================================================= */
+
+/** Hub → House: incoming game, be the house */
+function houseRequestMessage(hashid, gametype, range, betamt){
+	var msg      = {};
+	msg.type     = "HOUSE_REQUEST";
+	msg.hashid   = hashid;
+	msg.gametype = gametype;
+	msg.range    = range;
+	msg.betamt   = betamt;
+	return msg;
+}
+
+/** House → Hub: house's commit */
+function houseOfferMessage(hashid, housecommit, gametype, range){
+	var msg          = {};
+	msg.type         = "HOUSE_OFFER";
+	msg.hashid       = hashid;
+	msg.housecommit  = housecommit;
+	msg.gametype     = gametype;
+	msg.range        = range;
+	return msg;
+}
+
+/** Hub → House: player's commit + pick + bet (forwarded) */
+function playerAcceptedMessage(hashid, playercommit, pick, betamt, gametype){
+	var msg           = {};
+	msg.type          = "PLAYER_ACCEPTED";
+	msg.hashid        = hashid;
+	msg.playercommit  = playercommit;
+	msg.pick          = pick;
+	msg.betamt        = betamt;
+	msg.gametype      = gametype;
+	return msg;
+}
+
+/** House → Hub: house's secret (hub forwards to player as GAME_REVEAL) */
+function houseRevealMessage(hashid, housesecret){
+	var msg          = {};
+	msg.type         = "HOUSE_REVEAL";
+	msg.hashid       = hashid;
+	msg.housesecret  = housesecret;
+	return msg;
+}
+
+/** Hub → All: network capacity broadcast */
+function poolStatusMessage(online, totalCapacity, maxFlip, maxDice, maxRoulette){
+	var msg             = {};
+	msg.type            = "POOL_STATUS";
+	msg.online          = online;
+	msg.totalCapacity   = totalCapacity;
+	msg.maxFlip         = maxFlip;
+	msg.maxDice         = maxDice;
+	msg.maxRoulette     = maxRoulette;
+	return msg;
+}
+
+
+/* =========================================================================
  * PROPS / WAGER MESSAGES
  * =========================================================================
  *
