@@ -43,47 +43,65 @@ var TNZEC_HUB_MAXADDRESS = "MAX#0x30819F300D06092A864886F70D010101050003818D0030
 var TNZEC_HUB_PUBKEY = "0x30819F300D06092A864886F70D010101050003818D003081890281810085022DD08A779087EAD001AA9772522A1E058037B9664B27514FE4E643B36DC2CFE3AECBECEFFD54566254E40B5A9012AB68E7109B20A62D6E01F7574C606478F279CE181E07F8D5841F9C66FFD0B5B3BE8E7B841B9FCF430607A18C47C1067EDF56127542B354F600A90915A79ED7EFED765A80DB7DD66CFF0DC6EB77ED7F690203010001";
 
 
+/** Tracks whether we've connected to the hub */
+var TNZEC_HUB_CONNECTED = false;
+
 /**
- * Auto-connect to the TNZEC hub on first open.
+ * Auto-connect to the TNZEC hub.
  *
- * 1. Check if hub's Maxima pubkey is already in our contacts
- * 2. If not, request hub's current contact address via maxextra getaddress
- * 3. Add the hub as a contact
- *
- * @param callback — Returns (connected: boolean, alreadyConnected: boolean)
+ * Called on init and retried on NEWBLOCK until successful.
+ * Resolves the hub's current contact address from its permanent
+ * Maxima address via the static MLS. No rush — MLS propagation
+ * can take a few minutes after node startup.
  */
 function autoConnectToHub(callback){
 
-	// Check if we already have the hub as a contact
+	if(TNZEC_HUB_CONNECTED){
+		if(callback){ callback(true, true); }
+		return;
+	}
+
+	// Step 1: Already in contacts?
 	MDS.cmd("maxcontacts action:search publickey:"+TNZEC_HUB_PUBKEY, function(searchres){
 
 		if(searchres.status && searchres.response && searchres.response.id){
-			// Already a contact
-			MDS.log("[TNZEC] Hub already in contacts (id:"+searchres.response.id+")");
+			MDS.log("[TNZEC] Hub in contacts (id:"+searchres.response.id+")");
+			TNZEC_HUB_CONNECTED = true;
 			if(callback){ callback(true, true); }
 			return;
 		}
 
-		// Not a contact — get hub's current contact address from their static MLS
-		MDS.log("[TNZEC] Hub not in contacts — requesting address via permanent maxaddress...");
+		// Step 2: Resolve via permanent address
+		MDS.log("[TNZEC] Resolving hub via permanent address...");
 		MDS.cmd("maxextra action:getaddress maxaddress:"+TNZEC_HUB_MAXADDRESS, function(addrres){
 
 			if(!addrres.status || !addrres.response){
-				MDS.log("[TNZEC] Failed to get hub contact address: "+JSON.stringify(addrres));
+				MDS.log("[TNZEC] MLS lookup failed — will retry next block");
 				if(callback){ callback(false, false); }
 				return;
 			}
 
-			var hubContact = addrres.response;
-			MDS.log("[TNZEC] Got hub contact address: "+hubContact.substring(0,40)+"..");
+			// Response is the contact address (string or object)
+			var hubContact;
+			if(typeof addrres.response === "string"){
+				hubContact = addrres.response;
+			}else if(addrres.response.contact){
+				hubContact = addrres.response.contact;
+			}else{
+				MDS.log("[TNZEC] Unexpected response format — will retry");
+				if(callback){ callback(false, false); }
+				return;
+			}
 
-			// Add the hub as a contact
+			// Step 3: Add as contact
+			MDS.log("[TNZEC] Got hub address — adding contact...");
 			MDS.cmd("maxcontacts action:add contact:"+hubContact, function(addres){
 				if(addres.status){
 					MDS.log("[TNZEC] Hub added as Maxima contact!");
+					TNZEC_HUB_CONNECTED = true;
 					if(callback){ callback(true, false); }
 				}else{
-					MDS.log("[TNZEC] Failed to add hub as contact: "+JSON.stringify(addres));
+					MDS.log("[TNZEC] Contact add failed — will retry next block");
 					if(callback){ callback(false, false); }
 				}
 			});

@@ -140,6 +140,13 @@ MDS.init(function(msg){
 	 * ================================================================== */
 	}else if(msg.event == "NEWBLOCK"){
 
+		// TNZEC: Retry hub connection if not yet connected (spoke mode)
+		if(!isHubMode() && !TNZEC_HUB_CONNECTED){
+			autoConnectToHub(function(connected){
+				if(connected) log("[TNZEC] Hub connected on NEWBLOCK retry");
+			});
+		}
+
 		// Check for channels that are ready to be marked as closed
 		updateClosedChannels(function(found){
 			if(found){
