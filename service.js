@@ -139,15 +139,16 @@ MDS.init(function(msg){
 		// Create database tables (safe to call repeatedly — IF NOT EXISTS)
 		createDB(function(){
 			initAuthDetails(function(){
-				// TNZEC: Check hub mode via file config or keypair
+				// TNZEC: Detect hub mode — check Maxima name, file config, or keypair
+				var nameHub = (AUTH_MAXIMA_NAME === "TNZEC-Hub");
 				MDS.file.load("tnzec_hub.conf", function(fileres){
 					var fileHub = (fileres.status && fileres.response && fileres.response.trim() === "hub");
 					MDS.keypair.get("tnzec_mode", function(moderes){
 						var kpHub = (moderes.status && moderes.value === "hub");
-						if(fileHub || kpHub){
+						if(nameHub || fileHub || kpHub){
 							enableHubMode();
 							loadActiveRoutes(function(){
-								log("[TNZEC] Hub initialized");
+								log("[TNZEC] Hub initialized (name:"+nameHub+" file:"+fileHub+" kp:"+kpHub+")");
 							});
 						}else{
 							autoConnectToHub(function(connected, already){
