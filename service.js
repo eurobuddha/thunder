@@ -152,7 +152,17 @@ MDS.init(function(msg){
 								log("[TNZEC] Thunder Network Zero Edge Casino — Hub initialized");
 							});
 						}else{
-							log("Thunder Casino service.js initialized");
+							// Spoke mode: auto-connect to the TNZEC hub
+							autoConnectToHub(function(connected, alreadyConnected){
+								if(connected && !alreadyConnected){
+									log("[TNZEC] Auto-connected to hub!");
+								}else if(connected){
+									log("[TNZEC] Hub already in contacts");
+								}else{
+									log("[TNZEC] Could not connect to hub — manual contact add may be needed");
+								}
+							});
+							log("[TNZEC] Thunder Network Zero Edge Casino — Spoke initialized");
 						}
 					});
 				});

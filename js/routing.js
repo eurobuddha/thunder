@@ -30,6 +30,69 @@
  * ========================================================================= */
 
 /**
+ * TNZEC Hub permanent Maxima address.
+ * Format: MAX#<pubkey>#<static_mls>
+ * Players use this to auto-connect on first open.
+ * The hub must have this pubkey registered as permanent via maxextra.
+ */
+var TNZEC_HUB_MAXADDRESS = "MAX#0x30819F300D06092A864886F70D010101050003818D00308189028181009F58BB2D4210FAFFAA8D58AF4BB798453E0EFCA5D831AFE277A8F3D6261BAB6084036AA557C00FD50E878F03EA3C67A11FD43555E65ED11B2397981501AF5A3DBEFAA91AF70F595D64DE3298A12352C1D94773081F6D89E833FEBC435E3778B6D7B25AB92062BB8944B201C4B4B24811CBA34861D676D51BD2CB828F60C024230203010001#MxG18HGG6FJ038614Y8CW46US6G20810K0070CD00Z83282G60G14NM029U1NK7TJKZ5FVKG39HP5P1TEPPNPECNHUU0TTFSS4BZUM0RTKV80GE21T86AZWCBE6HT9PSM9GDQ3WZSF2G1UFVTWJHGM1VYSNUBYDGUP0CJ583VR0D11DZD6TKF2VVCBA678MDJYWW766CZ7N6PZNMG50BJZ3KRF9S5NQA1A0Z5Y6QQ44D97YDGUUBSN1PCPZVV4UVS10608004VUCYKU@31.125.188.214:9001";
+
+/**
+ * Hub's Maxima public key (extracted from the permanent address).
+ */
+var TNZEC_HUB_PUBKEY = "0x30819F300D06092A864886F70D010101050003818D00308189028181009F58BB2D4210FAFFAA8D58AF4BB798453E0EFCA5D831AFE277A8F3D6261BAB6084036AA557C00FD50E878F03EA3C67A11FD43555E65ED11B2397981501AF5A3DBEFAA91AF70F595D64DE3298A12352C1D94773081F6D89E833FEBC435E3778B6D7B25AB92062BB8944B201C4B4B24811CBA34861D676D51BD2CB828F60C024230203010001";
+
+
+/**
+ * Auto-connect to the TNZEC hub on first open.
+ *
+ * 1. Check if hub's Maxima pubkey is already in our contacts
+ * 2. If not, request hub's current contact address via maxextra getaddress
+ * 3. Add the hub as a contact
+ *
+ * @param callback — Returns (connected: boolean, alreadyConnected: boolean)
+ */
+function autoConnectToHub(callback){
+
+	// Check if we already have the hub as a contact
+	MDS.cmd("maxcontacts action:search publickey:"+TNZEC_HUB_PUBKEY, function(searchres){
+
+		if(searchres.status && searchres.response && searchres.response.id){
+			// Already a contact
+			MDS.log("[TNZEC] Hub already in contacts (id:"+searchres.response.id+")");
+			if(callback){ callback(true, true); }
+			return;
+		}
+
+		// Not a contact — get hub's current contact address from their static MLS
+		MDS.log("[TNZEC] Hub not in contacts — requesting address via permanent maxaddress...");
+		MDS.cmd("maxextra action:getaddress maxaddress:"+TNZEC_HUB_MAXADDRESS, function(addrres){
+
+			if(!addrres.status || !addrres.response){
+				MDS.log("[TNZEC] Failed to get hub contact address: "+JSON.stringify(addrres));
+				if(callback){ callback(false, false); }
+				return;
+			}
+
+			var hubContact = addrres.response;
+			MDS.log("[TNZEC] Got hub contact address: "+hubContact.substring(0,40)+"..");
+
+			// Add the hub as a contact
+			MDS.cmd("maxcontacts action:add contact:"+hubContact, function(addres){
+				if(addres.status){
+					MDS.log("[TNZEC] Hub added as Maxima contact!");
+					if(callback){ callback(true, false); }
+				}else{
+					MDS.log("[TNZEC] Failed to add hub as contact: "+JSON.stringify(addres));
+					if(callback){ callback(false, false); }
+				}
+			});
+		});
+	});
+}
+
+
+/**
  * Hub mode flag — set during init based on config.
  * When true, GAME_REQUEST triggers routing instead of direct house play.
  * When false (spoke mode), everything works as the current 2-party game.
