@@ -827,18 +827,20 @@ MDS.init(function(msg){
 					signTxn(maxmsg.settletxn, sqlrow.USERPUBLICKEY, function(cosignedsettletxn){
 						signTxn(maxmsg.updatetxn, sqlrow.USERPUBLICKEY, function(cosignedupdatetxn){
 
-							// Calculate pessimistic amounts
+							// Calculate pessimistic amounts (total stake = betamt × numpicks)
 							var betamt = new Decimal(sqlrow.BETAMOUNT);
+							var numpicks = new Decimal(sqlrow.NUMPICKS || 1);
+							var totalStake = betamt.mul(numpicks);
 							var bettor = parseInt(sqlrow.BETTOR);
 							var u1 = new Decimal(sqlrow.PREBETAMT1);
 							var u2 = new Decimal(sqlrow.PREBETAMT2);
 							var newu1, newu2;
 							if(bettor == 1){
-								newu1 = u1.sub(betamt).toString();
-								newu2 = u2.plus(betamt).toString();
+								newu1 = u1.sub(totalStake).toString();
+								newu2 = u2.plus(totalStake).toString();
 							}else{
-								newu1 = u1.plus(betamt).toString();
-								newu2 = u2.sub(betamt).toString();
+								newu1 = u1.plus(totalStake).toString();
+								newu2 = u2.sub(totalStake).toString();
 							}
 
 							updateNewSequenceTxn(maxmsg.hashid, maxmsg.sequence,

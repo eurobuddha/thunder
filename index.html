@@ -2447,7 +2447,7 @@ function playRound(){
 	// Per-pick: user enters bet PER NUMBER. Send as-is.
 	var protocolBetamt;
 	if(BET_MODE === 'group' && numpicks > 1){
-		protocolBetamt = new Decimal(userBetamt).div(numpicks).toString();
+		protocolBetamt = new Decimal(userBetamt).div(numpicks).toDecimalPlaces(8).toString();
 	} else {
 		protocolBetamt = userBetamt;
 	}
