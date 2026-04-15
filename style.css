@@ -59,13 +59,15 @@ body::before {
    ========================================================================== */
 
 .app-header {
-	height: 48px;
 	min-height: 48px;
 	display: flex;
 	align-items: center;
 	padding: 0 16px;
+	padding-top: env(safe-area-inset-top, 0px);
 	background: linear-gradient(90deg, rgba(13,20,37,0.95), rgba(17,26,50,0.95));
 	border-bottom: 1px solid #1a2140;
+	overflow: hidden;
+	flex-shrink: 0;
 }
 
 .header-logo {
@@ -94,8 +96,10 @@ body::before {
 	font-size: 10px;
 	color: #8892b0;
 	margin-right: auto;
+	overflow: hidden;
+	min-width: 0;
 }
-.header-info span { white-space: nowrap; }
+.header-info span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .header-info .info-value { color: #ffd700; }
 
 .tab-nav {

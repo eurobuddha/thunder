@@ -663,7 +663,7 @@
 				<div class="bet-area">
 					<div>
 						<div class="bet-label">BET AMOUNT</div>
-						<input id="bet-amount" type="number" class="bet-input" placeholder="0" value="1" min="0.001" step="0.1">
+						<input id="bet-amount" type="number" class="bet-input" placeholder="0" value="1" min="1" step="1">
 					</div>
 				</div>
 
@@ -1567,7 +1567,10 @@ function setGamePhase(phase, data){
 
 			var betval = parseFloat(PHASE_BETAMT || document.getElementById('bet-amount').value);
 			var game = GAME_TYPES[gametype];
-			var payout = betval * (game.payout - 1);
+			var np = (PENDING_GAME_RESULT_DATA && PENDING_GAME_RESULT_DATA.numpicks)
+				? parseInt(PENDING_GAME_RESULT_DATA.numpicks) : (CURRENT_PICKS.length || 1);
+			var ep = game.range / np;  // effective payout = range/numpicks
+			var payout = betval * (ep - 1);
 			labelEl.textContent = 'YOU WIN!';
 			labelEl.className = 'result-label win';
 			ANIM.floatAmount('+' + payout.toFixed(2), true);
@@ -1663,6 +1666,23 @@ function enableGameControls(enabled){
 
 
 /* =========================================================================
+ * UTILITIES
+ * ========================================================================= */
+
+/** Format a balance string to max 3 decimal places, strip trailing zeros */
+function fmtBal(val){
+	if(val === undefined || val === null || val === '') return '0';
+	var n = parseFloat(val);
+	if(isNaN(n)) return '0';
+	// If it's a whole number, show no decimals
+	if(n === Math.floor(n)) return Math.floor(n).toString();
+	// Otherwise max 3dp, strip trailing zeros
+	var s = n.toFixed(3);
+	s = s.replace(/0+$/, '').replace(/\.$/, '');
+	return s;
+}
+
+/* =========================================================================
  * APPLICATION STATE
  * ========================================================================= */
 
@@ -1720,7 +1740,7 @@ function refreshHeaderInfo(){
 		if(bal.response){
 			for(var i=0; i<bal.response.length; i++){
 				if(bal.response[i].tokenid === '0x00'){
-					document.getElementById('header-balance').textContent = bal.response[i].confirmed;
+					document.getElementById('header-balance').textContent = fmtBal(bal.response[i].sendable);
 					break;
 				}
 			}
@@ -1766,10 +1786,10 @@ function loadCasinoChannels(){
 				html += '<div class="channel-row card-active">'
 					+'<div style="flex:1;">'
 					+'<div class="channel-name">' + name + '</div>'
-					+'<div class="channel-total">' + (total ? 'Total: ' + total : '') + '</div>'
+					+'<div class="channel-total">' + (total ? 'Total: ' + fmtBal(total) : '') + '</div>'
 					+'</div>'
 					+'<div style="text-align:right; margin-right:16px;">'
-					+'<div class="channel-balance">' + (myamt || '0') + '</div>'
+					+'<div class="channel-balance">' + fmtBal(myamt) + '</div>'
 					+'<div class="channel-state state-open">OPEN</div>'
 					+'</div>'
 					+'<div class="channel-actions">'
@@ -1896,13 +1916,13 @@ function buildChannelRow(ch){
 	// Balance column — show for channels that have amounts
 	if(canPlay || state === 'STATE_CHANNEL_START_CLOSE' || state === 'STATE_CHANNEL_CLOSED'){
 		html += '<div style="text-align:right; margin:0 12px;">'
-			+'<div class="channel-balance">' + (myamt || '0') + '</div>'
-			+'<div class="channel-total">' + (total ? 'of ' + total : '') + '</div>'
+			+'<div class="channel-balance">' + fmtBal(myamt) + '</div>'
+			+'<div class="channel-total">' + (total ? 'of ' + fmtBal(total) : '') + '</div>'
 			+'</div>';
 	} else if(total && total !== '0'){
 		html += '<div style="text-align:right; margin:0 12px;">'
-			+'<div class="channel-balance" style="font-size:14px;">' + (myamt || '0') + ' / ' + (theiramt || '0') + '</div>'
-			+'<div class="channel-total">total ' + total + '</div>'
+			+'<div class="channel-balance" style="font-size:14px;">' + fmtBal(myamt) + ' / ' + fmtBal(theiramt) + '</div>'
+			+'<div class="channel-total">total ' + fmtBal(total) + '</div>'
 			+'</div>';
 	}
 
@@ -2214,8 +2234,8 @@ function enterGame(hashid){
 			? decodeStringFromDB(ch.USER2NAME || 'Contact')
 			: decodeStringFromDB(ch.USER1NAME || 'Contact');
 
-		document.getElementById('game-my-balance').textContent = myamt;
-		document.getElementById('game-their-balance').textContent = theiramt;
+		document.getElementById('game-my-balance').textContent = fmtBal(myamt);
+		document.getElementById('game-their-balance').textContent = fmtBal(theiramt);
 		document.getElementById('game-channel-name').textContent = name;
 
 		updateStats();
@@ -2433,11 +2453,12 @@ function playRound(){
 	var numpicks = CURRENT_PICKS.length;
 	var game = GAME_TYPES[gametype];
 
-	var bet = parseFloat(userBetamt);
+	var bet = Math.floor(parseFloat(userBetamt));
 	if(isNaN(bet) || bet <= 0){
 		thunderAlert('Enter a valid bet amount');
 		return;
 	}
+	userBetamt = bet.toString();  // Force integer — no decimals in bet amounts
 
 	// Individual picks: each pick is its own bet. Total = bet × numpicks.
 	// Group bets: bet IS the total. No multiplication.
@@ -2554,8 +2575,8 @@ function onGameResult(data){
 				var ch = sql.rows[0];
 				var myamt = (ch.USERNUM === '1') ? ch.USER1AMOUNT : ch.USER2AMOUNT;
 				var theiramt = (ch.USERNUM === '1') ? ch.USER2AMOUNT : ch.USER1AMOUNT;
-				document.getElementById('game-my-balance').textContent = myamt;
-				document.getElementById('game-their-balance').textContent = theiramt;
+				document.getElementById('game-my-balance').textContent = fmtBal(myamt);
+				document.getElementById('game-their-balance').textContent = fmtBal(theiramt);
 			}
 		});
 	} else if(CURRENT_CHANNEL){
@@ -2564,8 +2585,8 @@ function onGameResult(data){
 				var ch = sql.rows[0];
 				var myamt = (ch.USERNUM === '1') ? ch.USER1AMOUNT : ch.USER2AMOUNT;
 				var theiramt = (ch.USERNUM === '1') ? ch.USER2AMOUNT : ch.USER1AMOUNT;
-				document.getElementById('game-my-balance').textContent = myamt;
-				document.getElementById('game-their-balance').textContent = theiramt;
+				document.getElementById('game-my-balance').textContent = fmtBal(myamt);
+				document.getElementById('game-their-balance').textContent = fmtBal(theiramt);
 			}
 		});
 	}

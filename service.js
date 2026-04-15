@@ -67,6 +67,11 @@ function notify(data){
  */
 function settle(hashid, callback){
 	sqlSelectChannel(hashid, function(sql){
+		if(!sql || sql.count === 0 || !sql.rows[0]){
+			MDS.log("BURN GUARD: settle() — channel not found for "+hashid);
+			if(callback){ callback(); }
+			return;
+		}
 		postTxn(sql.rows[0].SETTLETXN, true, function(postresp){
 			if(callback){ callback(); }
 		});
@@ -78,6 +83,11 @@ function settle(hashid, callback){
  */
 function update(hashid, callback){
 	sqlSelectChannel(hashid, function(sql){
+		if(!sql || sql.count === 0 || !sql.rows[0]){
+			MDS.log("BURN GUARD: update() — channel not found for "+hashid);
+			if(callback){ callback(); }
+			return;
+		}
 		postTxn(sql.rows[0].UPDATETXN, true, function(postresp){
 			if(callback){ callback(); }
 		});
@@ -770,6 +780,16 @@ MDS.init(function(msg){
 						sqlrow.HOUSECOMMIT, maxmsg.gametype, maxmsg.pick, numpicks, maxmsg.betamt, bettor,
 						function(settletxn, updatetxn){
 
+							// BURN GUARD: signGameBet can return null if txn creation failed
+							if(!settletxn || !updatetxn){
+								MDS.log("BURN GUARD: signGameBet returned null — aborting GAME_ACCEPT");
+								insertLog(maxmsg.hashid, "GAME_BET_BLOCKED", "signGameBet failed — txn creation error");
+								sendMaximaMessage(maximapubkey,
+									gameAbandonedMessage(maxmsg.hashid, "Transaction creation failed"));
+								notify({type:"GAME_ABANDONED", hashid:maxmsg.hashid, reason:"Transaction creation failed"});
+								return;
+							}
+
 							// FIX: signGameBet built txns at SEQUENCE+1 but didn't update DB.
 							// Read current sequence, compute the new one, and store the bet-phase
 							// txns in the DB so unilateral close during bet phase works correctly.
@@ -825,7 +845,17 @@ MDS.init(function(msg){
 					var sqlrow = sql.rows[0];
 
 					signTxn(maxmsg.settletxn, sqlrow.USERPUBLICKEY, function(cosignedsettletxn){
+						if(!cosignedsettletxn){
+							MDS.log("BURN GUARD: signTxn failed for settle in GAME_BET_SIGNED");
+							insertLog(maxmsg.hashid, "SIGN_FAILED", "Failed to co-sign settlement txn");
+							return;
+						}
 						signTxn(maxmsg.updatetxn, sqlrow.USERPUBLICKEY, function(cosignedupdatetxn){
+							if(!cosignedupdatetxn){
+								MDS.log("BURN GUARD: signTxn failed for update in GAME_BET_SIGNED");
+								insertLog(maxmsg.hashid, "SIGN_FAILED", "Failed to co-sign update txn");
+								return;
+							}
 
 							// Calculate pessimistic amounts — betamt IS the total stake
 							var betamt = new Decimal(sqlrow.BETAMOUNT);
@@ -963,6 +993,11 @@ MDS.init(function(msg){
 										newbalance.user2amount, sqlrow.USER2ADDRESS,
 										sqlrow.TOKENID, null, // null gamestate = phase 0 (resolved)
 										function(settletxn){
+											if(!settletxn){
+												MDS.log("BURN GUARD: createSettlementTxn failed in GAME_RESULT");
+												insertLog(maxmsg.hashid, "TXN_FAILED", "Settlement creation failed in GAME_RESULT");
+												return;
+											}
 
 											createUpdateTxn(
 												newsequence, sqlrow.ELTOOADDRESS, sqlrow.TOTALAMOUNT,

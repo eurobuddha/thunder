@@ -595,6 +595,12 @@ function resolveGameRound(hashid, housesecret, callback){
 						newbalance.user2amount, sqlrow.USER2ADDRESS,
 						sqlrow.TOKENID, null, // null gamestate = phase 0 (resolved)
 						function(settletxn){
+							if(!settletxn){
+								MDS.log("BURN GUARD: createSettlementTxn failed in resolveGameRound");
+								insertLog(hashid, "TXN_FAILED", "Settlement creation failed in resolveGameRound");
+								if(callback){ callback(null); }
+								return;
+							}
 
 							createUpdateTxn(
 								newsequence, sqlrow.ELTOOADDRESS, sqlrow.TOTALAMOUNT,
@@ -654,11 +660,28 @@ function resolveGameRound(hashid, housesecret, callback){
 function completeGameRound(hashid, sequence, settletxn, updatetxn, winner, newbal1, newbal2, callback){
 
 	sqlSelectChannel(hashid, function(sql){
+		if(!sql || sql.count === 0 || !sql.rows[0]){
+			MDS.log("BURN GUARD: completeGameRound — channel not found for "+hashid);
+			if(callback){ callback(null); }
+			return;
+		}
 		var sqlrow = sql.rows[0];
 
 		// Co-sign the resolved balance
 		signTxn(settletxn, sqlrow.USERPUBLICKEY, function(cosignedsettletxn){
+			if(!cosignedsettletxn){
+				MDS.log("BURN GUARD: signTxn failed for settle in completeGameRound");
+				insertLog(hashid, "SIGN_FAILED", "Failed to co-sign settlement txn in completeGameRound");
+				if(callback){ callback(null); }
+				return;
+			}
 			signTxn(updatetxn, sqlrow.USERPUBLICKEY, function(cosignedupdatetxn){
+				if(!cosignedupdatetxn){
+					MDS.log("BURN GUARD: signTxn failed for update in completeGameRound");
+					insertLog(hashid, "SIGN_FAILED", "Failed to co-sign update txn in completeGameRound");
+					if(callback){ callback(null); }
+					return;
+				}
 
 				// Store the new signed state
 				updateNewSequenceTxn(hashid, sequence, newbal1, newbal2,

@@ -615,6 +615,12 @@ function createSettlementTxn(hashid, sequence, eltooaddress, eltooamount,
 		+"txndelete id:"+txid+";";
 
 	MDS.cmd(create, function(fundresp){
+		if(!fundresp || !fundresp[cmdnum] || !fundresp[cmdnum].response || !fundresp[cmdnum].response.data){
+			MDS.log("ERROR createSettlementTxn: transaction build failed at index "+cmdnum);
+			MDS.cmd("txndelete id:"+txid);
+			if(callback){ callback(null); }
+			return;
+		}
 		callback(fundresp[cmdnum].response.data);
 	});
 }
@@ -753,6 +759,11 @@ function newSettleUpdateTxn(details, callback){
 			newvalues.useramount2.toString(), sqlrow.USER2ADDRESS,
 			sqlrow.TOKENID, null, // null gamestate = phase 0
 			function(settletxn){
+				if(!settletxn){
+					MDS.log("ERROR: createSettlementTxn failed in cooperativeClose");
+					if(callback){ callback(null, null); }
+					return;
+				}
 
 				// Create a matching update at the same sequence
 				createUpdateTxn(
@@ -849,6 +860,11 @@ function newGameBetTxn(details, callback){
 			user2amt.toString(), sqlrow.USER2ADDRESS,
 			sqlrow.TOKENID, gamestate,
 			function(settletxn){
+				if(!settletxn){
+					MDS.log("BURN GUARD: createSettlementTxn failed in newGameBetTxn");
+					if(callback){ callback(null, null); }
+					return;
+				}
 
 				// Create matching update with the same game state
 				createUpdateTxn(
@@ -1121,6 +1137,11 @@ function createDefaultTransactions(sqlrow, fundingaddress, eltooaddress, createf
 					sqlrow.USER1AMOUNT, sqlrow.USER1ADDRESS,
 					sqlrow.USER2AMOUNT, sqlrow.USER2ADDRESS,
 					sqlrow.TOKENID, null, function(settletxn){
+					if(!settletxn){
+						MDS.log("ERROR: createSettlementTxn failed in channel creation (user1)");
+						if(callback){ callback(null); }
+						return;
+					}
 
 					var txndata = {};
 					txndata.fundingtxn = fundingtxn;
@@ -1137,6 +1158,11 @@ function createDefaultTransactions(sqlrow, fundingaddress, eltooaddress, createf
 				sqlrow.USER1AMOUNT, sqlrow.USER1ADDRESS,
 				sqlrow.USER2AMOUNT, sqlrow.USER2ADDRESS,
 				sqlrow.TOKENID, null, function(settletxn){
+				if(!settletxn){
+					MDS.log("ERROR: createSettlementTxn failed in channel creation (user2)");
+					if(callback){ callback(null); }
+					return;
+				}
 
 				var txndata = {};
 				txndata.triggertxn = triggertxn;

@@ -346,6 +346,10 @@ function validateBet(sqlrow, betamt, range, pickmask, numpicks, bettor){
 	if(mask <= 0){
 		return {valid: false, error: "No numbers selected"};
 	}
+	// Verify bitmask doesn't have bits set beyond valid range
+	if(mask >= Math.pow(2, range)){
+		return {valid: false, error: "Bitmask exceeds valid range (bits outside 0-"+(range-1)+")"};
+	}
 	// Verify numpicks matches actual bits set
 	if(countBits(mask) !== numpicks){
 		return {valid: false, error: "Pick count mismatch: mask has "+countBits(mask)+" bits, expected "+numpicks};
