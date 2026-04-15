@@ -449,7 +449,9 @@ MDS.init(function(msg){
 									insertLog(maxmsg.hashid, "TNZEC_AUTO_ACCEPT", "Hub auto-accepting channel (token)");
 									updateChannelState(maxmsg.hashid, "STATE_REQUEST_ACCEPTED", function(){
 										updateMyPublicKey(maxmsg.hashid, AUTH_MINIMA_PUBLICKEY, function(){
-											acceptStartChannel(maxmsg.user.maximaid, maxmsg.hashid, function(accepted){});
+											updateChannelUser2(maxmsg.hashid, getUserDetails(), function(){
+												acceptStartChannel(maxmsg.user.maximaid, maxmsg.hashid, function(accepted){});
+											});
 										});
 									});
 								}
@@ -464,13 +466,16 @@ MDS.init(function(msg){
 								MDS.file.save("tnzec_debug_"+Date.now()+".log", new Date().toISOString()+" AUTO_ACCEPT hashid="+maxmsg.hashid+"\n", function(){});
 								insertLog(maxmsg.hashid, "TNZEC_AUTO_ACCEPT", "Hub auto-accepting channel from "+maxmsg.user.name);
 
-								// Update hub's own state FIRST — CHANNEL_CREATE_1 handler checks for this
+								// Update hub's own state + user2 details (hub IS user2)
 								updateChannelState(maxmsg.hashid, "STATE_REQUEST_ACCEPTED", function(){
-									// Set our public key on the channel
 									updateMyPublicKey(maxmsg.hashid, AUTH_MINIMA_PUBLICKEY, function(){
-										// Now send acceptance to the phone
-										acceptStartChannel(maxmsg.user.maximaid, maxmsg.hashid, function(accepted){
-											MDS.file.save("tnzec_debug_"+Date.now()+".log", new Date().toISOString()+" acceptStartChannel result="+accepted+"\n", function(){});
+										// CRITICAL: Set user2 details on hub's own DB
+										// Without this, USER2PUBLICKEY is empty and createDefaultAddresses hangs
+										var hubUser = getUserDetails();
+										updateChannelUser2(maxmsg.hashid, hubUser, function(){
+											acceptStartChannel(maxmsg.user.maximaid, maxmsg.hashid, function(accepted){
+												MDS.file.save("tnzec_debug_"+Date.now()+".log", new Date().toISOString()+" acceptStartChannel result="+accepted+"\n", function(){});
+											});
 										});
 									});
 								});
