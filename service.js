@@ -108,6 +108,14 @@ MDS.init(function(msg){
 	 * ================================================================== */
 	if(msg.event == "inited"){
 
+		// Check permission — Thunder Casino MUST have write access
+		MDS.cmd("checkmode", function(moderesp){
+			if(moderesp && moderesp.response && moderesp.response.mode === "READ"){
+				MDS.log("WARNING: Thunder Casino is in READ-ONLY mode! Transactions will go to pending. Grant WRITE permission in MiniHub.");
+				notify({type:"PERMISSION_ERROR", message:"App is in READ-ONLY mode. Grant WRITE permission in MiniHub or transactions will fail."});
+			}
+		});
+
 		// Create database tables (safe to call repeatedly — IF NOT EXISTS)
 		createDB(function(){
 			createPropsTable(function(){
