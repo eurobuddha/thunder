@@ -2542,6 +2542,7 @@ function selectRole(role){
 		   !document.getElementById('role-select-panel').classList.contains('hidden')){
 			document.getElementById('role-status').textContent = 'No response — playing without roles.';
 			CURRENT_ROLE = 'PLAYER';
+			MDS.sql("UPDATE channels SET myrole='PLAYER' WHERE hashid='"+CURRENT_CHANNEL+"'");
 			updateRoleBadge();
 			setTimeout(function(){
 				document.getElementById('role-select-panel').classList.add('hidden');

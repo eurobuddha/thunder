@@ -1198,9 +1198,12 @@ MDS.init(function(msg){
 			/* ---- Chat ---- */
 
 			}else if(maxmsg.type == "CHAT_MESSAGE"){
-				var text = (maxmsg.text || "").substring(0, 200);
-				notify({type:"CHAT_RECEIVED", hashid:maxmsg.hashid, text:text});
-				insertLog(maxmsg.hashid, "CHAT", "Received: "+text);
+				sqlSelectChannel(maxmsg.hashid, function(sql){
+					if(sql.count == 0){ return; }
+					var text = (maxmsg.text || "").substring(0, 200);
+					notify({type:"CHAT_RECEIVED", hashid:maxmsg.hashid, text:text});
+					insertLog(maxmsg.hashid, "CHAT", "Received: "+text);
+				});
 
 			}else if(maxmsg.type == "SYNACK_MESSAGE"){
 				/* ---- SYNACK received — trigger the queued function ---- */
