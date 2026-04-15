@@ -660,30 +660,47 @@ function calculateGameBalance(sqlrow, winner){
 	if(winner === "house"){
 		// Player lost all bets — pessimistic balance stands
 		if(bettor == 1){
-			return {
-				user1amount: pre1.sub(totalStake).toString(),
-				user2amount: pre2.plus(totalStake).toString()
-			};
+			return verifyBalanceTotal(sqlrow,
+				pre1.sub(totalStake).toString(),
+				pre2.plus(totalStake).toString()
+			);
 		}else{
-			return {
-				user1amount: pre1.plus(totalStake).toString(),
-				user2amount: pre2.sub(totalStake).toString()
-			};
+			return verifyBalanceTotal(sqlrow,
+				pre1.plus(totalStake).toString(),
+				pre2.sub(totalStake).toString()
+			);
 		}
 	}else{
 		// Player won — winning bet pays full single-number odds
 		var winnings = betamt.mul(range);  // ba * rn (full payout on winning number)
 
 		if(bettor == 1){
-			return {
-				user1amount: pre1.plus(winnings).sub(totalStake).toString(),
-				user2amount: pre2.sub(winnings).plus(totalStake).toString()
-			};
+			return verifyBalanceTotal(sqlrow,
+				pre1.plus(winnings).sub(totalStake).toString(),
+				pre2.sub(winnings).plus(totalStake).toString()
+			);
 		}else{
-			return {
-				user1amount: pre1.sub(winnings).plus(totalStake).toString(),
-				user2amount: pre2.plus(winnings).sub(totalStake).toString()
-			};
+			return verifyBalanceTotal(sqlrow,
+				pre1.sub(winnings).plus(totalStake).toString(),
+				pre2.plus(winnings).sub(totalStake).toString()
+			);
 		}
 	}
+}
+
+/* BURN GUARD: verify balance total is preserved after every calculation */
+function verifyBalanceTotal(sqlrow, u1str, u2str){
+	var u1 = new Decimal(u1str);
+	var u2 = new Decimal(u2str);
+	var total = new Decimal(sqlrow.TOTALAMOUNT);
+	var sum = u1.plus(u2);
+	if(sum.lessThan(total.mul(new Decimal("0.99"))) || u1.lessThan(DECIMAL_ZERO) || u2.lessThan(DECIMAL_ZERO)){
+		MDS.log("BURN GUARD: calculateGameBalance produced invalid result! u1="+u1str+" u2="+u2str+" total="+total+" sum="+sum);
+		// Return pre-bet amounts instead — refuse to produce wrong balances
+		return {
+			user1amount: sqlrow.PREBETAMT1 || sqlrow.USER1AMOUNT,
+			user2amount: sqlrow.PREBETAMT2 || sqlrow.USER2AMOUNT
+		};
+	}
+	return { user1amount: u1str, user2amount: u2str };
 }

@@ -377,9 +377,25 @@ function addToFundingTxn(txndata, addamount, tokenid, callback){
 function spendFundingTxn(sqlrow, callback){
 
 	var txid = randomString();
-	var cmdnum = 6; // Index of the txnexport response (adjusted if outputs skipped)
+	var cmdnum = 6;
 
-	// Determine which key to sign with (our key, not the counterparty's)
+	var u1 = new Decimal(sqlrow.USER1AMOUNT);
+	var u2 = new Decimal(sqlrow.USER2AMOUNT);
+	var total = new Decimal(sqlrow.TOTALAMOUNT);
+
+	// GUARD: NEVER create a close txn that would burn coins
+	var outputTotal = u1.plus(u2);
+	if(outputTotal.lessThanOrEqualTo(DECIMAL_ZERO)){
+		MDS.log("BURN GUARD: spendFundingTxn BLOCKED — both balances are zero! Total:"+total+" U1:"+u1+" U2:"+u2);
+		if(callback){ callback(null); }
+		return;
+	}
+	if(outputTotal.lessThan(total.mul(new Decimal("0.99")))){
+		MDS.log("BURN GUARD: spendFundingTxn BLOCKED — outputs ("+outputTotal+") < 99% of total ("+total+"). Something is wrong.");
+		if(callback){ callback(null); }
+		return;
+	}
+
 	var signkey = sqlrow.USER1PUBLICKEY;
 	if(sqlrow.USERNUM != 1){
 		signkey = sqlrow.USER2PUBLICKEY;
@@ -387,22 +403,18 @@ function spendFundingTxn(sqlrow, callback){
 
 	var tokenid = sqlrow.TOKENID;
 
-	// Start building the transaction
 	var create = "txncreate id:"+txid+";"
-		// Input: the funding coin (floating = don't require specific coinid/MMR)
 		+"txninput id:"+txid+" tokenid:"+tokenid+" amount:"+sqlrow.TOTALAMOUNT
 			+" address:"+sqlrow.FUNDINGADDRESS+" floating:true;";
 
-	// Output to User 1 (skip if their share is zero)
-	if(!new Decimal(sqlrow.USER1AMOUNT).lessThanOrEqualTo(DECIMAL_ZERO)){
+	if(u1.greaterThan(DECIMAL_ZERO)){
 		create +="txnoutput id:"+txid+" tokenid:"+tokenid
 			+" amount:"+sqlrow.USER1AMOUNT+" address:"+sqlrow.USER1ADDRESS+";";
 	}else{
 		cmdnum--;
 	}
 
-	// Output to User 2 (skip if their share is zero)
-	if(!new Decimal(sqlrow.USER2AMOUNT).lessThanOrEqualTo(DECIMAL_ZERO)){
+	if(u2.greaterThan(DECIMAL_ZERO)){
 		create +="txnoutput id:"+txid+" tokenid:"+tokenid
 			+" amount:"+sqlrow.USER2AMOUNT+" address:"+sqlrow.USER2ADDRESS+";";
 	}else{
@@ -794,6 +806,20 @@ function newGameBetTxn(details, callback){
 		}else{
 			user1amt = new Decimal(sqlrow.USER1AMOUNT).plus(totalStake);
 			user2amt = new Decimal(sqlrow.USER2AMOUNT).sub(totalStake);
+		}
+
+		// BURN GUARD: verify pessimistic balance preserves channel total
+		var total = new Decimal(sqlrow.TOTALAMOUNT);
+		var sum = user1amt.plus(user2amt);
+		if(user1amt.lessThan(DECIMAL_ZERO) || user2amt.lessThan(DECIMAL_ZERO)){
+			MDS.log("BURN GUARD: newGameBetTxn BLOCKED — negative balance! u1="+user1amt+" u2="+user2amt);
+			if(callback){ callback(null, null); }
+			return;
+		}
+		if(sum.lessThan(total.mul(new Decimal("0.99")))){
+			MDS.log("BURN GUARD: newGameBetTxn BLOCKED — total not preserved! sum="+sum+" total="+total);
+			if(callback){ callback(null, null); }
+			return;
 		}
 
 		// Build the full game state object for the state ports

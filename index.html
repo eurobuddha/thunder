@@ -2772,6 +2772,11 @@ function doCooperativeClose(){
 			}
 
 			spendFundingTxn(ch, function(spendtxn){
+				if(!spendtxn){
+					thunderAlert('Close blocked — balance inconsistency detected.\n\nThis safety check prevents coin loss.');
+					addNotice('warn', 'Close blocked by burn guard');
+					return;
+				}
 				sendSpendFunding(CURRENT_CHANNEL, othermax, spendtxn, function(delivered){
 					if(delivered){
 						addGameLog('system', 'Cooperative close requested');

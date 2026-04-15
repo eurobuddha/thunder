@@ -834,6 +834,7 @@ MDS.init(function(msg){
 							var bettor = parseInt(sqlrow.BETTOR);
 							var u1 = new Decimal(sqlrow.PREBETAMT1);
 							var u2 = new Decimal(sqlrow.PREBETAMT2);
+							var total = new Decimal(sqlrow.TOTALAMOUNT);
 							var newu1, newu2;
 							if(bettor == 1){
 								newu1 = u1.sub(totalStake).toString();
@@ -841,6 +842,16 @@ MDS.init(function(msg){
 							}else{
 								newu1 = u1.plus(totalStake).toString();
 								newu2 = u2.sub(totalStake).toString();
+							}
+
+							// BURN GUARD: verify total is preserved before writing to DB
+							var sum = new Decimal(newu1).plus(new Decimal(newu2));
+							if(new Decimal(newu1).lessThan(0) || new Decimal(newu2).lessThan(0) ||
+							   sum.lessThan(total.mul(new Decimal("0.99")))){
+								MDS.log("BURN GUARD: GAME_BET_SIGNED BLOCKED — invalid balance! u1="+newu1+" u2="+newu2+" total="+total+" sum="+sum);
+								insertLog(maxmsg.hashid, "BURN_GUARD_BLOCKED",
+									"Pessimistic balance rejected: u1="+newu1+" u2="+newu2+" total="+total);
+								return;
 							}
 
 							updateNewSequenceTxn(maxmsg.hashid, maxmsg.sequence,

@@ -426,6 +426,12 @@ function signGameBet(hashid, playercommit, housecommit, gametype, pick, numpicks
 
 		// Create the pessimistic-balance settlement + update txns
 		newGameBetTxn(details, function(settletxn, updatetxn){
+			if(!settletxn || !updatetxn){
+				MDS.log("BURN GUARD: newGameBetTxn returned null — aborting bet");
+				insertLog(hashid, "GAME_BET_BLOCKED", "Burn guard prevented invalid bet");
+				if(callback){ callback(null, null); }
+				return;
+			}
 
 			// Store the active game state in the database
 			updateGameBetActive(hashid, gametype, game.range, betamt, bettor, pick, numpicks,
