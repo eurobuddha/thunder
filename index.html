@@ -2371,8 +2371,14 @@ function updateOddsDisplay(){
 		return;
 	}
 	var chance = ((n / game.range) * 100).toFixed(1) + '%';
-	var odds = (game.range / n - 1).toFixed(1) + ':1';
-	document.getElementById('odds-display').textContent = n + ' of ' + game.range + ' — ' + odds + ' payout — ' + chance + ' chance';
+	var betVal = parseFloat(document.getElementById('bet-amount').value) || 0;
+	if(BET_MODE === 'group'){
+		var groupOdds = (game.range / n - 1).toFixed(0) + ':1';
+		document.getElementById('odds-display').textContent = n + ' numbers — ' + groupOdds + ' — ' + chance + ' — stake: ' + betVal;
+	} else {
+		var totalRisk = betVal * n;
+		document.getElementById('odds-display').textContent = n + ' picks × ' + betVal + ' = ' + totalRisk + ' total — 35:1 each — ' + chance;
+	}
 }
 
 function selectPick(pick){
@@ -2433,12 +2439,15 @@ function playRound(){
 		return;
 	}
 
-	// Bet amount = total at risk. Always. No division. No multiplication.
-	// Payout = betamt × (range / numpicks)
-	// Single number: betamt × 36 = 36:1 (net 35:1)
-	// Column (12): betamt × 3 = 3:1 (net 2:1)
-	// Red (18): betamt × 2 = 2:1 (net 1:1)
-	var protocolBetamt = userBetamt;
+	// Individual picks: each pick is its own bet. Total = bet × numpicks.
+	// Group bets: bet IS the total. No multiplication.
+	// Protocol ba = total at risk in both cases. wn = ba × (range/numpicks).
+	var protocolBetamt;
+	if(BET_MODE === 'group'){
+		protocolBetamt = userBetamt;  // Group: bet = total
+	} else {
+		protocolBetamt = new Decimal(userBetamt).mul(numpicks).toString();  // Individual: bet per number × count
+	}
 
 	GAME_BUSY = true;
 
@@ -2451,11 +2460,16 @@ function playRound(){
 	setGamePhase('PLACING');
 
 	var pickLabels = CURRENT_PICKS.map(function(p){ return getPickLabel(gametype, p); }).join(', ');
-	var modeLabel = BET_MODE === 'group' ? ' (group)' : '';
-	addGameLog('info', 'Placing ' + game.name + ' bet: ' + userBetamt + modeLabel + ' on ' + pickLabels);
-	addNotice('info', 'Bet: ' + userBetamt + modeLabel + ' on ' + (numpicks > 3 ? numpicks + ' numbers' : pickLabels));
+	if(BET_MODE === 'group'){
+		addGameLog('info', 'Placing ' + game.name + ' group bet: ' + userBetamt + ' on ' + numpicks + ' numbers');
+		addNotice('info', 'Group bet: ' + userBetamt + ' on ' + numpicks + ' numbers');
+	} else {
+		var totalDisplay = parseFloat(userBetamt) * numpicks;
+		addGameLog('info', 'Placing ' + game.name + ' bet: ' + userBetamt + ' × ' + numpicks + ' = ' + totalDisplay + ' on ' + pickLabels);
+		addNotice('info', 'Bet: ' + userBetamt + ' × ' + numpicks + ' on ' + (numpicks > 3 ? numpicks + ' picks' : pickLabels));
+	}
 
-	// Store pending game — protocol uses per-pick betamt
+	// Store pending game — protocol betamt = total at risk
 	MDS.keypair.set("casino_pending_" + CURRENT_CHANNEL, JSON.stringify({
 		gametype: gametype,
 		pick: pickmask,
@@ -2463,7 +2477,7 @@ function playRound(){
 		betamt: protocolBetamt
 	}));
 
-	// Send GAME_REQUEST — protocol betamt is per-pick
+	// Send GAME_REQUEST — protocol betamt = total at risk
 	sqlSelectChannel(CURRENT_CHANNEL, function(sql){
 		var ch = sql.rows[0];
 		var othermax = (ch.USERNUM == '1') ? ch.USER2MAXIMAID : ch.USER1MAXIMAID;
