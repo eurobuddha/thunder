@@ -827,10 +827,9 @@ MDS.init(function(msg){
 					signTxn(maxmsg.settletxn, sqlrow.USERPUBLICKEY, function(cosignedsettletxn){
 						signTxn(maxmsg.updatetxn, sqlrow.USERPUBLICKEY, function(cosignedupdatetxn){
 
-							// Calculate pessimistic amounts (total stake = betamt × numpicks)
+							// Calculate pessimistic amounts — betamt IS the total stake
 							var betamt = new Decimal(sqlrow.BETAMOUNT);
-							var numpicks = new Decimal(sqlrow.NUMPICKS || 1);
-							var totalStake = betamt.mul(numpicks);
+							var totalStake = betamt;
 							var bettor = parseInt(sqlrow.BETTOR);
 							var u1 = new Decimal(sqlrow.PREBETAMT1);
 							var u2 = new Decimal(sqlrow.PREBETAMT2);

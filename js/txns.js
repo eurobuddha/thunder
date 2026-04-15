@@ -796,8 +796,7 @@ function newGameBetTxn(details, callback){
 		// If bettor=1 (user1 is the player): user1 loses betamt, user2 gains it
 		// If bettor=2 (user2 is the player): user2 loses betamt, user1 gains it
 		var betamt = new Decimal(details.betamt);
-		var numpicks = new Decimal(details.numpicks || 1);
-		var totalStake = betamt.mul(numpicks);  // Per-pick bet × number of picks
+		var totalStake = betamt;  // Bet = total at risk. No multiplication.
 		var user1amt, user2amt;
 
 		if(details.bettor == 1){

@@ -2371,18 +2371,8 @@ function updateOddsDisplay(){
 		return;
 	}
 	var chance = ((n / game.range) * 100).toFixed(1) + '%';
-	var betVal = parseFloat(document.getElementById('bet-amount').value) || 0;
-	if(BET_MODE === 'group'){
-		// Group bet: single bet, pays (range/numpicks - 1):1
-		var groupOdds = (game.range / n - 1).toFixed(1) + ':1';
-		var totalRisk = betVal.toFixed(2);
-		document.getElementById('odds-display').textContent = n + ' numbers — ' + groupOdds + ' — ' + chance + ' — stake: ' + totalRisk;
-	} else {
-		// Per-pick: bet on each number individually
-		var odds = (game.range - 1) + ':1 each';
-		var totalRisk = (betVal * n).toFixed(2);
-		document.getElementById('odds-display').textContent = n + ' picks — ' + odds + ' — ' + chance + ' — total stake: ' + totalRisk;
-	}
+	var odds = (game.range / n - 1).toFixed(1) + ':1';
+	document.getElementById('odds-display').textContent = n + ' of ' + game.range + ' — ' + odds + ' payout — ' + chance + ' chance';
 }
 
 function selectPick(pick){
@@ -2443,14 +2433,12 @@ function playRound(){
 		return;
 	}
 
-	// Group bet: user enters TOTAL stake. Convert to per-pick for protocol.
-	// Per-pick: user enters bet PER NUMBER. Send as-is.
-	var protocolBetamt;
-	if(BET_MODE === 'group' && numpicks > 1){
-		protocolBetamt = new Decimal(userBetamt).div(numpicks).toDecimalPlaces(8).toString();
-	} else {
-		protocolBetamt = userBetamt;
-	}
+	// Bet amount = total at risk. Always. No division. No multiplication.
+	// Payout = betamt × (range / numpicks)
+	// Single number: betamt × 36 = 36:1 (net 35:1)
+	// Column (12): betamt × 3 = 3:1 (net 2:1)
+	// Red (18): betamt × 2 = 2:1 (net 1:1)
+	var protocolBetamt = userBetamt;
 
 	GAME_BUSY = true;
 
@@ -2514,27 +2502,26 @@ function onGameResult(data){
 	var bv = new Decimal(betamt);
 	var gm = GAME_TYPES[gametype];
 	var numpicks = parseInt(data.numpicks) || 1;
-	var totalStake = bv.mul(numpicks);          // per-pick bet × numpicks
-	var winPayout = gm ? bv.mul(gm.range) : bv.mul(2);  // winning bet pays full odds
+	var ep = gm ? gm.range / numpicks : 2;  // effective payout = range/numpicks
 
 	// 1. Update stats -- THE ONLY PLACE
-	// Per-pick model: bet is per number. Total at risk = betamt × numpicks.
-	// Player wins: profit = betamt*range - betamt*numpicks = betamt*(range-numpicks)
-	// Player loses: loss = betamt*numpicks (all bets lost)
-	// House wins: profit = betamt*numpicks. House loses: betamt*(range-numpicks)
+	// Bet = total at risk. Payout = betamt × (range/numpicks).
+	// Player wins: profit = betamt × (range/numpicks - 1)
+	// Player loses: loss = betamt
+	// House wins: profit = betamt. House loses: betamt × (range/numpicks - 1)
 	if(isWin){
 		GAME_WINS++;
 		if(iAmPlayer){
-			GAME_PROFIT = GAME_PROFIT.plus(winPayout.sub(totalStake));
+			GAME_PROFIT = GAME_PROFIT.plus(bv.mul(ep - 1));
 		} else {
-			GAME_PROFIT = GAME_PROFIT.plus(totalStake);
+			GAME_PROFIT = GAME_PROFIT.plus(bv);
 		}
 	} else {
 		GAME_LOSSES++;
 		if(iAmPlayer){
-			GAME_PROFIT = GAME_PROFIT.sub(totalStake);
+			GAME_PROFIT = GAME_PROFIT.sub(bv);
 		} else {
-			GAME_PROFIT = GAME_PROFIT.sub(winPayout.sub(totalStake));
+			GAME_PROFIT = GAME_PROFIT.sub(bv.mul(ep - 1));
 		}
 	}
 	GAME_ROUNDS++;
@@ -2578,14 +2565,13 @@ function onGameResult(data){
 	var role = iAmPlayer ? '' : 'HOUSE ';
 	var winAmt, loseAmt;
 	if(iAmPlayer){
-		winAmt = winPayout.sub(totalStake);   // ba*(range-numpicks)
-		loseAmt = totalStake;                  // ba*numpicks
+		winAmt = bv.mul(ep - 1);    // betamt × (range/numpicks - 1)
+		loseAmt = bv;               // betamt
 	} else {
-		winAmt = totalStake;                   // house wins total stake
-		loseAmt = winPayout.sub(totalStake);   // house pays ba*(range-numpicks)
+		winAmt = bv;                // house wins betamt
+		loseAmt = bv.mul(ep - 1);   // house pays betamt × (range/numpicks - 1)
 	}
-	// Risk = what you stood to lose
-	var myRisk = iAmPlayer ? totalStake : winPayout.sub(totalStake);
+	var myRisk = iAmPlayer ? bv : bv.mul(ep - 1);
 	if(isWin){
 		addNotice('win', role + gmName + ': Chose ' + pickLabel + ', Result ' + resultLabel + ' — WIN +' + winAmt.toFixed(2) + ' (risked ' + myRisk.toFixed(2) + ')');
 		addGameLog('win', role + gmName + ' Chose:' + pickLabel + ' Result:' + resultLabel + ' — WIN +' + winAmt.toFixed(2) + ' (risked ' + myRisk.toFixed(2) + ')');
@@ -2624,9 +2610,8 @@ function showHouseGameVisual(comms){
 	var bv = parseFloat(comms.betamt);
 	var houseWinAmt = bv;
 	var houseNumpicks = parseInt(comms.numpicks) || 1;
-	var houseTotalStake = bv * houseNumpicks;
-	var houseWinPayout = gm ? bv * gm.range : bv * 2;
-	var houseLoseAmt = houseWinPayout - houseTotalStake;  // ba*(range-numpicks)
+	var houseEp = gm ? gm.range / houseNumpicks : 2;
+	var houseLoseAmt = bv * (houseEp - 1);
 
 	// Start the spin animation
 	ANIM.startSpin(gametype);
