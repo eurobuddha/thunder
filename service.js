@@ -516,12 +516,27 @@ MDS.init(function(msg){
 
 					updateDefaultChannelTransactions(maxmsg.hashid, maxmsg.txndata, function(){
 						signTxn(maxmsg.txndata.transactions.fundingtxn, "auto", function(signtxn){
+							if(!signtxn){
+								MDS.log("ERROR CHANNEL_CREATE_2: signTxn failed for funding txn");
+								insertLog(maxmsg.hashid, "CHANNEL_CREATE_ERROR", "Failed to sign funding transaction");
+								notify({type:"CHANNEL_UPDATE", hashid:maxmsg.hashid, state:"CHANNEL_CREATE_FAILED"});
+								return;
+							}
 							checkTxn(signtxn, function(resp){
-								if(!resp.response.validtransaction){
-									MDS.log("INVALID Funding transaction!");
+								if(!resp || !resp.response || !resp.response.validtransaction){
+									MDS.log("ERROR CHANNEL_CREATE_2: INVALID funding transaction!");
+									insertLog(maxmsg.hashid, "CHANNEL_CREATE_ERROR",
+										"Funding transaction invalid" + (resp && resp.response ? ": "+JSON.stringify(resp.response) : ""));
+									notify({type:"CHANNEL_UPDATE", hashid:maxmsg.hashid, state:"CHANNEL_CREATE_FAILED"});
 									return;
 								}
 								postTxn(signtxn, false, function(postresp){
+									if(!postresp){
+										MDS.log("ERROR CHANNEL_CREATE_2: postTxn failed for funding");
+										insertLog(maxmsg.hashid, "CHANNEL_CREATE_ERROR", "Failed to post funding transaction");
+										notify({type:"CHANNEL_UPDATE", hashid:maxmsg.hashid, state:"CHANNEL_CREATE_FAILED"});
+										return;
+									}
 									insertLog(maxmsg.hashid, "POST_FUNDING_TXN", "Funding transaction posted!");
 									updateChannelState(maxmsg.hashid, "STATE_CHANNEL_OPEN_1", function(){
 										sendMaximaMessage(maximapubkey,
