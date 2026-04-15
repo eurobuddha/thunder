@@ -1,0 +1,293 @@
+<html>
+<head>
+<title>TNZEC Game Tests</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script type="text/javascript" src="./js/mds.js"></script>
+<script type="text/javascript" src="./js/decimal.js"></script>
+<style>
+body { background:#0a0a1a; color:#00e5ff; font-family:monospace; font-size:12px; padding:10px; }
+.pass { color:#00e676; } .fail { color:#ff2d78; } .info { color:#ffd700; } .warn { color:#ff9100; }
+.test { margin:4px 0; padding:4px 6px; border-left:2px solid #333; }
+h2 { color:#fff; margin:12px 0 4px; font-size:14px; }
+button { background:#00e5ff; color:#000; border:none; padding:6px 12px; margin:3px; font-size:12px; font-weight:bold; }
+select,input { background:#1a1a2e; color:#00e5ff; border:1px solid #333; padding:4px; font-size:12px; }
+#log { max-height:60vh; overflow-y:auto; }
+</style>
+</head>
+<body>
+<h1>TNZEC Game Flow Tests</h1>
+
+<div style="margin:8px 0; padding:8px; border:1px solid #333;">
+<b>Channel:</b> <select id="ch-select"><option>Loading...</option></select>
+<b>Game:</b> <select id="game-select"><option value="flip">Flip</option><option value="dice">Dice</option><option value="roulette">Roulette</option></select>
+<b>Bet:</b> <input id="bet-amt" type="number" value="1" style="width:60px;">
+<b>Pick:</b> <input id="pick-num" type="number" value="0" style="width:40px;">
+</div>
+
+<button onclick="runPreflightTests()">1. PREFLIGHT</button>
+<button onclick="requestGame()">2. REQUEST GAME</button>
+<button onclick="pollGameState()">3. POLL STATE</button>
+<button onclick="checkRouting()">4. CHECK ROUTING</button>
+<button onclick="checkLogs()">5. VIEW LOGS</button>
+<button onclick="document.getElementById('log').innerHTML=''">CLEAR</button>
+
+<div id="log"></div>
+
+<script>
+var CHANNELS = [];
+var POLL_INTERVAL = null;
+
+function log(msg, cls) {
+    var el = document.getElementById('log');
+    var ts = new Date().toLocaleTimeString();
+    el.innerHTML += '<div class="test '+(cls||'')+'">['+ts+'] '+msg+'</div>';
+    el.scrollTop = el.scrollHeight;
+}
+
+// Load channels into dropdown
+function loadChannels() {
+    MDS.sql("SELECT hashid, state, user1name, user2name, user1amount, user2amount, usernum, gamephase FROM channels WHERE state='STATE_CHANNEL_OPEN_1' OR state='STATE_CHANNEL_OPEN_2' ORDER BY date DESC", function(res) {
+        var sel = document.getElementById('ch-select');
+        sel.innerHTML = '';
+        CHANNELS = [];
+        if (res.status && res.count > 0) {
+            for (var i = 0; i < res.count; i++) {
+                var r = res.rows[i];
+                var isU1 = parseInt(r.USERNUM) == 1;
+                var other = isU1 ? r.USER2NAME : r.USER1NAME;
+                var myAmt = isU1 ? r.USER1AMOUNT : r.USER2AMOUNT;
+                var opt = document.createElement('option');
+                opt.value = r.HASHID;
+                opt.text = (other||'?') + ' [' + myAmt + '] phase=' + r.GAMEPHASE;
+                sel.appendChild(opt);
+                CHANNELS.push(r);
+            }
+        } else {
+            sel.innerHTML = '<option>No open channels</option>';
+        }
+    });
+}
+
+// TEST 1: Preflight checks
+function runPreflightTests() {
+    log('=== PREFLIGHT TESTS ===', 'info');
+
+    // Node status
+    MDS.cmd("status", function(res) {
+        log('Node: v'+res.response.version+' Block:'+res.response.chain.block, res.status?'pass':'fail');
+    });
+
+    // Permission
+    MDS.cmd("checkmode", function(res) {
+        log('Mode: '+res.response.mode, res.response.mode==='WRITE'?'pass':'fail');
+    });
+
+    // Balance
+    MDS.cmd("balance", function(res) {
+        for (var i=0; i<res.response.length; i++) {
+            if (res.response[i].tokenid === '0x00') {
+                log('Balance — confirmed:'+res.response[i].confirmed+' sendable:'+res.response[i].sendable, 'info');
+                if (parseFloat(res.response[i].sendable) <= 0) log('NO SENDABLE FUNDS', 'fail');
+            }
+        }
+    });
+
+    // Stuck txns
+    MDS.cmd("txnlist", function(res) {
+        var count = 0;
+        if (res.response) {
+            if (Array.isArray(res.response)) count = res.response.length;
+            else count = Object.keys(res.response).length;
+        }
+        log('Stuck transactions: '+count, count>0?'warn':'pass');
+    });
+
+    // Open channels
+    MDS.sql("SELECT COUNT(*) AS CNT FROM channels WHERE state LIKE 'STATE_CHANNEL_OPEN%'", function(res) {
+        var cnt = res.status ? res.rows[0].CNT : 0;
+        log('Open channels: '+cnt, cnt>0?'pass':'fail');
+    });
+
+    // Channels with active games
+    MDS.sql("SELECT COUNT(*) AS CNT FROM channels WHERE gamephase != 0", function(res) {
+        var cnt = res.status ? res.rows[0].CNT : 0;
+        log('Channels with active game: '+cnt, cnt>0?'warn':'pass');
+    });
+
+    // Contacts — hub present?
+    MDS.cmd("maxcontacts action:list", function(res) {
+        var hubFound = false;
+        if (res.status) {
+            for (var i=0; i<res.response.contacts.length; i++) {
+                if (res.response.contacts[i].extradata.name === 'TNZEC-Hub') hubFound = true;
+            }
+        }
+        log('TNZEC-Hub in contacts: '+hubFound, hubFound?'pass':'fail');
+    });
+
+    loadChannels();
+}
+
+// TEST 2: Request a game
+function requestGame() {
+    var hashid = document.getElementById('ch-select').value;
+    var gametype = document.getElementById('game-select').value;
+    var betamt = document.getElementById('bet-amt').value;
+    var pick = document.getElementById('pick-num').value;
+
+    if (!hashid || hashid === 'No open channels') {
+        log('No channel selected!', 'fail');
+        return;
+    }
+
+    log('=== REQUESTING GAME ===', 'info');
+    log('Channel: '+hashid.substring(0,16)+'..', 'info');
+    log('Game: '+gametype+' Bet: '+betamt+' Pick: '+pick, 'info');
+
+    // Store pending game data (same as index.html does)
+    var pending = JSON.stringify({gametype:gametype, pick:pick, betamt:betamt});
+    MDS.keypair.set("casino_pending_"+hashid, pending, function() {
+        log('Pending game stored in keypair', 'pass');
+    });
+
+    // Get counterparty maxima ID
+    MDS.sql("SELECT * FROM channels WHERE hashid='"+hashid+"'", function(res) {
+        if (!res.status || res.count == 0) { log('Channel not found!', 'fail'); return; }
+        var r = res.rows[0];
+        var isU1 = parseInt(r.USERNUM) == 1;
+        var otherMaxId = isU1 ? r.USER2MAXIMAID : r.USER1MAXIMAID;
+
+        log('Counterparty: '+(isU1?r.USER2NAME:r.USER1NAME), 'info');
+        log('Sending GAME_REQUEST via Maxima...', 'info');
+
+        // Build and send GAME_REQUEST
+        var msg = {type:"GAME_REQUEST", hashid:hashid, gametype:gametype, pick:parseInt(pick), betamt:betamt};
+        var safestring = encodeURIComponent(JSON.stringify(msg));
+
+        MDS.cmd("convert from:string to:hex data:"+encodeURIComponent(JSON.stringify(msg)), function(conv) {
+            var hexdata = conv.response.conversion;
+            MDS.cmd("maxima action:send publickey:"+otherMaxId+" application:thunderpay data:"+hexdata, function(sendres) {
+                if (sendres.status && sendres.response && sendres.response.delivered) {
+                    log('GAME_REQUEST delivered!', 'pass');
+                    log('Waiting for GAME_OFFER...', 'info');
+                    // Start polling
+                    startPolling(hashid);
+                } else {
+                    log('GAME_REQUEST delivery FAILED: '+JSON.stringify(sendres), 'fail');
+                }
+            });
+        });
+    });
+}
+
+// TEST 3: Poll game state
+function startPolling(hashid) {
+    if (POLL_INTERVAL) clearInterval(POLL_INTERVAL);
+    var pollCount = 0;
+    POLL_INTERVAL = setInterval(function() {
+        pollCount++;
+        if (pollCount > 30) { clearInterval(POLL_INTERVAL); log('POLL TIMEOUT after 30 checks', 'fail'); return; }
+        pollGameStateOnce(hashid);
+    }, 2000);
+}
+
+function pollGameState() {
+    var hashid = document.getElementById('ch-select').value;
+    if (!hashid) return;
+    pollGameStateOnce(hashid);
+}
+
+function pollGameStateOnce(hashid) {
+    MDS.sql("SELECT gamephase, gametype, betamount, bettor, playerpick, housecommit, playercommit, housesecret, playersecret, gameresult FROM channels WHERE hashid='"+hashid+"'", function(res) {
+        if (!res.status || res.count == 0) return;
+        var r = res.rows[0];
+        var phase = parseInt(r.GAMEPHASE);
+        var status = 'phase='+phase;
+        if (r.HOUSECOMMIT && r.HOUSECOMMIT.length > 4) status += ' houseCommit=YES';
+        if (r.PLAYERCOMMIT && r.PLAYERCOMMIT.length > 4) status += ' playerCommit=YES';
+        if (r.HOUSESECRET && r.HOUSESECRET.length > 4) status += ' houseSecret=REVEALED';
+        if (r.PLAYERSECRET && r.PLAYERSECRET.length > 4) status += ' playerSecret=REVEALED';
+        if (r.GAMERESULT) status += ' result='+r.GAMERESULT;
+
+        var cls = 'info';
+        if (phase == 0 && r.GAMERESULT) { cls = 'pass'; if(POLL_INTERVAL) clearInterval(POLL_INTERVAL); }
+        if (phase == 0 && !r.GAMERESULT && !r.HOUSECOMMIT) cls = 'info';
+
+        log('POLL: '+status, cls);
+
+        if (phase == 0 && r.GAMERESULT) {
+            log('=== GAME COMPLETE: '+r.GAMERESULT+' ===', r.GAMERESULT==='WIN'?'pass':'warn');
+        }
+    });
+}
+
+// TEST 4: Check routing
+function checkRouting() {
+    log('=== ROUTING CHECK ===', 'info');
+    MDS.sql("SELECT * FROM routed_games ORDER BY date DESC LIMIT 5", function(res) {
+        if (res.status && res.count > 0) {
+            for (var i=0; i<res.count; i++) {
+                var r = res.rows[i];
+                log('Route: player='+r.PLAYER_HASHID.substring(0,12)+'.. house='+r.HOUSE_HASHID.substring(0,12)+'.. status='+r.STATUS+' game='+r.GAMETYPE, 'info');
+            }
+        } else {
+            log('No routed games (hub routes, not spokes)', 'info');
+        }
+    });
+
+    // Check game rounds
+    MDS.sql("SELECT * FROM gamerounds ORDER BY date DESC LIMIT 5", function(res) {
+        if (res.status && res.count > 0) {
+            log('Recent game rounds:', 'info');
+            for (var i=0; i<res.count; i++) {
+                var r = res.rows[i];
+                log('  Round '+r.ROUND+': '+r.GAMETYPE+' bet='+r.BETAMOUNT+' pick='+r.PLAYERPICK+' result='+r.RESULT+' winner='+r.WINNER+' state='+r.ROUNDSTATE, r.WINNER?'pass':'info');
+            }
+        } else {
+            log('No game rounds yet', 'info');
+        }
+    });
+}
+
+// TEST 5: View logs
+function checkLogs() {
+    log('=== TNZEC LOGS ===', 'info');
+    MDS.sql("SELECT type, message, date FROM logs ORDER BY date DESC LIMIT 20", function(res) {
+        if (res.status && res.count > 0) {
+            for (var i = res.count-1; i >= 0; i--) {
+                var r = res.rows[i];
+                var msg = decodeURIComponent(r.MESSAGE);
+                var cls = 'info';
+                if (r.TYPE.indexOf('ERROR') >= 0 || r.TYPE.indexOf('FAIL') >= 0 || r.TYPE.indexOf('INVALID') >= 0) cls = 'fail';
+                if (r.TYPE.indexOf('TNZEC') >= 0) cls = 'warn';
+                if (r.TYPE.indexOf('COMPLETE') >= 0 || r.TYPE.indexOf('ACCEPTED') >= 0) cls = 'pass';
+                log(r.TYPE+': '+msg, cls);
+            }
+        } else {
+            log('No logs', 'info');
+        }
+    });
+}
+
+MDS.init(function(msg) {
+    if (msg.event === 'inited') {
+        loadChannels();
+        log('Ready. Run PREFLIGHT first.', 'pass');
+    }
+    if (msg.event === 'MDSCOMMS') {
+        if (!msg.data.public) {
+            try {
+                var comms = JSON.parse(msg.data.message);
+                log('NOTIFICATION: '+comms.type+' '+JSON.stringify(comms).substring(0,100), 'warn');
+                if (comms.type === 'GAME_RESULT') {
+                    log('=== GAME RESULT: winner='+comms.winner+' isMyWin='+comms.isMyWin+' bet='+comms.betamt+' ===', comms.isMyWin?'pass':'fail');
+                    if(POLL_INTERVAL) clearInterval(POLL_INTERVAL);
+                    loadChannels();
+                }
+            } catch(e) {}
+        }
+    }
+});
+</script>
+</body>
+</html>
