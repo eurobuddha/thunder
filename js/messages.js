@@ -422,6 +422,32 @@ function gameAbandonedMessage(hashid, reason){
 
 
 /* =========================================================================
+ * ROLE SELECTION + CHAT MESSAGES
+ * ========================================================================= */
+
+/**
+ * Announce chosen role (PLAYER or HOUSE) to counterparty.
+ */
+function roleSelectMessage(hashid, role){
+	return {type:"ROLE_SELECT", hashid:hashid, role:role};
+}
+
+/**
+ * Confirm compatible roles. Sent after receiving ROLE_SELECT.
+ */
+function roleConfirmedMessage(hashid, role){
+	return {type:"ROLE_CONFIRMED", hashid:hashid, role:role};
+}
+
+/**
+ * Free-text chat message within a channel. Capped at 200 chars.
+ */
+function chatMessage(hashid, text){
+	return {type:"CHAT_MESSAGE", hashid:hashid, text:(text||"").substring(0,200)};
+}
+
+
+/* =========================================================================
  * PROPS / WAGER MESSAGES
  * =========================================================================
  *

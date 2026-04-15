@@ -122,6 +122,9 @@ MDS.init(function(msg){
 				// Multi-pick migration: add numpicks column if missing
 				MDS.sql("ALTER TABLE channels ADD COLUMN IF NOT EXISTS numpicks int default 1");
 				MDS.sql("ALTER TABLE gamerounds ADD COLUMN IF NOT EXISTS numpicks int default 1");
+				// Role selection migration
+				MDS.sql("ALTER TABLE channels ADD COLUMN IF NOT EXISTS myrole varchar(16) default ''");
+				MDS.sql("ALTER TABLE channels ADD COLUMN IF NOT EXISTS roundsplayed int default 0");
 				// Load our Maxima identity and Minima address
 				initAuthDetails(function(){
 					log("Thunder Casino service.js initialized (multi-pick enabled)");
@@ -658,6 +661,15 @@ MDS.init(function(msg){
 						return;
 					}
 
+					// ROLE GUARD — reject if I'm the PLAYER (they should be housing, not betting)
+					if(sqlrow.MYROLE === 'PLAYER'){
+						MDS.log("GAME_REQUEST rejected — I am PLAYER, they should be HOUSE");
+						sendMaximaMessage(maximapubkey,
+							gameAbandonedMessage(maxmsg.hashid, "You are the HOUSE this session"));
+						notify({type:"GAME_ABANDONED", hashid:maxmsg.hashid, reason:"Role conflict"});
+						return;
+					}
+
 					insertLog(maxmsg.hashid, "GAME_REQUEST_RECEIVED",
 						"Game request: "+maxmsg.gametype+" bet:"+maxmsg.betamt
 						+" pick:"+maxmsg.pick);
@@ -1149,9 +1161,46 @@ MDS.init(function(msg){
 				});
 
 
-			/* Props removed — saved in thunder-props-tba/ for Thunder Props dapp */
+			/* ---- Role selection ---- */
 
-			/* Props removed — saved in thunder-props-tba/ for Thunder Props dapp */
+			}else if(maxmsg.type == "ROLE_SELECT"){
+				sqlSelectChannel(maxmsg.hashid, function(sql){
+					if(sql.count == 0){ return; }
+					var sqlrow = sql.rows[0];
+					var theirRole = maxmsg.role;
+					var myRole = sqlrow.MYROLE;
+
+					// Conflict: both picked the same role
+					if(myRole && myRole === theirRole){
+						notify({type:"ROLE_CONFLICT", hashid:maxmsg.hashid, theirrole:theirRole});
+						return;
+					}
+
+					// Accept the complement
+					var assignedRole = (theirRole === 'PLAYER') ? 'HOUSE' : 'PLAYER';
+					MDS.sql("UPDATE channels SET myrole='"+assignedRole+"', roundsplayed=0 WHERE hashid='"+maxmsg.hashid+"'", function(){
+						sendMaximaMessage(maximapubkey, roleConfirmedMessage(maxmsg.hashid, assignedRole));
+						notify({type:"ROLE_ASSIGNED", hashid:maxmsg.hashid, myrole:assignedRole, theirrole:theirRole});
+						insertLog(maxmsg.hashid, "ROLE_ASSIGNED", "I am "+assignedRole+", they are "+theirRole);
+					});
+				});
+
+			}else if(maxmsg.type == "ROLE_CONFIRMED"){
+				sqlSelectChannel(maxmsg.hashid, function(sql){
+					if(sql.count == 0){ return; }
+					var sqlrow = sql.rows[0];
+					var myRole = sqlrow.MYROLE;
+					var theirRole = maxmsg.role; // what they confirmed as
+					notify({type:"ROLE_ASSIGNED", hashid:maxmsg.hashid, myrole:myRole, theirrole:theirRole});
+					insertLog(maxmsg.hashid, "ROLE_CONFIRMED", "Roles confirmed. I am "+myRole+", they are "+theirRole);
+				});
+
+			/* ---- Chat ---- */
+
+			}else if(maxmsg.type == "CHAT_MESSAGE"){
+				var text = (maxmsg.text || "").substring(0, 200);
+				notify({type:"CHAT_RECEIVED", hashid:maxmsg.hashid, text:text});
+				insertLog(maxmsg.hashid, "CHAT", "Received: "+text);
 
 			}else if(maxmsg.type == "SYNACK_MESSAGE"){
 				/* ---- SYNACK received — trigger the queued function ---- */

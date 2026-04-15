@@ -591,11 +591,25 @@
 				<div>
 					<div class="balance-label" style="text-align:center;">Channel</div>
 					<div id="game-channel-name" class="text-ghost" style="text-align:center; font-size:13px;"></div>
+					<div id="role-badge" style="text-align:center; font-size:9px; text-transform:uppercase; letter-spacing:1px; margin-top:2px;"></div>
 				</div>
 				<div style="text-align:right;">
 					<div class="balance-label">Their Balance</div>
 					<div id="game-their-balance" class="balance-amount opponent">0</div>
 				</div>
+			</div>
+
+			<!-- Role selection panel (shown before first game) -->
+			<div id="role-select-panel" class="card hidden" style="text-align:center; padding:16px;">
+				<div style="font-size:14px; font-weight:bold; margin-bottom:8px;">CHOOSE YOUR ROLE</div>
+				<div class="text-ghost" style="font-size:11px; margin-bottom:12px;">
+					PLAYER places bets. HOUSE watches and pays out.
+				</div>
+				<div style="display:flex; gap:12px; justify-content:center;">
+					<button class="btn btn-primary" onclick="selectRole('PLAYER')">I'M THE PLAYER</button>
+					<button class="btn btn-secondary" onclick="selectRole('HOUSE')">I'M THE HOUSE</button>
+				</div>
+				<div id="role-status" class="text-ghost" style="font-size:10px; margin-top:8px;"></div>
 			</div>
 
 			<!-- Stats bar -->
@@ -688,9 +702,18 @@
 				</div>
 			</div>
 
+			<!-- Chat input -->
+			<div style="display:flex; gap:6px; margin-top:6px;">
+				<input id="chat-input" type="text" class="bet-input" placeholder="Chat..."
+					   maxlength="200" style="flex:1; font-size:12px;"
+					   onkeydown="if(event.key==='Enter')sendChat()">
+				<button class="btn btn-secondary btn-sm" onclick="sendChat()">SEND</button>
+			</div>
+
 			<!-- Channel controls -->
 			<div class="flex-between mt-8">
 				<button class="btn btn-secondary btn-sm" onclick="exitGame()">BACK</button>
+				<button class="btn btn-secondary btn-sm hidden" id="swap-roles-btn" onclick="swapRoles()">SWAP ROLES</button>
 				<button class="btn btn-danger btn-sm" onclick="closeChannelPrompt()">CLOSE CHANNEL</button>
 			</div>
 		</div>
@@ -1691,6 +1714,9 @@ var CURRENT_CHANNEL  = null;
 var CURRENT_GAME     = 'flip';
 var CURRENT_PICKS    = [];  // Array of selected pick indices (multi-pick)
 var BET_MODE         = 'picks'; // 'picks' = per-number bet, 'group' = single bet on group
+var CURRENT_ROLE     = '';  // 'PLAYER', 'HOUSE', or '' (unset)
+var ROUNDS_SINCE_ROLE = 0;
+var ROLE_TIMEOUT     = null;
 var MAXIMA_CONTACTS  = [];
 var USER_BALANCE     = [];
 var GAME_WINS        = 0;
@@ -2238,6 +2264,11 @@ function enterGame(hashid){
 		document.getElementById('game-their-balance').textContent = fmtBal(theiramt);
 		document.getElementById('game-channel-name').textContent = name;
 
+		// Role setup
+		CURRENT_ROLE = ch.MYROLE || '';
+		ROUNDS_SINCE_ROLE = parseInt(ch.ROUNDSPLAYED) || 0;
+		updateRoleBadge();
+
 		updateStats();
 		selectGameType('flip');
 
@@ -2245,7 +2276,19 @@ function enterGame(hashid){
 		document.getElementById('casino-channel-list').classList.add('hidden');
 		document.getElementById('view-game').classList.remove('hidden');
 
-		addGameLog('system', 'Session started with ' + name + '. Balance: ' + myamt + ' / ' + theiramt);
+		// If no role set, show role selection panel and hide game area
+		var gameArea = document.getElementById('game-area');
+		var rolePanel = document.getElementById('role-select-panel');
+		if(!CURRENT_ROLE){
+			if(rolePanel) rolePanel.classList.remove('hidden');
+			if(gameArea) gameArea.classList.add('hidden');
+			document.getElementById('role-status').textContent = '';
+		} else {
+			if(rolePanel) rolePanel.classList.add('hidden');
+			if(gameArea) gameArea.classList.remove('hidden');
+		}
+
+		addGameLog('system', 'Session started with ' + name + '. Balance: ' + fmtBal(myamt) + ' / ' + fmtBal(theiramt));
 		addNotice('system', 'Session started with ' + name);
 	});
 }
@@ -2253,8 +2296,13 @@ function enterGame(hashid){
 function exitGame(){
 	IN_GAME_SESSION = false;
 	CURRENT_CHANNEL = null;
+	CURRENT_ROLE = '';
+	ROUNDS_SINCE_ROLE = 0;
+	if(ROLE_TIMEOUT){ clearTimeout(ROLE_TIMEOUT); ROLE_TIMEOUT = null; }
 	document.getElementById('view-game').classList.add('hidden');
 	document.getElementById('casino-channel-list').classList.remove('hidden');
+	var swapBtn = document.getElementById('swap-roles-btn');
+	if(swapBtn) swapBtn.classList.add('hidden');
 	loadCasinoChannels();
 }
 
@@ -2431,6 +2479,12 @@ function selectPick(pick){
 
 function updatePlayButton(){
 	var btn = document.getElementById('btn-play');
+	if(CURRENT_ROLE === 'HOUSE'){
+		btn.disabled = true;
+		btn.textContent = 'WATCHING';
+		return;
+	}
+	btn.textContent = 'PLACE BET';
 	if(GAME_PHASE !== 'IDLE' || GAME_BUSY){
 		btn.disabled = true;
 		return;
@@ -2441,11 +2495,95 @@ function updatePlayButton(){
 
 
 /* =========================================================================
+ * ROLE SELECTION + CHAT
+ * ========================================================================= */
+
+function updateRoleBadge(){
+	var badge = document.getElementById('role-badge');
+	if(!badge) return;
+	if(CURRENT_ROLE === 'PLAYER'){
+		badge.textContent = 'PLAYER';
+		badge.style.color = '#ffd700';
+	} else if(CURRENT_ROLE === 'HOUSE'){
+		badge.textContent = 'HOUSE';
+		badge.style.color = '#8892b0';
+	} else {
+		badge.textContent = '';
+	}
+}
+
+function selectRole(role){
+	if(GAME_PHASE !== 'IDLE'){
+		thunderAlert('Finish the current round first');
+		return;
+	}
+	CURRENT_ROLE = role;
+
+	// Update local DB
+	MDS.sql("UPDATE channels SET myrole='"+role+"', roundsplayed=0 WHERE hashid='"+CURRENT_CHANNEL+"'");
+	ROUNDS_SINCE_ROLE = 0;
+	updateRoleBadge();
+	updatePlayButton();
+
+	// Send to counterparty
+	sqlSelectChannel(CURRENT_CHANNEL, function(sql){
+		if(sql.count === 0) return;
+		var ch = sql.rows[0];
+		var othermax = (ch.USERNUM == '1') ? ch.USER2MAXIMAID : ch.USER1MAXIMAID;
+		sendMaximaMessage(othermax, roleSelectMessage(CURRENT_CHANNEL, role));
+	});
+
+	document.getElementById('role-status').textContent = 'Waiting for confirmation...';
+
+	// Timeout fallback for old-version counterparty
+	if(ROLE_TIMEOUT) clearTimeout(ROLE_TIMEOUT);
+	ROLE_TIMEOUT = setTimeout(function(){
+		if(document.getElementById('role-select-panel') &&
+		   !document.getElementById('role-select-panel').classList.contains('hidden')){
+			document.getElementById('role-status').textContent = 'No response — playing without roles.';
+			CURRENT_ROLE = 'PLAYER';
+			updateRoleBadge();
+			setTimeout(function(){
+				document.getElementById('role-select-panel').classList.add('hidden');
+				document.getElementById('game-area').classList.remove('hidden');
+				updatePlayButton();
+			}, 2000);
+		}
+	}, 15000);
+}
+
+function swapRoles(){
+	var newRole = (CURRENT_ROLE === 'PLAYER') ? 'HOUSE' : 'PLAYER';
+	selectRole(newRole);
+	document.getElementById('swap-roles-btn').classList.add('hidden');
+	addGameLog('system', 'Swapping to ' + newRole + '...');
+}
+
+function sendChat(){
+	var input = document.getElementById('chat-input');
+	if(!input) return;
+	var text = input.value.trim();
+	if(!text || !CURRENT_CHANNEL) return;
+	input.value = '';
+
+	addGameLog('chat', 'You: ' + text);
+
+	sqlSelectChannel(CURRENT_CHANNEL, function(sql){
+		if(sql.count === 0) return;
+		var ch = sql.rows[0];
+		var othermax = (ch.USERNUM == '1') ? ch.USER2MAXIMAID : ch.USER1MAXIMAID;
+		sendMaximaMessage(othermax, chatMessage(CURRENT_CHANNEL, text));
+	});
+}
+
+
+/* =========================================================================
  * playRound -- User clicks PLACE BET
  * ========================================================================= */
 
 function playRound(){
 	if(!CURRENT_CHANNEL || CURRENT_PICKS.length === 0 || GAME_PHASE !== 'IDLE' || GAME_BUSY) return;
+	if(CURRENT_ROLE === 'HOUSE') return;
 
 	var userBetamt = document.getElementById('bet-amount').value;
 	var gametype = CURRENT_GAME;
@@ -2560,6 +2698,16 @@ function onGameResult(data){
 		}
 	}
 	GAME_ROUNDS++;
+	ROUNDS_SINCE_ROLE++;
+	if(CURRENT_ROLE && ROUNDS_SINCE_ROLE >= 5 && ROUNDS_SINCE_ROLE % 5 === 0){
+		addGameLog('system', ROUNDS_SINCE_ROLE + ' rounds played — swap roles?');
+		var swapBtn = document.getElementById('swap-roles-btn');
+		if(swapBtn) swapBtn.classList.remove('hidden');
+	}
+	// Update rounds in DB
+	if(CURRENT_CHANNEL){
+		MDS.sql("UPDATE channels SET roundsplayed="+ROUNDS_SINCE_ROLE+" WHERE hashid='"+CURRENT_CHANNEL+"'");
+	}
 	updateStats();
 
 	// 2. Add round pip -- THE ONLY PLACE
@@ -2947,7 +3095,38 @@ MDS.init(function(msg){
 				addGameLog('warn', 'Abandoned: ' + (comms.reason || 'Unknown'));
 				abortAndReset();
 
-			/* Props removed — will be a separate Thunder Props dapp */
+			/* ---- Role selection ---- */
+			} else if(comms.type === 'ROLE_ASSIGNED'){
+				if(ROLE_TIMEOUT){ clearTimeout(ROLE_TIMEOUT); ROLE_TIMEOUT = null; }
+				CURRENT_ROLE = comms.myrole;
+				ROUNDS_SINCE_ROLE = 0;
+				updateRoleBadge();
+				updatePlayButton();
+				// Hide role panel, show game area
+				var rp = document.getElementById('role-select-panel');
+				var ga = document.getElementById('game-area');
+				if(rp) rp.classList.add('hidden');
+				if(ga) ga.classList.remove('hidden');
+				addGameLog('system', 'Roles set: You are ' + comms.myrole);
+				addNotice('info', 'You are ' + comms.myrole + ', they are ' + comms.theirrole);
+
+			} else if(comms.type === 'ROLE_CONFLICT'){
+				document.getElementById('role-status').textContent =
+					'Both chose ' + comms.theirrole + ' — use chat to decide, then pick again.';
+				addNotice('warn', 'Role conflict — both chose ' + comms.theirrole);
+
+			/* ---- Chat ---- */
+			} else if(comms.type === 'CHAT_RECEIVED'){
+				if(IN_GAME_SESSION && comms.hashid === CURRENT_CHANNEL){
+					addGameLog('chat', 'Them: ' + comms.text);
+				}
+				addNotice('info', 'Chat: ' + comms.text);
+
+			} else if(comms.type === 'PERMISSION_ERROR'){
+				addNotice('warn', comms.message || 'Permission error');
+			} else if(comms.type === 'PENDING_ACTION'){
+				addNotice('warn', comms.message || 'Action pending approval');
+
 		}
 		}
 
