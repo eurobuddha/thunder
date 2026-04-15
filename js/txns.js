@@ -142,6 +142,24 @@ function randomString() {
 	return output;
 }
 
+/**
+ * Check if an MDS.cmd response array contains any pending commands.
+ * In read-only mode, transaction commands go to pending instead of executing.
+ * Returns true if ANY command is pending, and logs + notifies the user.
+ */
+function checkPending(fundresp, context){
+	if(!fundresp) return false;
+	var arr = Array.isArray(fundresp) ? fundresp : [fundresp];
+	for(var i=0; i<arr.length; i++){
+		if(arr[i] && arr[i].pending === true){
+			MDS.log("PENDING: "+context+" — command "+i+" requires approval. Grant WRITE permission in MiniHub.");
+			try { notify({type:"PENDING_ACTION", message:"Action pending approval. Open MiniHub to approve, or grant WRITE permission to Thunder Casino."}); } catch(e){}
+			return true;
+		}
+	}
+	return false;
+}
+
 
 /* =========================================================================
  * ADDRESS CREATION
@@ -293,6 +311,7 @@ function createFundingTxn(fundingaddress, addamount, total, tokenid, callback){
 		+"txndelete id:"+txid+";";
 
 	MDS.cmd(create, function(fundresp){
+		if(checkPending(fundresp, "createFundingTxn")){ if(callback){ callback(null); } return; }
 		MDS.log("createFundingTxn : "+JSON.stringify(fundresp));
 
 		// Check if txnaddamount succeeded (user has enough funds)
@@ -334,6 +353,7 @@ function addToFundingTxn(txndata, addamount, tokenid, callback){
 		+"txndelete id:"+txid+";";
 
 	MDS.cmd(create, function(fundresp){
+		if(checkPending(fundresp, "addToFundingTxn")){ if(callback){ callback(null); } return; }
 		if(!fundresp || !fundresp[0] || !fundresp[0].status){
 			MDS.log("ERROR addToFundingTxn: txnimport failed. "
 				+ (fundresp && fundresp[0] ? JSON.stringify(fundresp[0].error) : "no response"));
@@ -429,6 +449,7 @@ function spendFundingTxn(sqlrow, callback){
 		+"txndelete id:"+txid+";";
 
 	MDS.cmd(create, function(fundresp){
+		if(checkPending(fundresp, "spendFundingTxn")){ if(callback){ callback(null); } return; }
 		if(!fundresp || !fundresp[0] || !fundresp[0].status){
 			MDS.log("ERROR spendFundingTxn: txncreate/txninput failed");
 			MDS.cmd("txndelete id:"+txid);
@@ -497,6 +518,7 @@ function createTriggerTxn(amount, fundingaddress, eltooaddress, tokenid, callbac
 		+"txndelete id:"+txid+";";
 
 	MDS.cmd(create, function(fundresp){
+		if(checkPending(fundresp, "createTriggerTxn")){ if(callback){ callback(null); } return; }
 		callback(fundresp[5].response.data);
 	});
 }
@@ -615,6 +637,7 @@ function createSettlementTxn(hashid, sequence, eltooaddress, eltooamount,
 		+"txndelete id:"+txid+";";
 
 	MDS.cmd(create, function(fundresp){
+		if(checkPending(fundresp, "createSettlementTxn")){ if(callback){ callback(null); } return; }
 		if(!fundresp || !fundresp[cmdnum] || !fundresp[cmdnum].response || !fundresp[cmdnum].response.data){
 			MDS.log("ERROR createSettlementTxn: transaction build failed at index "+cmdnum);
 			MDS.cmd("txndelete id:"+txid);
@@ -698,6 +721,7 @@ function createUpdateTxn(sequence, eltooaddress, eltooamount, tokenid, gamestate
 		+"txndelete id:"+txid+";";
 
 	MDS.cmd(create, function(fundresp){
+		if(checkPending(fundresp, "createUpdateTxn")){ if(callback){ callback(null); } return; }
 		// Response index: txncreate(0), txninput(1), txnoutput(2),
 		// txnstate(3..N), txnexport(N+1), txndelete(N+2)
 		// For phase=0: 3 txnstates → export at index 6
@@ -918,6 +942,7 @@ function signTxn(txndata, publickey, callback){
 		+"txndelete id:"+txid+";";
 
 	MDS.cmd(create, function(fundresp){
+		if(checkPending(fundresp, "signTxn")){ if(callback){ callback(null); } return; }
 		if(!fundresp || !fundresp[0] || !fundresp[0].status){
 			MDS.log("ERROR signTxn: txnimport failed. Data length:"
 				+(txndata ? txndata.length : 0));
@@ -1018,6 +1043,7 @@ function scriptsMMRTxn(txndata, callback){
 		+"txndelete id:"+txid+";";
 
 	MDS.cmd(create, function(fundresp){
+		if(checkPending(fundresp, "scriptsMMRTxn")){ if(callback){ callback(null); } return; }
 		// Guard: if txnimport failed (corrupt/truncated data), the chain breaks
 		if(!fundresp || !fundresp[0] || !fundresp[0].status){
 			MDS.log("ERROR scriptsMMRTxn: txnimport failed. Data length: "
@@ -1057,6 +1083,7 @@ function checkTxn(txndata, callback){
 		+"txndelete id:"+txid+";";
 
 	MDS.cmd(create, function(fundresp){
+		if(checkPending(fundresp, "checkTxn")){ if(callback){ callback(null); } return; }
 		callback(fundresp[1]);
 	});
 }
@@ -1081,6 +1108,7 @@ function postTxn(txndata, auto, callback){
 		+"txndelete id:"+txid+";";
 
 	MDS.cmd(create, function(fundresp){
+		if(checkPending(fundresp, "postTxn")){ if(callback){ callback(null); } return; }
 		callback(fundresp);
 	});
 }
@@ -1241,6 +1269,7 @@ function viewTXN(txndata, callback){
 		return;
 	}
 	MDS.cmd("txnview data:"+txndata, function(fundresp){
+		if(checkPending(fundresp, "viewTXN")){ if(callback){ callback(false); } return; }
 		callback(fundresp.response);
 	});
 }
