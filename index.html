@@ -2408,7 +2408,9 @@ function updateOddsDisplay(){
 	var chance = ((n / game.range) * 100).toFixed(1) + '%';
 	var betVal = parseFloat(document.getElementById('bet-amount').value) || 0;
 	var totalRisk = betVal * n;
-	document.getElementById('odds-display').textContent = n + ' picks × ' + betVal + ' = ' + totalRisk + ' total — 35:1 each — ' + chance;
+	var payoutRatio = (game.range / n) - 1;
+	var oddsLabel = payoutRatio.toFixed(0) + ':1';
+	document.getElementById('odds-display').textContent = n + ' picks × ' + betVal + ' = ' + totalRisk + ' total — ' + oddsLabel + ' each — ' + chance;
 }
 
 function selectPick(pick){
@@ -2590,7 +2592,6 @@ function playRound(){
 	var totalDisplay = parseFloat(userBetamt) * numpicks;
 	addGameLog('info', 'Placing ' + game.name + ' bet: ' + userBetamt + ' × ' + numpicks + ' = ' + totalDisplay + ' on ' + pickLabels);
 	addNotice('info', 'Bet: ' + userBetamt + ' × ' + numpicks + ' on ' + (numpicks > 3 ? numpicks + ' picks' : pickLabels));
-	}
 
 	// Store pending game — protocol betamt = total at risk
 	MDS.keypair.set("casino_pending_" + CURRENT_CHANNEL, JSON.stringify({
