@@ -1194,6 +1194,11 @@ function createDefaultTxnAndAddresses(hashid, createfunding, callback){
 				addressdata.fundingaddress.address,
 				addressdata.eltooaddress.address,
 				createfunding, function(txndata){
+				if(!txndata){
+					MDS.log("ERROR: createDefaultTransactions failed — txn creation returned null");
+					if(callback){ callback(null); }
+					return;
+				}
 
 				var alldata = {};
 				alldata.addresses    = addressdata;
@@ -1269,6 +1274,11 @@ function checkDefaultTransactions(hashid, sentdata, mydata, callback){
 		viewTXN(mydata.transactions.settletxn, function(mysettletxnjson){
 			viewTXN(sentdata.transactions.triggertxn, function(senttriggertxnjson){
 				viewTXN(sentdata.transactions.settletxn, function(sentsettletxnjson){
+					if(!mytriggertxnjson || !mysettletxnjson || !senttriggertxnjson || !sentsettletxnjson){
+						MDS.log("ERROR: checkDefaultTransactions — viewTXN returned null");
+						callback(false);
+						return;
+					}
 					if(mytriggertxnjson.transaction.transactionid != senttriggertxnjson.transaction.transactionid ||
 					   mysettletxnjson.transaction.transactionid  != sentsettletxnjson.transaction.transactionid){
 						callback(false);

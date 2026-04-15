@@ -422,6 +422,12 @@ MDS.init(function(msg){
 
 						updateChannelUser2(maxmsg.hashid, maxmsg.user, function(sqlrow){
 							createDefaultTxnAndAddresses(maxmsg.hashid, true, function(alldata){
+								if(!alldata){
+									MDS.log("ERROR: createDefaultTxnAndAddresses failed (user1) for "+maxmsg.hashid);
+									insertLog(maxmsg.hashid, "CHANNEL_CREATE_ERROR", "Transaction creation failed");
+									notify({type:"CHANNEL_UPDATE", hashid:maxmsg.hashid, state:"CHANNEL_CREATE_FAILED"});
+									return;
+								}
 								addDefaultScripts(alldata, function(){
 									updateChannelAddresses(maxmsg.hashid, alldata, function(){
 										scriptsMMRTxn(alldata.transactions.fundingtxn, function(mmrtxn){
@@ -450,6 +456,12 @@ MDS.init(function(msg){
 				checkValidMaximaUserState(maximapubkey, maxmsg.hashid, "STATE_REQUEST_ACCEPTED", function(valid){
 					if(valid){
 						createDefaultTxnAndAddresses(maxmsg.hashid, false, function(alldata){
+							if(!alldata){
+								MDS.log("ERROR: createDefaultTxnAndAddresses failed (user2) for "+maxmsg.hashid);
+								insertLog(maxmsg.hashid, "CHANNEL_CREATE_ERROR", "Transaction creation failed on user2 side");
+								notify({type:"CHANNEL_UPDATE", hashid:maxmsg.hashid, state:"CHANNEL_CREATE_FAILED"});
+								return;
+							}
 							checkDefaultTransactions(maxmsg.hashid, maxmsg.txndata, alldata, function(checkresp){
 								if(!checkresp){
 									insertLog(maxmsg.hashid, "INVALID_START_TXNS", "Invalid initial txns!");
