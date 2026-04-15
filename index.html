@@ -606,8 +606,8 @@
 					PLAYER places bets. HOUSE watches and pays out.
 				</div>
 				<div style="display:flex; gap:12px; justify-content:center;">
-					<button class="btn btn-primary" onclick="selectRole('PLAYER')">I'M THE PLAYER</button>
-					<button class="btn btn-secondary" onclick="selectRole('HOUSE')">I'M THE HOUSE</button>
+					<button class="btn btn-primary" id="btn-role-player" onclick="selectRole('PLAYER')">I'M THE PLAYER</button>
+					<button class="btn btn-secondary" id="btn-role-house" onclick="selectRole('HOUSE')">I'M THE HOUSE</button>
 				</div>
 				<div id="role-status" class="text-ghost" style="font-size:10px; margin-top:8px;"></div>
 			</div>
@@ -2283,6 +2283,10 @@ function enterGame(hashid){
 			if(rolePanel) rolePanel.classList.remove('hidden');
 			if(gameArea) gameArea.classList.add('hidden');
 			document.getElementById('role-status').textContent = '';
+			var btnP = document.getElementById('btn-role-player');
+			var btnH = document.getElementById('btn-role-house');
+			if(btnP) btnP.disabled = false;
+			if(btnH) btnH.disabled = false;
 		} else {
 			if(rolePanel) rolePanel.classList.add('hidden');
 			if(gameArea) gameArea.classList.remove('hidden');
@@ -2517,6 +2521,11 @@ function selectRole(role){
 		thunderAlert('Finish the current round first');
 		return;
 	}
+	// Disable buttons while waiting for confirmation
+	var btnP = document.getElementById('btn-role-player');
+	var btnH = document.getElementById('btn-role-house');
+	if(btnP) btnP.disabled = true;
+	if(btnH) btnH.disabled = true;
 	CURRENT_ROLE = role;
 
 	// Update local DB
@@ -3114,6 +3123,11 @@ MDS.init(function(msg){
 			} else if(comms.type === 'ROLE_CONFLICT'){
 				document.getElementById('role-status').textContent =
 					'Both chose ' + comms.theirrole + ' — use chat to decide, then pick again.';
+				// Re-enable role buttons so they can pick again
+				var btnP = document.getElementById('btn-role-player');
+				var btnH = document.getElementById('btn-role-house');
+				if(btnP) btnP.disabled = false;
+				if(btnH) btnH.disabled = false;
 				addNotice('warn', 'Role conflict — both chose ' + comms.theirrole);
 
 			/* ---- Chat ---- */
