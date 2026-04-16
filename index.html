@@ -781,7 +781,7 @@
 	<!-- FOOTER — fixed noticeboard bar                                -->
 	<!-- ============================================================ -->
 	<div class="app-footer">
-		<div class="noticeboard-title">NOTICEBOARD</div>
+		<div class="noticeboard-title">NOTICEBOARD <a href="test.html" style="float:right;color:#8892b0;font-size:8px;">RUN TESTS</a></div>
 		<div id="noticeboard-entries">
 			<div class="notice-entry">
 				<span class="notice-time">--:--:--</span>
@@ -2755,11 +2755,11 @@ function showHouseGameVisual(comms){
 
 	// Compute correct house P&L amounts
 	var gm = GAME_TYPES[gametype];
-	var bv = parseFloat(comms.betamt);
-	var houseWinAmt = bv;
+	var bv = parseFloat(comms.betamt);  // ba = total at risk (already userBet × numpicks)
+	var houseWinAmt = bv;  // House wins the total stake
 	var houseNumpicks = parseInt(comms.numpicks) || 1;
 	var houseEp = gm ? gm.range / houseNumpicks : 2;
-	var houseLoseAmt = bv * (houseEp - 1);
+	var houseLoseAmt = bv * (houseEp - 1);  // House loses betamt × (range/numpicks - 1)
 
 	// Start the spin animation
 	ANIM.startSpin(gametype);

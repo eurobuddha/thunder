@@ -1161,6 +1161,7 @@ MDS.init(function(msg){
 				});
 
 
+
 			/* ---- Role selection ---- */
 
 			}else if(maxmsg.type == "ROLE_SELECT"){

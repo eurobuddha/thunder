@@ -355,7 +355,7 @@ function validateBet(sqlrow, betamt, range, pickmask, numpicks, bettor){
 		return {valid: false, error: "Pick count mismatch: mask has "+countBits(mask)+" bits, expected "+numpicks};
 	}
 
-	// Check 3: Player must have enough balance for the bet (bet = total)
+	// Check 3: Player must have enough balance (bet = total at risk, already userBet × numpicks)
 	var playerbalance = (bettor == 1)
 		? new Decimal(sqlrow.USER1AMOUNT)
 		: new Decimal(sqlrow.USER2AMOUNT);
@@ -364,7 +364,7 @@ function validateBet(sqlrow, betamt, range, pickmask, numpicks, bettor){
 		return {valid: false, error: "Insufficient player balance. Have:"+playerbalance+" Need:"+bet};
 	}
 
-	// Check 4: House must cover max loss = betamt × (range/numpicks - 1)
+	// Check 4: House must cover max loss = bet × (range/numpicks - 1)
 	var effPayout = new Decimal(range).div(new Decimal(numpicks));
 	var maxhouseLoss = bet.mul(effPayout.sub(1));
 	var housebalance = (bettor == 1)
@@ -658,7 +658,8 @@ function calculateGameBalance(sqlrow, winner){
 	var pre2    = new Decimal(sqlrow.PREBETAMT2);
 	var bettor  = parseInt(sqlrow.BETTOR);
 
-	// Bet = total at risk. Payout = betamt × (range / numpicks). No per-pick math.
+	// Bet = total at risk (already userBet × numpicks). No further multiplication.
+	// Payout = betamt × (range / numpicks). Matches on-chain: wn = ba × (rn/np).
 	if(winner === "house"){
 		// Player lost — deduct betamt (the total bet)
 		if(bettor == 1){
@@ -698,7 +699,6 @@ function verifyBalanceTotal(sqlrow, u1str, u2str){
 	var sum = u1.plus(u2);
 	if(sum.lessThan(total.mul(new Decimal("0.99"))) || u1.lessThan(DECIMAL_ZERO) || u2.lessThan(DECIMAL_ZERO)){
 		MDS.log("BURN GUARD: calculateGameBalance produced invalid result! u1="+u1str+" u2="+u2str+" total="+total+" sum="+sum);
-		// Return pre-bet amounts instead — refuse to produce wrong balances
 		return {
 			user1amount: sqlrow.PREBETAMT1 || sqlrow.USER1AMOUNT,
 			user2amount: sqlrow.PREBETAMT2 || sqlrow.USER2AMOUNT

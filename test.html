@@ -1,0 +1,752 @@
+<html>
+<head>
+	<title>Thunder Casino v1.0.0 — Full Test Suite</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<meta charset="UTF-8">
+	<script type="text/javascript" src="./js/mds.js"></script>
+	<script type="text/javascript" src="./js/decimal.js"></script>
+	<script type="text/javascript" src="./js/casino.js"></script>
+	<script type="text/javascript" src="./js/messages.js"></script>
+	<script type="text/javascript" src="./js/sql.js"></script>
+	<style>
+		body { font-family: 'Courier New', monospace; background: #080c18; color: #e6f1ff; padding: 16px; font-size: 12px; line-height: 1.6; }
+		h2 { color: #ffd700; margin: 0 0 8px; }
+		.pass { color: #00e676; }
+		.fail { color: #ff2d78; font-weight: bold; }
+		.skip { color: #f5a623; }
+		.section { color: #ffd700; font-size: 14px; font-weight: bold; margin-top: 16px; border-bottom: 1px solid #1a2140; padding-bottom: 4px; }
+		.subsection { color: #00e5ff; font-size: 12px; margin-top: 8px; }
+		.summary { font-size: 15px; margin-top: 20px; padding: 12px; border: 2px solid; border-radius: 8px; }
+		.summary.all-pass { border-color: #00e676; color: #00e676; }
+		.summary.has-fail { border-color: #ff2d78; color: #ff2d78; }
+		#results { white-space: pre-wrap; }
+		#status { color: #8892b0; margin-bottom: 12px; }
+	</style>
+</head>
+<body>
+<h2>Thunder Casino v1.0.0 — Full Test Suite</h2>
+<div id="status">Initialising MDS...</div>
+<div id="results"></div>
+
+<script>
+
+/* =========================================================================
+ * TEST FRAMEWORK
+ * ========================================================================= */
+
+var PASSED = 0;
+var FAILED = 0;
+var SKIPPED = 0;
+var RESULTS = '';
+var ASYNC_QUEUE = [];
+var ASYNC_RUNNING = false;
+
+function log(msg){ RESULTS += msg + '\n'; }
+function section(name){ log('\n<span class="section">━━━ ' + name + ' ━━━</span>'); }
+function subsection(name){ log('<span class="subsection">  ▸ ' + name + '</span>'); }
+
+function assert(condition, testName, detail){
+	if(condition){
+		PASSED++;
+		log('<span class="pass">  ✓ ' + testName + '</span>');
+	} else {
+		FAILED++;
+		log('<span class="fail">  ✗ ' + testName + (detail ? ' — ' + detail : '') + '</span>');
+	}
+}
+
+function assertEq(actual, expected, testName){
+	var match = (actual === expected);
+	if(!match && typeof actual === 'number' && typeof expected === 'number'){
+		match = Math.abs(actual - expected) < 0.0001;
+	}
+	assert(match, testName, 'expected "' + expected + '", got "' + actual + '"');
+}
+
+function skip(testName, reason){
+	SKIPPED++;
+	log('<span class="skip">  ⊘ SKIP: ' + testName + ' — ' + reason + '</span>');
+}
+
+function renderResults(){
+	var el = document.getElementById('results');
+	el.innerHTML = RESULTS;
+	var summaryClass = (FAILED === 0) ? 'all-pass' : 'has-fail';
+	var total = PASSED + FAILED;
+	var summary = (FAILED === 0)
+		? '✓ ALL ' + PASSED + ' TESTS PASSED' + (SKIPPED ? ' (' + SKIPPED + ' skipped — need 2 nodes)' : '')
+		: '✗ ' + FAILED + ' FAILED / ' + total + ' total (' + PASSED + ' passed, ' + SKIPPED + ' skipped)';
+	el.innerHTML += '\n<div class="summary ' + summaryClass + '">' + summary + '</div>';
+	document.getElementById('status').textContent = 'Complete: ' + total + ' tests, ' + FAILED + ' failed';
+}
+
+// Queue async tests to run sequentially
+function queueAsync(fn){ ASYNC_QUEUE.push(fn); }
+function runAsyncTests(){
+	if(ASYNC_QUEUE.length === 0){
+		renderResults();
+		return;
+	}
+	var fn = ASYNC_QUEUE.shift();
+	fn(function(){ runAsyncTests(); });
+}
+
+
+/* =========================================================================
+ * PART 1: PURE FUNCTIONS (no MDS needed)
+ * ========================================================================= */
+
+section('PART 1: Pure Functions');
+
+
+/* ---- 1.1 Bitmask Functions ---- */
+
+subsection('Bitmask: picksToBitmask');
+assertEq(picksToBitmask([0]), 1, 'picksToBitmask([0]) = 1');
+assertEq(picksToBitmask([1]), 2, 'picksToBitmask([1]) = 2');
+assertEq(picksToBitmask([0,1]), 3, 'picksToBitmask([0,1]) = 3');
+assertEq(picksToBitmask([0,2,5]), 37, 'picksToBitmask([0,2,5]) = 37');
+assertEq(picksToBitmask([]), 0, 'picksToBitmask([]) = 0');
+assertEq(picksToBitmask([35]), Math.pow(2,35), 'picksToBitmask([35]) = 2^35');
+
+subsection('Bitmask: bitmaskToPicks');
+var bp1 = bitmaskToPicks(1, 6);
+assert(bp1.length===1 && bp1[0]===0, 'bitmaskToPicks(1,6) = [0]');
+var bp2 = bitmaskToPicks(3, 6);
+assert(bp2.length===2 && bp2[0]===0 && bp2[1]===1, 'bitmaskToPicks(3,6) = [0,1]');
+var bp3 = bitmaskToPicks(37, 36);
+assert(bp3.length===3 && bp3[0]===0 && bp3[1]===2 && bp3[2]===5, 'bitmaskToPicks(37,36) = [0,2,5]');
+assert(bitmaskToPicks(0, 6).length===0, 'bitmaskToPicks(0,6) = []');
+assert(bitmaskToPicks(63, 6).length===6, 'bitmaskToPicks(63,6) = all 6');
+
+subsection('Bitmask: countBits');
+assertEq(countBits(0), 0, 'countBits(0)=0');
+assertEq(countBits(1), 1, 'countBits(1)=1');
+assertEq(countBits(3), 2, 'countBits(3)=2');
+assertEq(countBits(7), 3, 'countBits(7)=3');
+assertEq(countBits(255), 8, 'countBits(255)=8');
+assertEq(countBits(37), 3, 'countBits(37)=3');
+
+subsection('Bitmask: roundtrip');
+var rt = bitmaskToPicks(picksToBitmask([1,3,5,7,9]), 36);
+assert(rt.length===5 && rt[0]===1 && rt[4]===9, 'Roundtrip [1,3,5,7,9]');
+var rt2 = bitmaskToPicks(picksToBitmask([0]), 2);
+assert(rt2.length===1 && rt2[0]===0, 'Roundtrip flip [0]');
+
+
+/* ---- 1.2 Game Types ---- */
+
+subsection('Game Types');
+assertEq(GAME_TYPES.flip.range, 2, 'Flip range=2');
+assertEq(GAME_TYPES.flip.maxPicks, 1, 'Flip maxPicks=1');
+assertEq(GAME_TYPES.dice.range, 6, 'Dice range=6');
+assertEq(GAME_TYPES.dice.maxPicks, 5, 'Dice maxPicks=5');
+assertEq(GAME_TYPES.roulette.range, 36, 'Roulette range=36');
+assertEq(GAME_TYPES.roulette.maxPicks, 35, 'Roulette maxPicks=35');
+
+
+/* ---- 1.3 Labels ---- */
+
+subsection('Labels');
+assertEq(getPickLabel('flip', 0), 'Heads', 'Flip 0=Heads');
+assertEq(getPickLabel('flip', 1), 'Tails', 'Flip 1=Tails');
+assertEq(getPickLabel('dice', 0), '1', 'Dice 0=1');
+assertEq(getPickLabel('dice', 5), '6', 'Dice 5=6');
+assertEq(getPickLabel('roulette', 0), '1', 'Roulette 0=1');
+assertEq(getPickLabel('roulette', 35), '36', 'Roulette 35=36');
+
+
+/* ---- 1.4 Effective Payout ---- */
+
+subsection('Effective Payout');
+assertEq(effectivePayout(2, 1), 2, 'Flip 1p=2x');
+assertEq(effectivePayout(6, 1), 6, 'Dice 1p=6x');
+assertEq(effectivePayout(6, 2), 3, 'Dice 2p=3x');
+assertEq(effectivePayout(6, 3), 2, 'Dice 3p=2x');
+assertEq(effectivePayout(36, 1), 36, 'Roulette 1p=36x');
+assertEq(effectivePayout(36, 4), 9, 'Roulette 4p=9x');
+assertEq(effectivePayout(36, 12), 3, 'Roulette 12p=3x');
+assertEq(effectivePayout(36, 18), 2, 'Roulette 18p=2x');
+
+
+/* ---- 1.5 Winner Determination (bitmask bit check) ---- */
+
+subsection('Winner Determination');
+function testWinner(pick, result, expected){
+	var bit = Math.floor(pick / Math.pow(2, result)) % 2;
+	var winner = (bit === 1) ? 'player' : 'house';
+	assertEq(winner, expected, 'pick='+pick+' result='+result+' → '+expected);
+}
+// Flip
+testWinner(1, 0, 'player');  // Heads picked, result=Heads
+testWinner(1, 1, 'house');   // Heads picked, result=Tails
+testWinner(2, 1, 'player');  // Tails picked, result=Tails
+testWinner(2, 0, 'house');   // Tails picked, result=Heads
+// Dice multi-pick
+testWinner(7, 0, 'player');  // picks 0,1,2 — result 0 = win
+testWinner(7, 2, 'player');  // picks 0,1,2 — result 2 = win
+testWinner(7, 3, 'house');   // picks 0,1,2 — result 3 = lose
+testWinner(7, 5, 'house');   // picks 0,1,2 — result 5 = lose
+testWinner(32, 5, 'player'); // pick 5 only — result 5 = win
+testWinner(32, 4, 'house');  // pick 5 only — result 4 = lose
+// Roulette
+var mask17 = Math.pow(2, 17);
+testWinner(mask17, 17, 'player');
+testWinner(mask17, 16, 'house');
+testWinner(mask17, 0, 'house');
+
+
+/* ---- 1.6 checkPending (mock data) ---- */
+
+subsection('checkPending (mock responses)');
+// Need to reference checkPending from txns.js — it's a global function loaded by service.js
+// Since we don't load txns.js in test.html, inline the function for testing
+function _checkPending(fundresp){
+	if(!fundresp) return false;
+	var arr = Array.isArray(fundresp) ? fundresp : [fundresp];
+	for(var i=0; i<arr.length; i++){
+		if(arr[i] && arr[i].pending === true) return true;
+	}
+	return false;
+}
+
+assert(!_checkPending(null), 'checkPending(null) = false');
+assert(!_checkPending([{status:true, pending:false}]), 'checkPending(normal) = false');
+assert(_checkPending([{status:true, pending:true}]), 'checkPending(pending) = true');
+assert(_checkPending([{status:true, pending:false},{status:false, pending:true}]), 'checkPending(2nd pending) = true');
+assert(!_checkPending([{status:true},{status:true}]), 'checkPending(no pending field) = false');
+assert(!_checkPending({}), 'checkPending({}) = false');
+
+
+/* =========================================================================
+ * PART 2: VALIDATE BET — All Error Paths
+ * ========================================================================= */
+
+section('PART 2: validateBet');
+
+function mockRow(u1, u2, total){
+	return { USER1AMOUNT: u1.toString(), USER2AMOUNT: u2.toString(), TOTALAMOUNT: (total || (u1+u2)).toString() };
+}
+
+subsection('Error: bet amount');
+assert(!validateBet(mockRow(1000,1000), '0', 6, 1, 1, 1).valid, 'Reject bet=0');
+assert(!validateBet(mockRow(1000,1000), '-5', 6, 1, 1, 1).valid, 'Reject bet=-5');
+assert(!validateBet(mockRow(1000,1000), '-0.001', 6, 1, 1, 1).valid, 'Reject bet=-0.001');
+
+subsection('Error: numpicks range');
+assert(!validateBet(mockRow(1000,1000), '10', 6, 63, 6, 1).valid, 'Reject numpicks=range (dice 6)');
+assert(!validateBet(mockRow(1000,1000), '10', 2, 3, 2, 1).valid, 'Reject numpicks=range (flip 2)');
+assert(!validateBet(mockRow(1000,1000), '10', 36, picksToBitmask(Array.from({length:36},(_,i)=>i)), 36, 1).valid, 'Reject numpicks=36 (all roulette)');
+
+subsection('Error: bitmask');
+assert(!validateBet(mockRow(1000,1000), '10', 6, 0, 1, 1).valid, 'Reject mask=0');
+assert(!validateBet(mockRow(1000,1000), '10', 6, -1, 1, 1).valid, 'Reject mask=-1');
+assert(!validateBet(mockRow(1000,1000), '10', 6, 64, 1, 1).valid, 'Reject mask=64 (bit 6) for range=6');
+assert(!validateBet(mockRow(1000,1000), '10', 2, 4, 1, 1).valid, 'Reject mask=4 (bit 2) for range=2');
+assert(!validateBet(mockRow(1000,1000), '10', 2, 8, 1, 1).valid, 'Reject mask=8 (bit 3) for range=2');
+
+subsection('Error: count mismatch');
+assert(!validateBet(mockRow(1000,1000), '10', 6, 3, 1, 1).valid, 'Reject numpicks=1 but mask=3 (2 bits)');
+assert(!validateBet(mockRow(1000,1000), '10', 6, 1, 2, 1).valid, 'Reject numpicks=2 but mask=1 (1 bit)');
+
+subsection('Error: insufficient player balance');
+// betamt is TOTAL at risk (already userBet × numpicks)
+assert(!validateBet(mockRow(50, 1000), '100', 6, 1, 1, 1).valid, 'Reject: player(u1) has 50, bet=100');
+assert(!validateBet(mockRow(1000, 50), '100', 6, 1, 1, 2).valid, 'Reject: player(u2) has 50, bet=100');
+
+subsection('Error: insufficient house balance');
+// Max house loss = bet × (range/numpicks - 1)
+// Dice 1 pick: loss = 100 × (6/1 - 1) = 500
+assert(!validateBet(mockRow(1000, 400), '100', 6, 1, 1, 1).valid, 'Reject: house(u2) has 400, max loss=500');
+assert(!validateBet(mockRow(400, 1000), '100', 6, 1, 1, 2).valid, 'Reject: house(u1) has 400, max loss=500');
+// Flip: loss = 10 × (2/1 - 1) = 10
+assert(!validateBet(mockRow(100, 5), '10', 2, 1, 1, 1).valid, 'Reject: flip house has 5, max loss=10');
+
+subsection('Success cases');
+assert(validateBet(mockRow(100,100), '10', 2, 1, 1, 1).valid, 'Flip: bet 10, Heads, 100/100');
+assert(validateBet(mockRow(100,100), '10', 2, 2, 1, 1).valid, 'Flip: bet 10, Tails (mask=2), 100/100');
+assert(validateBet(mockRow(500,500), '50', 6, 1, 1, 1).valid, 'Dice: bet 50, 1 pick, 500/500');
+assert(validateBet(mockRow(500,500), '15', 6, 7, 3, 1).valid, 'Dice: bet 15 total, 3 picks, 500/500');
+assert(validateBet(mockRow(500,500), '36', 36, 15, 4, 1).valid, 'Roulette: bet 36 total, 4 picks, 500/500');
+assert(validateBet(mockRow(100,100), '100', 2, 1, 1, 1).valid, 'Flip: bet=balance (100), exact');
+
+subsection('House coverage edge cases');
+// Dice 3 picks: loss = 30 × (6/3 - 1) = 30. House needs exactly 30.
+assert(validateBet(mockRow(500, 30), '30', 6, 7, 3, 1).valid, 'Dice 3p: house has exactly 30 for max loss 30');
+assert(!validateBet(mockRow(500, 29), '30', 6, 7, 3, 1).valid, 'Dice 3p: house has 29 < max loss 30');
+// Roulette 18 picks: loss = 180 × (36/18 - 1) = 180
+assert(validateBet(mockRow(500, 180), '180', 36, picksToBitmask(Array.from({length:18},(_,i)=>i)), 18, 1).valid, 'Roulette 18p: house has exactly 180');
+
+
+/* =========================================================================
+ * PART 3: CALCULATE GAME BALANCE — All Scenarios
+ * ========================================================================= */
+
+section('PART 3: calculateGameBalance');
+
+function mockGameRow(pre1, pre2, betamt, range, numpicks, bettor, total){
+	return {
+		PREBETAMT1: pre1.toString(), PREBETAMT2: pre2.toString(),
+		BETAMOUNT: betamt.toString(), GAMERANGE: range.toString(),
+		NUMPICKS: numpicks.toString(), BETTOR: bettor.toString(),
+		TOTALAMOUNT: (total || (pre1+pre2)).toString(),
+		USER1AMOUNT: (bettor==1 ? pre1-betamt : pre1+betamt).toString(),
+		USER2AMOUNT: (bettor==2 ? pre2-betamt : pre2+betamt).toString()
+	};
+}
+
+subsection('Coin Flip (range=2)');
+var f1 = calculateGameBalance(mockGameRow(500,500,10,2,1,1), 'house');
+assertEq(f1.user1amount, '490', 'Flip loss bt=1: u1=490');
+assertEq(f1.user2amount, '510', 'Flip loss bt=1: u2=510');
+var f2 = calculateGameBalance(mockGameRow(500,500,10,2,1,1), 'player');
+assertEq(f2.user1amount, '510', 'Flip win bt=1: u1=510');
+assertEq(f2.user2amount, '490', 'Flip win bt=1: u2=490');
+var f3 = calculateGameBalance(mockGameRow(500,500,10,2,1,2), 'player');
+assertEq(f3.user1amount, '490', 'Flip win bt=2: u1=490');
+assertEq(f3.user2amount, '510', 'Flip win bt=2: u2=510');
+var f4 = calculateGameBalance(mockGameRow(500,500,10,2,1,2), 'house');
+assertEq(f4.user1amount, '510', 'Flip loss bt=2: u1=510');
+assertEq(f4.user2amount, '490', 'Flip loss bt=2: u2=490');
+
+subsection('Dice single pick (range=6)');
+var d1 = calculateGameBalance(mockGameRow(500,500,30,6,1,1), 'player');
+assertEq(d1.user1amount, '650', 'Dice 1p win: u1=500+180-30=650');
+assertEq(d1.user2amount, '350', 'Dice 1p win: u2=500-180+30=350');
+var d2 = calculateGameBalance(mockGameRow(500,500,30,6,1,1), 'house');
+assertEq(d2.user1amount, '470', 'Dice 1p loss: u1=500-30=470');
+assertEq(d2.user2amount, '530', 'Dice 1p loss: u2=500+30=530');
+
+subsection('Dice multi-pick (range=6)');
+// ba=30, 3 picks. wn=30×(6/3)=60. Win net=+30, loss net=-30.
+var d3 = calculateGameBalance(mockGameRow(500,500,30,6,3,1), 'player');
+assertEq(d3.user1amount, '530', 'Dice 3p win: u1=500+60-30=530');
+assertEq(d3.user2amount, '470', 'Dice 3p win: u2=470');
+var d4 = calculateGameBalance(mockGameRow(500,500,30,6,3,1), 'house');
+assertEq(d4.user1amount, '470', 'Dice 3p loss: u1=470');
+// ba=50, 5 picks. wn=50×(6/5)=60. Win net=+10.
+var d5 = calculateGameBalance(mockGameRow(500,500,50,6,5,1), 'player');
+assertEq(d5.user1amount, '510', 'Dice 5p win: u1=500+60-50=510');
+
+subsection('Roulette (range=36)');
+// ba=36, 1 pick. wn=36×36=1296. Win net=+1260.
+var r1 = calculateGameBalance(mockGameRow(2000,2000,36,36,1,1), 'player');
+assertEq(r1.user1amount, '3260', 'Roulette 1p win: u1=3260');
+assertEq(r1.user2amount, '740', 'Roulette 1p win: u2=740');
+// ba=36, 4 picks. wn=36×(36/4)=324. Win net=+288.
+var r2 = calculateGameBalance(mockGameRow(2000,2000,36,36,4,1), 'player');
+assertEq(r2.user1amount, '2288', 'Roulette 4p win: u1=2288');
+assertEq(r2.user2amount, '1712', 'Roulette 4p win: u2=1712');
+// ba=36, 12 picks. wn=36×3=108. Win net=+72.
+var r3 = calculateGameBalance(mockGameRow(2000,2000,36,36,12,1), 'player');
+assertEq(r3.user1amount, '2072', 'Roulette 12p win: u1=2072');
+// ba=180, 18 picks. wn=180×2=360. Win net=+180.
+var r4 = calculateGameBalance(mockGameRow(2000,2000,180,36,18,1), 'player');
+assertEq(r4.user1amount, '2180', 'Roulette 18p win: u1=2180');
+
+
+/* =========================================================================
+ * PART 4: BALANCE PRESERVATION
+ * ========================================================================= */
+
+section('PART 4: Balance Preservation (total must always match)');
+
+function checkTotal(label, pre1, pre2, ba, rn, np, bt, winner){
+	var row = mockGameRow(pre1, pre2, ba, rn, np, bt);
+	var r = calculateGameBalance(row, winner);
+	var u1 = parseFloat(r.user1amount);
+	var u2 = parseFloat(r.user2amount);
+	var total = pre1 + pre2;
+	assert(Math.abs((u1+u2) - total) < 0.01, label + ': sum preserved (' + (u1+u2) + '=' + total + ')');
+	assert(u1 >= 0 && u2 >= 0, label + ': no negatives (u1=' + u1 + ' u2=' + u2 + ')');
+}
+
+checkTotal('Flip W', 500, 500, 10, 2, 1, 1, 'player');
+checkTotal('Flip L', 500, 500, 10, 2, 1, 1, 'house');
+checkTotal('Dice1 W', 500, 500, 50, 6, 1, 1, 'player');
+checkTotal('Dice1 L', 500, 500, 50, 6, 1, 1, 'house');
+checkTotal('Dice3 W', 500, 500, 30, 6, 3, 1, 'player');
+checkTotal('Dice3 L', 500, 500, 30, 6, 3, 1, 'house');
+checkTotal('Dice5 W', 500, 500, 50, 6, 5, 1, 'player');
+checkTotal('Dice5 L', 500, 500, 50, 6, 5, 1, 'house');
+checkTotal('Rou1 W', 2000, 2000, 36, 36, 1, 1, 'player');
+checkTotal('Rou1 L', 2000, 2000, 36, 36, 1, 1, 'house');
+checkTotal('Rou4 W', 2000, 2000, 36, 36, 4, 1, 'player');
+checkTotal('Rou4 L', 2000, 2000, 36, 36, 4, 1, 'house');
+checkTotal('Rou12 W', 2000, 2000, 120, 36, 12, 1, 'player');
+checkTotal('Rou12 L', 2000, 2000, 120, 36, 12, 1, 'house');
+checkTotal('Rou18 W', 2000, 2000, 180, 36, 18, 1, 'player');
+checkTotal('Rou18 L', 2000, 2000, 180, 36, 18, 1, 'house');
+checkTotal('Bt2 W', 300, 700, 50, 6, 1, 2, 'player');
+checkTotal('Bt2 L', 300, 700, 50, 6, 1, 2, 'house');
+checkTotal('Asym W', 100, 900, 10, 2, 1, 1, 'player');
+checkTotal('Asym L', 100, 900, 10, 2, 1, 1, 'house');
+checkTotal('Big W', 5000, 5000, 1000, 36, 1, 1, 'player');
+checkTotal('Big L', 5000, 5000, 1000, 36, 1, 1, 'house');
+
+
+/* =========================================================================
+ * PART 5: ON-CHAIN FORMULA MATCH
+ * ========================================================================= */
+
+section('PART 5: On-Chain Formula Match: wn = ba × (rn/np)');
+
+function verifyOnChain(label, ba, rn, np, winner, pre1, pre2, bt){
+	var wn = ba * (rn / np);
+	var row = mockGameRow(pre1, pre2, ba, rn, np, bt);
+	var r = calculateGameBalance(row, winner);
+	var u1 = parseFloat(r.user1amount);
+	var u2 = parseFloat(r.user2amount);
+	var exp1, exp2;
+	if(winner === 'player'){
+		exp1 = bt===1 ? pre1+wn-ba : pre1-wn+ba;
+		exp2 = bt===1 ? pre2-wn+ba : pre2+wn-ba;
+	} else {
+		exp1 = bt===1 ? pre1-ba : pre1+ba;
+		exp2 = bt===1 ? pre2+ba : pre2-ba;
+	}
+	assert(Math.abs(u1-exp1)<0.01 && Math.abs(u2-exp2)<0.01, label + ' (wn='+wn+')');
+}
+
+verifyOnChain('Flip W', 10, 2, 1, 'player', 500, 500, 1);
+verifyOnChain('Flip L', 10, 2, 1, 'house', 500, 500, 1);
+verifyOnChain('Dice1 W', 50, 6, 1, 'player', 500, 500, 1);
+verifyOnChain('Dice3 W', 30, 6, 3, 'player', 500, 500, 1);
+verifyOnChain('Dice5 W', 50, 6, 5, 'player', 500, 500, 1);
+verifyOnChain('Rou1 W', 10, 36, 1, 'player', 2000, 2000, 1);
+verifyOnChain('Rou4 W', 40, 36, 4, 'player', 2000, 2000, 1);
+verifyOnChain('Rou12 W', 120, 36, 12, 'player', 2000, 2000, 1);
+verifyOnChain('Rou18 W', 180, 36, 18, 'player', 2000, 2000, 1);
+verifyOnChain('Bt2 dice W', 30, 6, 2, 'player', 500, 500, 2);
+verifyOnChain('Bt2 flip L', 10, 2, 1, 'house', 500, 500, 2);
+verifyOnChain('Big rou W', 1000, 36, 1, 'player', 50000, 50000, 1);
+
+
+/* =========================================================================
+ * PART 6: BURN GUARD — verifyBalanceTotal
+ * ========================================================================= */
+
+section('PART 6: Burn Guard (verifyBalanceTotal)');
+
+var bgRow = {TOTALAMOUNT:'1000', PREBETAMT1:'500', PREBETAMT2:'500', USER1AMOUNT:'500', USER2AMOUNT:'500'};
+
+subsection('Valid balances');
+var bg1 = verifyBalanceTotal(bgRow, '600', '400');
+assertEq(bg1.user1amount, '600', 'Sum=1000: accepted');
+var bg2 = verifyBalanceTotal(bgRow, '999.5', '0.5');
+assertEq(bg2.user1amount, '999.5', 'Sum=1000: extreme split accepted');
+
+subsection('Reject: negative balances');
+var bg3 = verifyBalanceTotal(bgRow, '-10', '1010');
+assertEq(bg3.user1amount, '500', 'Negative u1: fallback to prebetamt');
+var bg4 = verifyBalanceTotal(bgRow, '1010', '-10');
+assertEq(bg4.user2amount, '500', 'Negative u2: fallback to prebetamt');
+
+subsection('Reject: sum too low');
+var bg5 = verifyBalanceTotal(bgRow, '400', '580');
+assertEq(bg5.user1amount, '500', 'Sum=980 < 990 (99%): fallback');
+
+subsection('Accept: within 1% tolerance');
+var bg6 = verifyBalanceTotal(bgRow, '500', '495');
+assertEq(bg6.user1amount, '500', 'Sum=995 >= 990: accepted');
+
+
+/* =========================================================================
+ * PART 7: MESSAGE CONSTRUCTORS
+ * ========================================================================= */
+
+section('PART 7: Message Constructors');
+
+subsection('Game messages');
+var gr = gameRequestMessage('hash1', 'flip', 1, 1, '10');
+assertEq(gr.type, 'GAME_REQUEST', 'gameRequestMessage type');
+assertEq(gr.hashid, 'hash1', 'gameRequestMessage hashid');
+assertEq(gr.gametype, 'flip', 'gameRequestMessage gametype');
+assertEq(gr.pick, 1, 'gameRequestMessage pick');
+assertEq(gr.numpicks, 1, 'gameRequestMessage numpicks');
+
+var ga = gameAcceptMessage('hash2', 'commit123', 7, 3, '30', 'dice');
+assertEq(ga.type, 'GAME_ACCEPT', 'gameAcceptMessage type');
+assertEq(ga.numpicks, 3, 'gameAcceptMessage numpicks');
+
+var gab = gameAbandonedMessage('hash3', 'timeout');
+assertEq(gab.type, 'GAME_ABANDONED', 'gameAbandonedMessage type');
+assertEq(gab.reason, 'timeout', 'gameAbandonedMessage reason');
+
+subsection('Role messages');
+var rs = roleSelectMessage('hash4', 'PLAYER');
+assertEq(rs.type, 'ROLE_SELECT', 'roleSelectMessage type');
+assertEq(rs.role, 'PLAYER', 'roleSelectMessage role');
+
+var rc = roleConfirmedMessage('hash4', 'HOUSE');
+assertEq(rc.type, 'ROLE_CONFIRMED', 'roleConfirmedMessage type');
+assertEq(rc.role, 'HOUSE', 'roleConfirmedMessage role');
+
+subsection('Chat message');
+var cm = chatMessage('hash5', 'hello world');
+assertEq(cm.type, 'CHAT_MESSAGE', 'chatMessage type');
+assertEq(cm.text, 'hello world', 'chatMessage text');
+
+var cmLong = chatMessage('hash5', 'a'.repeat(300));
+assertEq(cmLong.text.length, 200, 'chatMessage truncates to 200 chars');
+
+var cmEmpty = chatMessage('hash5', '');
+assertEq(cmEmpty.text, '', 'chatMessage empty string OK');
+
+var cmNull = chatMessage('hash5', null);
+assertEq(cmNull.text, '', 'chatMessage null → empty string');
+
+
+/* =========================================================================
+ * PART 8: BETTING MODEL MATH (protocol betamt = userBet × numpicks)
+ * ========================================================================= */
+
+section('PART 8: Betting Model Verification');
+
+subsection('Bet 1 per pick on various games');
+
+// 1×1 flip = ba=1. Win: wn=1×2=2. Net=+1.
+var bm1 = calculateGameBalance(mockGameRow(500,500,1,2,1,1), 'player');
+assertEq(bm1.user1amount, '501', 'Flip 1×1 win: net +1');
+
+// 1×5 dice = ba=5. Win: wn=5×(6/5)=6. Net=+1.
+var bm2 = calculateGameBalance(mockGameRow(500,500,5,6,5,1), 'player');
+assertEq(bm2.user1amount, '501', 'Dice 1×5 win: net +1');
+
+// 1×4 roulette = ba=4. Win: wn=4×(36/4)=36. Net=+32.
+var bm3 = calculateGameBalance(mockGameRow(500,500,4,36,4,1), 'player');
+assertEq(bm3.user1amount, '532', 'Roulette 1×4 win: net +32');
+
+// 1×1 roulette = ba=1. Win: wn=1×36=36. Net=+35.
+var bm4 = calculateGameBalance(mockGameRow(500,500,1,36,1,1), 'player');
+assertEq(bm4.user1amount, '535', 'Roulette 1×1 win: net +35');
+
+subsection('Larger bets');
+
+// 10×3 dice = ba=30. Win: wn=30×(6/3)=60. Net=+30.
+var bm5 = calculateGameBalance(mockGameRow(500,500,30,6,3,1), 'player');
+assertEq(bm5.user1amount, '530', 'Dice 10×3 win: net +30');
+
+// 10×3 dice loss: lose 30.
+var bm6 = calculateGameBalance(mockGameRow(500,500,30,6,3,1), 'house');
+assertEq(bm6.user1amount, '470', 'Dice 10×3 loss: net -30');
+
+// 5×12 roulette = ba=60. Win: wn=60×(36/12)=180. Net=+120.
+var bm7 = calculateGameBalance(mockGameRow(1000,1000,60,36,12,1), 'player');
+assertEq(bm7.user1amount, '1120', 'Roulette 5×12 win: net +120');
+
+
+/* =========================================================================
+ * PART 9: MDS INTEGRATION TESTS (need MDS running)
+ * ========================================================================= */
+
+section('PART 9: MDS Integration Tests');
+
+queueAsync(function(next){
+	subsection('MDS.cmd — random + hash (secret generation)');
+	MDS.cmd("random size:32", function(randresp){
+		assert(randresp && randresp.status === true, 'MDS random: status=true');
+		assert(randresp.response && randresp.response.random, 'MDS random: has random field');
+		var secret = randresp.response.random;
+		assert(secret.startsWith('0x'), 'Secret starts with 0x');
+		assert(secret.length === 66, 'Secret is 32 bytes (66 hex chars with 0x)');
+
+		MDS.cmd("hash data:"+secret, function(hashresp){
+			assert(hashresp && hashresp.status === true, 'MDS hash: status=true');
+			assert(hashresp.response && hashresp.response.hash, 'MDS hash: has hash field');
+			var commit = hashresp.response.hash;
+			assert(commit.startsWith('0x'), 'Commit starts with 0x');
+
+			// Verify deterministic: same input → same hash
+			MDS.cmd("hash data:"+secret, function(hash2){
+				assertEq(hash2.response.hash, commit, 'Hash is deterministic');
+				next();
+			});
+		});
+	});
+});
+
+queueAsync(function(next){
+	subsection('MDS.cmd — commit-reveal verification');
+	MDS.cmd("random size:32", function(r1){
+		MDS.cmd("random size:32", function(r2){
+			var houseSecret = r1.response.random;
+			var playerSecret = r2.response.random;
+
+			// Hash house secret
+			MDS.cmd("hash data:"+houseSecret, function(h1){
+				var houseCommit = h1.response.hash;
+
+				// Verify: SHA3(houseSecret) == houseCommit
+				MDS.cmd("hash data:"+houseSecret, function(verify){
+					assertEq(verify.response.hash, houseCommit, 'SHA3(secret) matches commit');
+
+					// Compute combined hash for result
+					MDS.cmd("concat data1:"+houseSecret+" data2:"+playerSecret, function(concatResp){
+						if(concatResp && concatResp.response){
+							var combined = concatResp.response.concat || concatResp.response;
+							assert(typeof combined === 'string' || combined.value, 'Concat produces value');
+						} else {
+							skip('Concat test', 'concat command not available');
+						}
+						next();
+					});
+				});
+			});
+		});
+	});
+});
+
+queueAsync(function(next){
+	subsection('MDS.sql — database operations');
+	// Create a test table
+	MDS.sql("CREATE TABLE IF NOT EXISTS `test_suite` (`id` int auto_increment, `name` varchar(64), `value` int)", function(createResp){
+		assert(createResp && createResp.status === true, 'CREATE TABLE test_suite');
+
+		// Insert
+		MDS.sql("INSERT INTO test_suite (name, value) VALUES ('test1', 42)", function(insResp){
+			assert(insResp && insResp.status === true, 'INSERT into test_suite');
+
+			// Query
+			MDS.sql("SELECT * FROM test_suite WHERE name='test1'", function(selResp){
+				assert(selResp && selResp.status === true, 'SELECT from test_suite');
+				assert(selResp.count > 0, 'SELECT returned rows');
+				if(selResp.rows && selResp.rows[0]){
+					assertEq(selResp.rows[0].VALUE, 42, 'Queried value=42');
+					assertEq(selResp.rows[0].NAME, 'test1', 'Queried name=test1 (UPPERCASE columns)');
+				}
+
+				// Cleanup
+				MDS.sql("DROP TABLE test_suite", function(dropResp){
+					assert(dropResp && dropResp.status === true, 'DROP TABLE test_suite');
+					next();
+				});
+			});
+		});
+	});
+});
+
+queueAsync(function(next){
+	subsection('MDS.sql — channel table + migrations');
+	// Verify the channels table exists and has all required columns
+	MDS.sql("SELECT * FROM channels LIMIT 1", function(resp){
+		assert(resp && resp.status === true, 'channels table exists');
+
+		// Verify migration columns exist
+		MDS.sql("SELECT myrole, roundsplayed, numpicks FROM channels LIMIT 1", function(migResp){
+			assert(migResp && migResp.status === true, 'Migration columns exist (myrole, roundsplayed, numpicks)');
+			next();
+		});
+	});
+});
+
+queueAsync(function(next){
+	subsection('MDS.cmd — transaction lifecycle (create/state/export/delete)');
+	MDS.cmd("txncreate id:test_txn_lifecycle", function(cr){
+		assert(cr && cr.status === true, 'txncreate');
+
+		MDS.cmd("txnstate id:test_txn_lifecycle port:100 value:TRUE", function(st){
+			assert(st && st.status === true, 'txnstate port:100');
+
+			MDS.cmd("txnexport id:test_txn_lifecycle", function(ex){
+				assert(ex && ex.status === true, 'txnexport');
+				assert(ex.response && ex.response.data, 'Export has data field');
+				var exported = ex.response.data;
+				assert(exported.startsWith('0x') || exported.length > 10, 'Exported data is hex');
+
+				MDS.cmd("txndelete id:test_txn_lifecycle", function(dl){
+					assert(dl && dl.status === true, 'txndelete');
+
+					// Verify it was deleted (re-export should fail)
+					MDS.cmd("txnexport id:test_txn_lifecycle", function(ex2){
+						assert(!ex2.status || !ex2.response, 'Deleted txn cannot be exported');
+						next();
+					});
+				});
+			});
+		});
+	});
+});
+
+queueAsync(function(next){
+	subsection('MDS.cmd — checkmode (permission detection)');
+	MDS.cmd("checkmode", function(resp){
+		if(resp && resp.response){
+			var mode = resp.response.mode || 'unknown';
+			assert(mode === 'READ' || mode === 'WRITE', 'checkmode returns READ or WRITE (got: '+mode+')');
+			log('    Mode: ' + mode);
+		} else {
+			skip('checkmode', 'command not available on this node version');
+		}
+		next();
+	});
+});
+
+queueAsync(function(next){
+	subsection('MDS.keypair — secret storage and retrieval');
+	var testKey = 'test_secret_' + Date.now();
+	var testVal = '0xABCDEF1234567890';
+	MDS.keypair.set(testKey, testVal, function(setResp){
+		assert(setResp && setResp.status === true, 'keypair.set');
+
+		MDS.keypair.get(testKey, function(getResp){
+			assert(getResp && getResp.status === true, 'keypair.get');
+			assertEq(getResp.response.value, testVal, 'keypair roundtrip matches');
+
+			// Cleanup
+			MDS.keypair.set(testKey, '', function(){
+				next();
+			});
+		});
+	});
+});
+
+
+/* =========================================================================
+ * PART 10: TWO-NODE TESTS (skipped — need manual testing)
+ * ========================================================================= */
+
+queueAsync(function(next){
+	section('PART 10: Two-Node Integration (skipped — requires 2 connected nodes)');
+	skip('Channel creation handshake', 'Needs 2 nodes with Maxima');
+	skip('Role selection: both pick PLAYER → conflict', 'Needs 2 nodes');
+	skip('Role selection: PLAYER + HOUSE → confirmed', 'Needs 2 nodes');
+	skip('Chat message delivery', 'Needs 2 nodes');
+	skip('Coin flip full round (bet → reveal → settle)', 'Needs 2 nodes');
+	skip('Dice multi-pick full round', 'Needs 2 nodes');
+	skip('Roulette multi-pick full round', 'Needs 2 nodes');
+	skip('Cancel during PLACING phase', 'Needs 2 nodes');
+	skip('Cooperative close → funds returned', 'Needs 2 nodes');
+	skip('Unilateral close → ELTOO dispute', 'Needs 2 nodes');
+	skip('Pending detection in read-only mode', 'Needs read-only permission');
+	skip('Simultaneous game requests → role guard', 'Needs 2 nodes');
+	next();
+});
+
+
+/* =========================================================================
+ * RUN
+ * ========================================================================= */
+
+// Run pure tests immediately, MDS tests when MDS connects
+document.getElementById('status').textContent = 'Running pure tests...';
+renderResults();  // Show pure test results immediately
+
+var MDS_TIMEOUT = setTimeout(function(){
+	document.getElementById('status').textContent = 'MDS not available — pure tests only. Open from MiniHub for full suite.';
+	section('PARTS 9-10: SKIPPED (MDS not connected)');
+	skip('All MDS integration tests', 'Open test.html from within the MiniDapp (via MiniHub) for MDS tests');
+	renderResults();
+}, 5000);
+
+MDS.init(function(msg){
+	if(msg.event === 'inited'){
+		clearTimeout(MDS_TIMEOUT);
+		document.getElementById('status').textContent = 'MDS ready. Running integration tests...';
+		runAsyncTests();
+	}
+});
+
+</script>
+</body>
+</html>

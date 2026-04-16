@@ -420,27 +420,22 @@ function gameAbandonedMessage(hashid, reason){
 	return msg;
 }
 
-
-/* =========================================================================
- * ROLE SELECTION + CHAT MESSAGES
- * ========================================================================= */
-
 /**
- * Announce chosen role (PLAYER or HOUSE) to counterparty.
+ * ROLE_SELECT — Player selects their preferred role for the session.
  */
 function roleSelectMessage(hashid, role){
 	return {type:"ROLE_SELECT", hashid:hashid, role:role};
 }
 
 /**
- * Confirm compatible roles. Sent after receiving ROLE_SELECT.
+ * ROLE_CONFIRMED — Counterparty confirms the role assignment.
  */
 function roleConfirmedMessage(hashid, role){
 	return {type:"ROLE_CONFIRMED", hashid:hashid, role:role};
 }
 
 /**
- * Free-text chat message within a channel. Capped at 200 chars.
+ * CHAT_MESSAGE — Simple in-channel text chat (max 200 chars).
  */
 function chatMessage(hashid, text){
 	return {type:"CHAT_MESSAGE", hashid:hashid, text:(text||"").substring(0,200)};
