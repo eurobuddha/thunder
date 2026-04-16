@@ -5,9 +5,16 @@
 	<meta charset="UTF-8">
 	<script type="text/javascript" src="./js/mds.js"></script>
 	<script type="text/javascript" src="./js/decimal.js"></script>
+	<script type="text/javascript" src="./js/utils.js"></script>
 	<script type="text/javascript" src="./js/casino.js"></script>
 	<script type="text/javascript" src="./js/messages.js"></script>
 	<script type="text/javascript" src="./js/sql.js"></script>
+	<script>
+		// Globals needed by casino.js and messages.js
+		if(typeof MAX_CHANNEL_AMOUNT === 'undefined') var MAX_CHANNEL_AMOUNT = 1000;
+		if(typeof getUserDetails === 'undefined') var getUserDetails = function(){ return {name:'test'}; };
+		if(typeof genRandomHexString === 'undefined') var genRandomHexString = function(){ return '0xTEST'; };
+	</script>
 	<style>
 		body { font-family: 'Courier New', monospace; background: #080c18; color: #e6f1ff; padding: 16px; font-size: 12px; line-height: 1.6; }
 		h2 { color: #ffd700; margin: 0 0 8px; }
