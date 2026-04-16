@@ -10,10 +10,9 @@
 	<script type="text/javascript" src="./js/messages.js"></script>
 	<script type="text/javascript" src="./js/sql.js"></script>
 	<script>
-		// Globals needed by casino.js and messages.js
+		// Globals needed by casino.js and messages.js (not loaded via their own files)
 		if(typeof MAX_CHANNEL_AMOUNT === 'undefined') var MAX_CHANNEL_AMOUNT = 1000;
 		if(typeof getUserDetails === 'undefined') var getUserDetails = function(){ return {name:'test'}; };
-		if(typeof genRandomHexString === 'undefined') var genRandomHexString = function(){ return '0xTEST'; };
 	</script>
 	<style>
 		body { font-family: 'Courier New', monospace; background: #080c18; color: #e6f1ff; padding: 16px; font-size: 12px; line-height: 1.6; }
@@ -454,8 +453,8 @@ var bg5 = verifyBalanceTotal(bgRow, '400', '580');
 assertEq(bg5.user1amount, '500', 'Sum=980 < 990 (99%): fallback');
 
 subsection('Accept: within 1% tolerance');
-var bg6 = verifyBalanceTotal(bgRow, '500', '495');
-assertEq(bg6.user1amount, '500', 'Sum=995 >= 990: accepted');
+var bg6 = verifyBalanceTotal(bgRow, '510', '485');
+assertEq(bg6.user1amount, '510', 'Sum=995 >= 990: accepted (not fallback)');
 
 
 /* =========================================================================
